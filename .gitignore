@@ -13,3 +13,4 @@ src/thirdparty/
 **/*.pyc
 
 models/
+.vscode/
