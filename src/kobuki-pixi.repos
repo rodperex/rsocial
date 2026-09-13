@@ -1,0 +1,49 @@
+repositories:
+  kobuki:
+    type: git
+    url: https://github.com/IntelligentRoboticsLabs/kobuki.git
+    version: jazzy
+  thirdparty/aws-robomaker-bookstore-world:
+    type: git
+    url: https://github.com/Juancams/aws-robomaker-bookstore-world.git
+    version: ros2-jazzy
+  thirdparty/aws-robomaker-racetrack-world:
+    type: git
+    url: https://github.com/Juancams/aws-robomaker-racetrack-world.git
+    version: ros2-jazzy
+  thirdparty/aws-robomaker-small-house-world:
+    type: git
+    url: https://github.com/Juancams/aws-robomaker-small-house-world
+    version: ros2-jazzy
+  thirdparty/aws-robomaker-small-warehouse-world:
+    type: git
+    url: https://github.com/Juancams/aws-robomaker-small-warehouse-world.git
+    version: ros2-jazzy
+  thirdparty/ecl/ecl_core:
+    type: git
+    url: https://github.com/Juancams/ecl_core.git
+    version: devel
+  thirdparty/ecl/ecl_lite:
+    type: git
+    url: https://github.com/Juancams/ecl_lite.git
+    version: ros2-jazzy
+  thirdparty/ecl/ecl_tools:
+    type: git
+    url: https://github.com/stonier/ecl_tools.git
+    version: devel
+  thirdparty/kobuki_core:
+    type: git
+    url: https://github.com/kobuki-base/kobuki_core.git
+    version: devel
+  thirdparty/kobuki_ros:
+    type: git
+    url: https://github.com/Juancams/kobuki_ros.git
+    version: jazzy-devel
+  thirdparty/kobuki_ros_interfaces:
+    type: git
+    url: https://github.com/kobuki-base/kobuki_ros_interfaces.git
+    version: devel
+  thirdparty/kobuki_velocity_smoother:
+    type: git
+    url: https://github.com/kobuki-base/kobuki_velocity_smoother.git
+    version: devel

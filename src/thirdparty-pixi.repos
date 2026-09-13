@@ -1,0 +1,37 @@
+repositories:
+  thirdparty/yolo_ros:
+    type: git
+    url: https://github.com/mgonzs13/yolo_ros.git
+    version: eb11e81f7dbdb81c23a61d743ce0bac3cf9b07eb
+  thirdparty/ros2_v4l2_camera:
+    type: git
+    url: https://github.com/tier4/ros2_v4l2_camera.git
+    version: ed965b487b8d23ebaa477a9eb2c6ce4cf3c151a0
+  thirdparty/audio_common:
+    type: git
+    url: https://github.com/rodperex/audio_common.git
+    version: 18f8ddb5ff9ac698e70b1efc099ad802d05bd1ea
+  thirdparty/simple_hri:
+    type: git
+    url: https://github.com/rodperex/simple_hri.git
+    version: 0ee26f7bd9758bf3ad044669e1de138c4f1161d1
+  thirdparty/nao_pos:
+    type: git
+    url: https://github.com/andoniroldan/nao_pos.git
+    version: 5dc054e2ba62edf5af60922ebe9e7afbb56bb638
+  thirdparty/nao_led:
+    type: git
+    url: https://github.com/antbono/nao_led.git
+    version: 0617d48200de3b1b1a1b076a31523c55f5cc2e5d
+  thirdparty/oak_d_camera:
+    type: git
+    url: https://github.com/jmguerreroh/oak_d_camera.git
+    version: 28ec5e1fb97dc93e5165e721a49d48c0112220c1
+  thirdparty/depthai-ros:
+    type: git
+    url: https://github.com/luxonis/depthai-ros.git
+    version: 680ba2018f2da14b19fd11a42ef7d6094cf7fc0e
+  thirdparty/nao_lola:
+    type: git
+    url: https://github.com/rodperex/nao_lola.git
+    version: 37490c27e775f2084b20fb104455dc31cc811deb

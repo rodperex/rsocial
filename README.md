@@ -1,12 +1,32 @@
 # rsocial
 
-El repositorio contiene nodos Python, comunicación entre nodos, TF, sensores, navegación, máquinas de estados, árboles de comportamiento e interacción humanx-robot.
+Workspace docente de ROS 2 con ejemplos de nodos, sensores, navegación,
+máquinas de estados, árboles de comportamiento e interacción humano-robot.
 
-## Requisitos
+## Instalación
 
-- Ubuntu 24.04 con ROS 2 Jazzy instalado (la imagen Docker del repositorio ya incluye este entorno).
+Elige una de estas instalaciones:
+
+- **Nativa:** Ubuntu 24.04 con ROS 2 Jazzy. Es la opción descrita en este
+	README.
+- **Pixi:** ROS 2 Jazzy aislado en Pixi. Sigue [README-pixi-install.md](README-pixi-install.md).
+- **Docker:** entorno preparado en un contenedor. Sigue [README-docker-install.md](README-docker-install.md).
+
+Los comandos de este README usan `~/rsocial` como ruta de ejemplo. Puedes
+usar otra ubicación sustituyendo esa ruta en los comandos.
+
+La instalación nativa usa `src/thirdparty.repos`; la instalación Pixi usa
+`src/thirdparty-pixi.repos` y no deben mezclarse.
+
+## Requisitos para la instalación nativa
+
+- Ubuntu 24.04 con ROS 2 Jazzy instalado.
 - `git`, `python3`, `python3-rosdep`, `python3-vcstool`, `python3-colcon-common-extensions` y [`uv`](https://docs.astral.sh/uv/).
-- Para los ejemplos de movimiento y navegación: un robot Kobuki o una simulación que publique los topics y TF necesarios.
+- Para movimiento y navegación: un robot Kobuki o una simulación que publique
+	los topics y TF necesarios. El simulador recomendado es
+	[Kobuki](https://github.com/IntelligentRoboticsLabs/kobuki). Sigue su README
+	para instalarlo. La configuración USB/udev del robot real siempre se hace en
+	el sistema anfitrión.
 
 En cada terminal desde la que se ejecute ROS hay que cargar ROS y este workspace:
 
@@ -15,7 +35,7 @@ source /opt/ros/jazzy/setup.bash
 source ~/rsocial/install/setup.bash
 ```
 
-## Instalación desde cero
+## Instalación nativa desde cero
 
 ```bash
 mkdir -p ~/rsocial/src
@@ -24,36 +44,26 @@ cd ~/rsocial/src
 vcs import < rsocial/src/thirdparty.repos
 cd ~/rsocial
 
-# Cargar ROS antes de crear el entorno virtual.
+# Cargar ROS antes de continuar.
 source /opt/ros/jazzy/setup.bash
 
-# Instalar uv si todavía no está disponible.
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# Abrir una terminal nueva o recargar el PATH antes de continuar.
 source "$HOME/.local/bin/env"
 
 rosdep update
 rosdep install --from-paths src --ignore-src -r -y \
 	--skip-keys="ament_python rclpy_lifecycle"
 
-# Las dependencias Python de los third parties no las instala rosdep.
-# simple_hri usa un entorno virtual aislado.
-# ROS se carga antes para que sus paquetes Python estén disponibles.
 uv venv --seed .venv
 source .venv/bin/activate
 
-# Necesario para sound_play (reproducción y síntesis de audio).
+# Dependencias de audio de sound_play.
 sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi python3-gst-1.0
 
 python3 -m pip install colcon-common-extensions
 python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
-# Si la versión descargada de yolo_ros incluye requirements.txt, instálalo.
-if [ -f src/thirdparty/yolo_ros/requirements.txt ]; then
-	python3 -m pip install -r src/thirdparty/yolo_ros/requirements.txt
-fi
 python3 -m colcon build --symlink-install
 source install/setup.bash
-ros2 interface show simple_hri_interfaces/srv/Speech
 ```
 
 Activa `.venv` antes de compilar y en cada terminal desde la que ejecutes
@@ -69,11 +79,10 @@ source ~/rsocial/.venv/bin/activate
 source ~/rsocial/install/setup.bash
 ```
 
-Cuando la versión descargada de `yolo_ros` no incluye `requirements.txt`, sus
-dependencias están declaradas en `yolo_ros/pyproject.toml` y `colcon build`
-ejecuta `uv sync` automáticamente para crear o actualizar
-`src/thirdparty/yolo_ros/yolo_ros/.venv`. Si se quiere preparar ese entorno
-antes de compilar, se puede ejecutar:
+`yolo_ros` no usa `requirements.txt` en su versión actual. Sus dependencias
+están declaradas en `yolo_ros/pyproject.toml` y `colcon build` ejecuta `uv sync`
+automáticamente para crear o actualizar `src/thirdparty/yolo_ros/yolo_ros/.venv`.
+Si se quiere preparar ese entorno antes de compilar, se puede ejecutar:
 
 ```bash
 cd src/thirdparty/yolo_ros/yolo_ros
@@ -91,8 +100,7 @@ la conversión de imágenes siguen funcionando.
 
 `simple_hri` incluye servicios locales y servicios que requieren credenciales.
 El entorno virtual aísla sus dependencias Python de las versiones instaladas
-en el sistema, incluido el wheel de WebRTC VAD. `sound_play` se ejecuta con el
-Python del sistema para usar las bindings GStreamer instaladas por APT. Los launchers
+en el sistema, incluido el wheel de WebRTC VAD. Los launchers
 locales no necesitan claves, pero sí descargan modelos la primera
 vez y requieren micrófono y salida de audio accesibles desde el sistema:
 
@@ -119,175 +127,14 @@ En sistemas sin micrófono o servidor de audio, se pueden probar los servicios
 de texto, pero los servicios STT/TTS locales no podrán grabar o reproducir
 audio hasta configurar ALSA/PulseAudio o el equivalente del sistema.
 
-Si `sound_play` termina con `core dumped` o un fallo nativo al iniciar, usa
-Cyclone DDS en la terminal antes de lanzar `simple_hri`:
+## Ejemplos y uso
 
-```bash
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-ros2 launch simple_hri local_simple_hri.launch.py
-```
-
-## Ejemplos básicos
-
-Los comandos siguientes se ejecutan en terminales separadas cuando se lanzan varios nodos.
-
-### Publicación, suscripción y ciclo de vida
-
-```bash
-ros2 launch node_programming pubsub.launch.py
-ros2 launch node_programming lc_pubsub.launch.py
-```
-
-También están disponibles los nodos individuales `publisher_node`, `subscriber_node`, `logger_node`, `lifecycle_publisher_node`, `lifecycle_subscriber_node`, `simple_node_creation`, `simple_node_logging`, `simple_node_publishing` y `simple_callback`.
-
-### Servicios y acciones
-
-Ejecuta un servidor y su cliente en terminales distintas:
-
-```bash
-ros2 run comms_demo service_server
-ros2 run comms_demo service_client
-
-ros2 run comms_demo action_server
-ros2 run comms_demo action_client
-```
-
-### Movimiento y TF
-
-Estos ejemplos necesitan un robot o simulador que acepte `cmd_vel`:
-
-```bash
-ros2 run square_motion square_move
-ros2 run tf_square_motion tf_square
-ros2 run tf_square_motion tf_square2
-ros2 launch tf_seeker tf_seeker.launch.py
-```
-
-## Sensores
-
-### Láser
-
-Con un `LaserScan` publicado por el robot:
-
-```bash
-ros2 launch laser laser.launch.py
-```
-
-Los nodos individuales son `obstacle_detector_node` y `obstacle_detector_node_no_tf`.
-
-### Cámara
-
-Primero inicia una cámara. Para una cámara OAK-D:
-
-```bash
-ros2 launch oak_d_camera camera.launch.py \
-	use_disparity:=False use_lr_raw:=False use_pointcloud:=False
-```
-
-Después, consulta la sección [YOLO](#yolo) para lanzar la detección con los
-topics publicados por la cámara y elegir entre CPU y GPU.
-
-### YOLO
-
-El launcher `yolo.launch.py` necesita conocer los topics publicados por la
-cámara. Como mínimo, especifica el topic de imagen, el de profundidad, el de
-información de cámara y el frame de destino. Por ejemplo, para una cámara
-OAK-D:
-
-```bash
-ros2 launch yolo_bringup yolo.launch.py \
-	input_image_topic:=/color/image \
-	input_depth_topic:=/stereo/depth \
-	input_depth_info_topic:=/stereo/camera_info \
-	target_frame:=oak-d_frame \
-	device:=cpu
-```
-
-El launcher usa `cuda:0` por defecto. Si el equipo no dispone de una GPU
-NVIDIA con CUDA, añade `device:=cpu` como en el ejemplo anterior. Si se dispone
-de CUDA, se puede omitir ese argumento o indicar el dispositivo correspondiente,
-por ejemplo `device:=cuda:0`.
-
-Para usar una cámara RGB-D con otros nombres de topics, sustituye esos cuatro
-valores por los que publique la cámara. Para detecciones 2D o 3D, conecta
-después la salida de YOLO con el conversor correspondiente:
-
-```bash
-ros2 launch camera yolo_to_standard2d.launch.py
-# o bien:
-ros2 launch camera yolo_to_standard3d.launch.py
-```
-
-
-## Control y navegación
-
-El control VFF puede ejecutarse en 2D o 3D. Los launch completos incluyen los nodos de detección necesarios para el escenario configurado:
-
-```bash
-ros2 launch vff_control full_vff_2d.launch.py
-ros2 launch vff_control full_vff_3d.launch.py
-```
-
-También se pueden lanzar por separado `vff_2d.launch.py`, `vff_3d.launch.py`, `yolo_class_2d.launch.py`, `yolo_class_3d.launch.py` y `obstacle_detector.launch.py`.
-
-Ejemplos de navegación:
-
-```bash
-ros2 run nav2_example simple_navigation_app
-ros2 launch fsm_nav fsm_nav.launch.py
-```
-
-La navegación requiere Nav2 activo, mapa/localización y los topics/TF del robot. Los puntos de la FSM se configuran en `src/fsm_nav/config/waypoints.yaml`.
-
-## Máquinas de estados y árboles de comportamiento
-
-```bash
-ros2 launch fsm_bumpgo bumpgo.launch.py
-ros2 launch bt_bumpgo bumpgo.launch.py
-ros2 launch bt_bumpgo side_bumpgo.launch.py
-ros2 launch bt_bumpgo groot_bumpgo.launch.py
-```
-
-Los ejemplos didácticos de `py_trees` también se pueden ejecutar directamente:
-
-```bash
-ros2 run bt_examples sequence
-ros2 run bt_examples reactive_sequence
-ros2 run bt_examples fallback
-ros2 run bt_examples reactive_fallback
-ros2 run bt_examples decorator
-```
-
-Para editar árboles con Groot, instala el puente una vez:
-
-```bash
-python3 -m pip install --user \
-	git+https://github.com/narcispr/py_trees_meet_groot.git
-```
-
-## Interacción humano-robot
-
-Los ejemplos usan los servicios de `simple_hri`. Para modelos locales:
-
-```bash
-ros2 launch hri_examples hri_dependencies.launch.py
-ros2 run hri_examples say
-ros2 run hri_examples repeat
-ros2 launch hri_examples generate_response.launch.py
-```
-
-Para los servicios en la nube, inicia el launch correspondiente de `simple_hri` y configura antes sus credenciales como indique ese paquete:
-
-```bash
-ros2 launch simple_hri simple_hri.launch.py
-ros2 run hri_examples hri_example
-```
-
-Otros ejecutables disponibles son `hri_example2`, `hri_example3`, `nao_hri_example` y sus clientes.
+Consulta [README-examples.md](README-examples.md) para los comandos de nodos,
+sensores, navegación, árboles de comportamiento e interacción humano-robot.
 
 ## Docker
 
-Para trabajar con el entorno Docker, sigue la guía específica [docker/howto.md](docker/howto.md). Ahí se explica cómo:
+Para trabajar con el entorno Docker, sigue la guía específica [README-docker-install.md](README-docker-install.md). La documentación histórica y las variantes de la imagen siguen disponibles en [docker/howto.md](docker/howto.md). Ahí se explica cómo:
 
 - construir y arrancar las imágenes Jazzy y Lyrical;
 - acceder al escritorio ROS 2 desde el navegador;
