@@ -17,3 +17,5 @@ models/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+*.pt
