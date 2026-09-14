@@ -101,7 +101,7 @@ torch = ">=2.5.0"
 huggingface-hub = ">=0.20.0"
 
 [activation.env]
-UV_SYSTEM_SITE_PACKAGES = "1" # in case a thirdparty uses a venv
+UV_SYSTEM_SITE_PACKAGES = "true" # in case a thirdparty uses a venv
 
 [tasks]
 prepare-colcon = "mkdir -p src/thirdparty/nao_lola/nao_lola && touch src/thirdparty/nao_lola/nao_lola/COLCON_IGNORE"
