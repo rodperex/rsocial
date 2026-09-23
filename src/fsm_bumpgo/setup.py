@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'bump_go_node = fsm_bumpgo.bumpgo_node:main',
+            'bump_go_fsm_node = fsm_bumpgo.bumpgo_fsm_node:main',
         ],
     },
 )
