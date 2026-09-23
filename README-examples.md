@@ -50,6 +50,10 @@ ros2 launch laser laser.launch.py
 
 Para una camara OAK-D:
 
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 ```bash
 ros2 launch oak_d_camera camera.launch.py \
   use_disparity:=False use_lr_raw:=False use_pointcloud:=False
@@ -61,8 +65,15 @@ ros2 launch yolo_bringup yolo.launch.py \
 ros2 launch camera yolo_to_standard2d.launch.py
 ```
 
-Para detecciones 3D usa `yolo_to_standard3d.launch.py` y adapta los topics y
-`target_frame` a la camara utilizada.
+Si al lanzar la cámara se tienen problemas con los permisos de acceso al USB:
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Para detecciones 3D usa `yolo_to_standard3d.launch.py` y adapta los topics y `target_frame` a la camara utilizada.
 
 ## Control y navegacion
 
