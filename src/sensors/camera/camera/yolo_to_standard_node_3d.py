@@ -1,12 +1,24 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
-# Licensed under the Apache License, Version 2.0
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-
+from std_msgs.msg import Header
+from vision_msgs.msg import Detection3D, Detection3DArray, ObjectHypothesisWithPose
 from yolo_msgs.msg import DetectionArray
-from vision_msgs.msg import Detection3DArray, Detection3D, ObjectHypothesisWithPose
+
 
 class YoloToStandardNode3D(Node):
 
@@ -37,8 +49,14 @@ class YoloToStandardNode3D(Node):
 
         for detection in msg.detections:
             detection_msg = Detection3D()
-            detection_msg.header = msg.header
-            detection_msg.header.frame_id = self.optical_frame if self.kobuki_sim else detection.bbox3d.frame_id
+            # Build a new Header: assigning msg.header and then changing frame_id would
+            # modify the same object shared by every detection and by the array
+            detection_msg.header = Header()
+            detection_msg.header.stamp = msg.header.stamp
+            if self.kobuki_sim:
+                detection_msg.header.frame_id = self.optical_frame
+            else:
+                detection_msg.header.frame_id = detection.bbox3d.frame_id
 
             detection_msg.bbox.center.position.x = detection.bbox3d.center.position.x
             detection_msg.bbox.center.position.y = detection.bbox3d.center.position.y
@@ -49,10 +67,10 @@ class YoloToStandardNode3D(Node):
             detection_msg.bbox.size.z = detection.bbox3d.size.z
 
             self.get_logger().debug(f'Detected {detection.class_name} at '
-                                   f'x={detection.bbox3d.center.position.x:.2f}, '
-                                   f'y={detection.bbox3d.center.position.y:.2f}, '
-                                   f'z={detection.bbox3d.center.position.z:.2f} '
-                                   f'({detection.bbox3d.frame_id})')
+                                    f'x={detection.bbox3d.center.position.x:.2f}, '
+                                    f'y={detection.bbox3d.center.position.y:.2f}, '
+                                    f'z={detection.bbox3d.center.position.z:.2f} '
+                                    f'({detection.bbox3d.frame_id})')
 
             obj_msg = ObjectHypothesisWithPose()
             obj_msg.hypothesis.class_id = detection.class_name
@@ -67,12 +85,18 @@ class YoloToStandardNode3D(Node):
 
         self.detection_pub.publish(detection_array_msg)
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = YoloToStandardNode3D()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

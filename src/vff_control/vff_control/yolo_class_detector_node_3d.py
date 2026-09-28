@@ -1,4 +1,4 @@
-# Copyright 2025 Rodrigo Pérez-Rodríguez
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -9,15 +9,18 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import rclpy
-from rclpy.node import Node
-from vision_msgs.msg import Detection3DArray
-from geometry_msgs.msg import Vector3, PointStamped
-from tf2_ros import Buffer, TransformListener
-from tf2_geometry_msgs import do_transform_point
-from sensor_msgs.msg import Image
 import math
+
+from geometry_msgs.msg import PointStamped, Vector3
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from tf2_geometry_msgs import do_transform_point
+from tf2_ros import Buffer, TransformListener
+from vision_msgs.msg import Detection3DArray
 
 
 class ThreeDYOLOClassDetectorNode(Node):
@@ -56,7 +59,7 @@ class ThreeDYOLOClassDetectorNode(Node):
                 break
 
     def publish_attractive_vector(self, detection):
-        
+
         # Get the target coordinates in the source frame
         target_point = PointStamped()
         target_point.header = detection.header
@@ -68,13 +71,17 @@ class ThreeDYOLOClassDetectorNode(Node):
         target_frame = self.base_frame
         detection_time = detection.header.stamp
 
-        dist = math.sqrt(target_point.point.x**2 + target_point.point.y**2 + target_point.point.z**2)
+        dist = math.sqrt(
+            target_point.point.x**2 + target_point.point.y**2 + target_point.point.z**2)
         angle = math.atan2(target_point.point.y, target_point.point.x)
 
         self.get_logger().debug(f'Original point for {self.target_class} '
-                                   f'x={target_point.point.x:.2f}, y={target_point.point.y:.2f}, z={target_point.point.z:.2f} ({source_frame})')
+                                f'x={target_point.point.x:.2f}, y={target_point.point.y:.2f}, '
+                                f'z={target_point.point.z:.2f} ({source_frame})')
 
-        self.get_logger().info(f'Detected {self.target_class} at {dist:.2f} m, angle {math.degrees(angle):.1f} degrees ({source_frame})')
+        self.get_logger().info(
+            f'Detected {self.target_class} at {dist:.2f} m, angle {math.degrees(angle):.1f} '
+            f'degrees ({source_frame})')
         try:
             # Lookup the transform
             self.get_logger().debug(f'Looking up transform from {source_frame} to {target_frame}')
@@ -82,40 +89,44 @@ class ThreeDYOLOClassDetectorNode(Node):
                 target_frame,
                 source_frame,
                 detection_time,  # Use the actual timestamp from the sensor data
-                timeout=rclpy.duration.Duration(seconds=0.5) 
+                timeout=rclpy.duration.Duration(seconds=0.5)
             )
             # Transform the point to the target frame
             transformed_point = do_transform_point(target_point, transform)
         except Exception as e:
             self.get_logger().error(f'Transform error: {e}')
             return
-       
+
         vec = Vector3()
         vec.x = transformed_point.point.x
         vec.y = transformed_point.point.y
         vec.z = transformed_point.point.z
 
         self.get_logger().debug(f'Attractive vector for {self.target_class} '
-                                   f'x={vec.x:.2f}, y={vec.y:.2f}, z={vec.z:.2f}')
-        
+                                f'x={vec.x:.2f}, y={vec.y:.2f}, z={vec.z:.2f}')
+
         dist = math.sqrt(vec.x**2 + vec.y**2 + vec.z**2)
         angle_base = math.atan2(vec.y, vec.x)
-        self.get_logger().debug(f'Detected {self.target_class} at {dist:.2f} m, angle {math.degrees(angle_base):.1f} degrees ({target_frame})')
-        
+        self.get_logger().debug(
+            f'Detected {self.target_class} at {dist:.2f} m, angle {math.degrees(angle_base):.1f} '
+            f'degrees ({target_frame})')
+
         self.get_logger().debug(f'Attractive vector for {self.target_class} '
-                                   f'x={vec.x:.2f}, y={vec.y:.2f}, z={vec.z:.2f} ({target_frame})')
+                                f'x={vec.x:.2f}, y={vec.y:.2f}, z={vec.z:.2f} ({target_frame})')
 
         self.attractive_pub.publish(vec)
-
-        
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = ThreeDYOLOClassDetectorNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

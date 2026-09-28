@@ -1,4 +1,4 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,13 +13,20 @@
 # limitations under the License.
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = rclpy.create_node('simple_node')
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,4 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from std_msgs.msg import Int32
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -23,13 +25,22 @@ def main(args=None):
     message.data = 0
 
     rate = node.create_rate(2)  # 2 Hz
-    
-    while rclpy.ok():
-        rclpy.spin_once(node)
-        publisher.publish(message)
-        message.data += 1
-        rate.sleep()
-    rclpy.shutdown()
+
+    # Note: in rclpy the Rate is driven by a timer that is executed by spin_once().
+    # spin_once() blocks until that timer fires, and rate.sleep() then returns
+    # immediately. For periodic work the idiomatic way is a timer (see logger_node.py).
+    try:
+        while rclpy.ok():
+            rclpy.spin_once(node)
+            publisher.publish(message)
+            message.data += 1
+            rate.sleep()
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -1,12 +1,24 @@
-import time
-from enum import Enum
-from typing import Optional
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import rclpy
+from enum import Enum
+import time
+
 from rclpy.node import Node
+from simple_hri_interfaces.srv import Extract, Speech, YesNo
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
-from simple_hri_interfaces.srv import Speech, Extract, YesNo
 
 
 class OperationState(Enum):
@@ -34,11 +46,11 @@ class HRIClient:
             10
         )
 
-        self._last_listened_text = ""
+        self._last_listened_text = ''
 
         # States for async operations
         self._stt_state = OperationState.IDLE
-        self._stt_text = ""
+        self._stt_text = ''
         self._stt_future = None
 
         self._tts_state = OperationState.IDLE
@@ -49,53 +61,53 @@ class HRIClient:
         self._tts_future = None
 
         self._extract_state = OperationState.IDLE
-        self._extracted_info = ""
+        self._extracted_info = ''
         self._extract_future = None
 
         self._yesno_state = OperationState.IDLE
-        self._yesno_result = ""
+        self._yesno_result = ''
         self._yesno_future = None
 
-        self._node.get_logger().debug("Cliente HRI inicializado")
+        self._node.get_logger().debug('HRI client initialized')
 
     def wait_for_services(self, timeout_sec: float = 5.0) -> bool:
         all_ready = True
 
         if not self._stt_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error("Servicio STT no disponible")
+            self._node.get_logger().error('STT service not available')
             all_ready = False
 
         if not self._tts_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error("Servicio TTS no disponible")
+            self._node.get_logger().error('TTS service not available')
             all_ready = False
 
         if not self._extract_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error("Servicio Extract no disponible")
+            self._node.get_logger().error('Extract service not available')
             all_ready = False
 
         if not self._yesno_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error("Servicio YesNo no disponible")
+            self._node.get_logger().error('YesNo service not available')
             all_ready = False
 
         if all_ready:
-            self._node.get_logger().debug("Todos los servicios HRI disponibles")
+            self._node.get_logger().debug('All HRI services available')
 
         return all_ready
 
-    # ============ MÉTODOS ASÍNCRONOS ============
+    # ============ ASYNCHRONOUS METHODS ============
 
     def start_listen(self):
         if self._stt_state == OperationState.IN_PROGRESS:
-            self._node.get_logger().debug("STT ya está en progreso, ignorando nueva petición")
+            self._node.get_logger().debug('STT already in progress, ignoring new request')
             return
 
         request = SetBool.Request()
         request.data = True
 
-        self._node.get_logger().info("Iniciando escucha (STT)...")
+        self._node.get_logger().info('Starting to listen (STT)...')
 
         self._stt_state = OperationState.IN_PROGRESS
-        self._stt_text = ""
+        self._stt_text = ''
         self._stt_future = self._stt_client.call_async(request)
 
     def is_listen_done(self) -> bool:
@@ -107,11 +119,11 @@ class HRIClient:
             if response is not None and response.success:
                 self._stt_text = response.message
                 self._stt_state = OperationState.COMPLETED
-                self._node.get_logger().info(f"STT completado: '{self._stt_text}'")
+                self._node.get_logger().info(f"STT completed: '{self._stt_text}'")
             else:
                 self._stt_state = OperationState.ERROR
-                error_msg = response.message if response else "Unknown error"
-                self._node.get_logger().warning(f"STT falló: {error_msg}")
+                error_msg = response.message if response else 'Unknown error'
+                self._node.get_logger().warning(f'STT failed: {error_msg}')
             return True
 
         return False
@@ -121,13 +133,13 @@ class HRIClient:
 
     def start_speaking(self, text: str):
         if self._tts_state == OperationState.IN_PROGRESS:
-            self._node.get_logger().debug("TTS ya está en progreso, ignorando nueva petición")
+            self._node.get_logger().debug('TTS already in progress, ignoring new request')
             return
 
         request = Speech.Request()
         request.text = text
 
-        self._node.get_logger().info(f"Iniciando TTS: '{text}'")
+        self._node.get_logger().info(f"Starting TTS: '{text}'")
 
         self._tts_state = OperationState.IN_PROGRESS
         self._tts_start_time = time.time()
@@ -136,8 +148,9 @@ class HRIClient:
         # Estimate duration based on text length: ~10 chars per second + 500ms margin
         text_length = len(text)
         self._tts_expected_duration = (text_length * 0.1) + 0.5
-        
-        self._node.get_logger().debug(f"Duración estimada de TTS: {self._tts_expected_duration * 1000} ms")
+
+        self._node.get_logger().debug(
+            f'Estimated TTS duration: {self._tts_expected_duration * 1000} ms')
 
         self._tts_future = self._tts_client.call_async(request)
 
@@ -145,23 +158,24 @@ class HRIClient:
         if self._tts_state != OperationState.IN_PROGRESS:
             return self._tts_state in (OperationState.COMPLETED, OperationState.ERROR)
 
-        if not self._tts_service_responded and self._tts_future is not None and self._tts_future.done():
+        if (not self._tts_service_responded and self._tts_future is not None
+                and self._tts_future.done()):
             response = self._tts_future.result()
             if response is None or not response.success:
                 self._tts_result = False
                 self._tts_state = OperationState.ERROR
-                self._node.get_logger().error("TTS falló")
+                self._node.get_logger().error('TTS failed')
                 return True
-            
+
             self._tts_result = True
             self._tts_service_responded = True
-            self._node.get_logger().debug("TTS servicio respondió, esperando reproducción...")
+            self._node.get_logger().debug('TTS service responded, waiting for playback...')
 
         elapsed = time.time() - self._tts_start_time
 
         if elapsed >= self._tts_expected_duration and self._tts_service_responded:
             self._tts_state = OperationState.COMPLETED
-            self._node.get_logger().info(f"TTS completado (duración: {int(elapsed * 1000)} ms)")
+            self._node.get_logger().info(f'TTS completed (duration: {int(elapsed * 1000)} ms)')
             return True
 
         return False
@@ -169,9 +183,9 @@ class HRIClient:
     def get_speaking_result(self) -> bool:
         return self._tts_result
 
-    def start_extract(self, interest: str, text: str = ""):
+    def start_extract(self, interest: str, text: str = ''):
         if self._extract_state == OperationState.IN_PROGRESS:
-            self._node.get_logger().debug("Extract ya está en progreso, ignorando nueva petición")
+            self._node.get_logger().debug('Extract already in progress, ignoring new request')
             return
 
         request = Extract.Request()
@@ -179,12 +193,14 @@ class HRIClient:
         request.text = text
 
         if not text:
-            self._node.get_logger().info(f"Iniciando extracción con audio: {interest}")
+            # simple_hri does not record audio in Extract: with an empty text it returns "NONE".
+            # Get the text first with start_listen()/get_listened_text().
+            self._node.get_logger().warning(f"Extraction of '{interest}' with empty text")
         else:
-            self._node.get_logger().info(f"Iniciando extracción de texto '{text}': {interest}")
+            self._node.get_logger().info(f"Starting extraction from text '{text}': {interest}")
 
         self._extract_state = OperationState.IN_PROGRESS
-        self._extracted_info = ""
+        self._extracted_info = ''
         self._extract_future = self._extract_client.call_async(request)
 
     def is_extract_done(self) -> bool:
@@ -195,15 +211,17 @@ class HRIClient:
             response = self._extract_future.result()
             if response is not None:
                 self._extracted_info = response.result
-                if self._extracted_info:
+                # simple_hri returns "ERROR..." on failure and "NONE" if nothing is found
+                if self._extracted_info and not self._extracted_info.startswith('ERROR'):
                     self._extract_state = OperationState.COMPLETED
-                    self._node.get_logger().info(f"Extracción completada: {self._extracted_info}")
+                    self._node.get_logger().info(f'Extraction completed: {self._extracted_info}')
                 else:
                     self._extract_state = OperationState.ERROR
-                    self._node.get_logger().warning("Extracción no pudo obtener información")
+                    self._node.get_logger().warning(
+                        f"Extraction could not get the information: '{self._extracted_info}'")
             else:
                 self._extract_state = OperationState.ERROR
-                self._node.get_logger().warning("Fallo al llamar al servicio de extracción")
+                self._node.get_logger().warning('Call to the extract service failed')
             return True
 
         return False
@@ -211,18 +229,20 @@ class HRIClient:
     def get_extracted_info(self) -> str:
         return self._extracted_info
 
-    def start_yesno(self, text: str = ""):
+    def start_yesno(self, text: str = ''):
         if self._yesno_state == OperationState.IN_PROGRESS:
-            self._node.get_logger().debug("YesNo ya está en progreso, ignorando nueva petición")
+            self._node.get_logger().debug('YesNo already in progress, ignoring new request')
             return
 
         request = YesNo.Request()
         request.text = text
 
         if not text:
-            self._node.get_logger().info("Iniciando detección yes/no con audio...")
+            # simple_hri does not record audio in YesNo:
+            # with an empty text it returns "ERROR: Empty text"
+            self._node.get_logger().warning('Yes/no detection with empty text')
         else:
-            self._node.get_logger().info(f"Iniciando detección yes/no de texto '{text}'")
+            self._node.get_logger().info(f"Starting yes/no detection from text '{text}'")
 
         self._yesno_state = OperationState.IN_PROGRESS
         self._yesno_future = self._yesno_client.call_async(request)
@@ -236,15 +256,16 @@ class HRIClient:
             if response is not None:
                 self._yesno_result = response.result
                 answer_lower = response.result.lower()
-                if answer_lower in ("yes", "no"):
+                if answer_lower in ('yes', 'no'):
                     self._yesno_state = OperationState.COMPLETED
-                    self._node.get_logger().info(f"YesNo completado: {response.result}")
+                    self._node.get_logger().info(f'YesNo completed: {response.result}')
                 else:
                     self._yesno_state = OperationState.ERROR
-                    self._node.get_logger().warning(f"YesNo no pudo obtener respuesta válida: {response.result}")
+                    self._node.get_logger().warning(
+                        f'YesNo could not get a valid answer: {response.result}')
             else:
                 self._yesno_state = OperationState.ERROR
-                self._node.get_logger().warning("Fallo al llamar al servicio yes/no")
+                self._node.get_logger().warning('Call to the yes/no service failed')
             return True
 
         return False
@@ -254,7 +275,7 @@ class HRIClient:
 
     def _listened_text_callback(self, msg: String):
         self._last_listened_text = msg.data
-        self._node.get_logger().debug(f"Texto escuchado recibido: {self._last_listened_text}")
+        self._node.get_logger().debug(f'Texto escuchado recibido: {self._last_listened_text}')
 
     def get_last_listened_text(self) -> str:
         return self._last_listened_text

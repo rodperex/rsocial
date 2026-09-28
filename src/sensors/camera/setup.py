@@ -1,6 +1,18 @@
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from setuptools import find_packages, setup
-import os
-from glob import glob
 
 package_name = 'camera'
 
@@ -20,11 +32,11 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='roi',
+    maintainer='Rodrigo Pérez-Rodríguez',
     maintainer_email='rodrigo.perez@urjc.es',
-    description='Package for camera-based YOLO detection',
-    license='MIT',
-    tests_require=['pytest'],
+    description='Conversion of yolo_ros detections to standard vision_msgs messages (2D and 3D)',
+    license='Apache-2.0',
+    extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
             'yolo_to_standard_node = camera.yolo_to_standard_node:main',

@@ -3,13 +3,12 @@
 <package format="3">
   <name>hri_examples</name>
   <version>0.1.0</version>
-  <description>Example package for using ROS 2 actions in HRI applications, such as text-to-speech (TTS).</description>
-  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez Rodríguez</maintainer>
+  <description>Human-robot interaction examples (STT, TTS, information extraction) with simple_hri</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
   <license>Apache-2.0</license>
 
   <!-- Runtime dependencies -->
   <depend>rclpy</depend>
-  <depend>audio_common_msgs</depend>
   <depend>simple_hri_interfaces</depend>
   <depend>nao_lola_command_msgs</depend>
   <depend>nao_pos_interfaces</depend>

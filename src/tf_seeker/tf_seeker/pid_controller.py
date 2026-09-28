@@ -1,16 +1,21 @@
-# Copyright 2021 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
-# Licensed under the Apache License, Version 2.0
-
-from math import fabs
-from typing import Optional
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 class PIDController:
-    def __init__(self, min_ref: float, max_ref: float, min_output: float, max_output: float,
+    def __init__(self, min_output: float, max_output: float,
                  kp: float = 0.41, ki: float = 0.06, kd: float = 0.53):
-        self.min_ref = min_ref  # Below this ref, output is 0.0
-        self.max_ref = max_ref  # Above this ref, output is max_output
         self.min_output = min_output
         self.max_output = max_output
 
@@ -18,7 +23,7 @@ class PIDController:
         self.KI = ki
         self.KD = kd
 
-        self.prev_error = 0.0
+        self.prev_error = None  # None until the first call (see derivative term)
         self.int_error = 0.0
 
     def set_pid(self, kp: float, ki: float, kd: float):
@@ -28,31 +33,35 @@ class PIDController:
 
     def get_output(self, error: float, dt: float) -> float:
         """
-        PID estándar simple: u[n] = Kp*e[n] + Ki*sum(e[k]) + Kd*(e[n]-e[n-1])
-        
-        Parámetros:
-            error: error actual (setpoint - valor_actual)
-            dt: intervalo de tiempo entre llamadas (requerido para I y D)
-        """
+        Compute the output of a simple standard PID.
 
-        # Término Proporcional
+        u[n] = Kp*e[n] + Ki*sum(e[k]) + Kd*(e[n]-e[n-1])
+
+        error is the current error (setpoint - current_value) and dt is the time
+        between calls (needed for the I and D terms).
+        """
+        # Proportional term
         p_term = self.KP * error
 
-        # Término Integral (con saturación simple)
+        # Integral term (with simple saturation)
         self.int_error += error * dt
-        # Limitar integral para evitar windup
-        max_int = 10.0  # límite razonable
+        # Limit the integral to avoid windup
+        max_int = 10.0  # reasonable limit
         self.int_error = max(-max_int, min(self.int_error, max_int))
         i_term = self.KI * self.int_error
 
-        # Término Derivativo
-        d_term = self.KD * (error - self.prev_error) / dt
+        # Derivative term. There is no previous error on the first call: using 0.0 would give
+        # a derivative of error/dt (a huge spike, "derivative kick"), so it is skipped.
+        if self.prev_error is None or dt <= 0.0:
+            d_term = 0.0
+        else:
+            d_term = self.KD * (error - self.prev_error) / dt
         self.prev_error = error
 
-        # Salida PID
+        # PID output
         output = p_term + i_term + d_term
 
-        # Saturación de salida
+        # Output saturation
         output = max(self.min_output, min(output, self.max_output))
 
         return output

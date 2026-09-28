@@ -1,4 +1,4 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg_dir = get_package_share_directory('camera')
-    # param_file = os.path.join(pkg_dir, 'config', 'params.yaml')
-
     yolo_cmd = Node(package='camera',
-                        executable='yolo_to_standard_node',
-                        output='screen',
-                        parameters=[],
-                        remappings=[
-                          ('input_detection', '/yolo/detections'),
-                          ('output_detection_2d', '/detections_2d')
-                        ])
+                    executable='yolo_to_standard_node',
+                    output='screen',
+                    parameters=[],
+                    remappings=[
+                            ('input_detection', '/yolo/detections'),
+                        ('output_detection_2d', '/detections_2d')
+                    ])
 
     ld = LaunchDescription()
     ld.add_action(yolo_cmd)

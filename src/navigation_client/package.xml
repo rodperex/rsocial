@@ -3,9 +3,9 @@
 <package format="3">
   <name>navigation_client</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Reusable client for the Nav2 NavigateToPose action</description>
   <maintainer email="midemig@gmail.com">migueldm</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>nav2_msgs</depend>

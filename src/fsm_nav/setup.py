@@ -1,3 +1,17 @@
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from setuptools import setup
 
 package_name = 'fsm_nav'
@@ -7,18 +21,18 @@ setup(
     version='0.0.1',
     packages=[package_name],
     data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/config', ['config/waypoints.yaml']),
         ('share/' + package_name + '/launch', ['launch/fsm_nav.launch.py']),
-        ('share/' + package_name + '/resource', ['resource/' + package_name]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='User',
-    maintainer_email='user@example.com',
-    description='Ejemplo de máquina de estados para navegación.',
-    license='MIT',
-    tests_require=['pytest'],
+    maintainer='Rodrigo Pérez-Rodríguez',
+    maintainer_email='rodrigo.perez@urjc.es',
+    description='State machine example for navigation with Nav2',
+    license='Apache-2.0',
+    extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
             'fsm_nav_node = fsm_nav.fsm_nav_node:main'

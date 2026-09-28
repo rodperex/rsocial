@@ -3,14 +3,25 @@
 <package format="3">
   <name>vff_control</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="rodrigo.perez@urjc.es">roi</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Reactive navigation with Virtual Force Field: laser (repulsion) and YOLO (attraction)</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>vision_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>message_filters</depend>
+  <depend>python3-numpy</depend>
+  <depend>camera</depend>
+  <depend>yolo_bringup</depend>
+  <depend>ament_index_python</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -1,4 +1,4 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Int32
+
 
 class PublisherNode(Node):
     def __init__(self):
@@ -28,12 +30,18 @@ class PublisherNode(Node):
         self.message_.data += 1
         self.publisher_.publish(self.message_)
 
+
 def main(args=None):
     rclpy.init(args=args)
     publisher_node = PublisherNode()
-    rclpy.spin(publisher_node)
-    publisher_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(publisher_node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        publisher_node.destroy_node()
+        rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

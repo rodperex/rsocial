@@ -1,108 +1,92 @@
-import rclpy
-from rclpy.node import Node
-from rclpy.action import ActionClient
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-from audio_common_msgs.action import TTS
-from whisper_msgs.action import STT
+from enum import auto, Enum
+
+from hri_client.hri_client import HRIClient
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+
+
+class State(Enum):
+    SAY_PROMPT = auto()
+    WAITING_PROMPT = auto()
+    WAITING_LISTEN = auto()
+    WAITING_REPEAT = auto()
+    DONE = auto()
 
 
 class RepeatNode(Node):
+    """Ask the user to say something, listen (STT) and repeat it (TTS) using simple_hri."""
 
     def __init__(self):
         super().__init__('repeat_node')
 
-        self.tts_client = ActionClient(self, TTS, 'say')
-        self.stt_client = ActionClient(self, STT, 'whisper/listen')
+        self.hri_client = HRIClient(self)
+        if not self.hri_client.wait_for_services(10.0):
+            self.get_logger().error(
+                'simple_hri services not available. Did you launch simple_hri?')
 
-        self.state = 'INIT'
+        self.state = State.SAY_PROMPT
         self.transcribed_text = ''
+        self.timer = self.create_timer(0.1, self.control_loop)
 
-        self.get_logger().info('Initializing RepeatNode...')
-        self.start()
+    def control_loop(self):
+        if self.state == State.SAY_PROMPT:
+            self.hri_client.start_speaking('¿Qué quieres que repita?')
+            self.state = State.WAITING_PROMPT
 
-    def start(self):
-        self.get_logger().info('Waiting for action servers...')
-        if not self.tts_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('TTS server not available.')
-            return
-        if not self.stt_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('STT server not available.')
-            return
+        elif self.state == State.WAITING_PROMPT:
+            if self.hri_client.is_speaking_done():
+                self.hri_client.start_listen()
+                self.state = State.WAITING_LISTEN
 
-        self.transition_to('INIT')
+        elif self.state == State.WAITING_LISTEN:
+            if self.hri_client.is_listen_done():
+                self.transcribed_text = self.hri_client.get_listened_text()
+                if not self.transcribed_text.strip():
+                    self.get_logger().warning('No sentence was recognized')
+                    self.state = State.DONE
+                    return
+                self.get_logger().info(f'Repeating: "{self.transcribed_text}"')
+                self.hri_client.start_speaking(self.transcribed_text)
+                self.state = State.WAITING_REPEAT
 
-    def transition_to(self, new_state):
-        self.get_logger().info(f'Transitioning to state: {new_state}')
-        self.state = new_state
+        elif self.state == State.WAITING_REPEAT:
+            if self.hri_client.is_speaking_done():
+                self.state = State.DONE
 
-        if self.state == 'INIT':
-            self.say_prompt()
-        elif self.state == 'LISTEN':
-            self.listen()
-        elif self.state == 'REPEAT':
-            self.say_transcription()
-        elif self.state == 'DONE':
-            self.get_logger().info('Interaction finished.')
-            rclpy.shutdown()
-
-    def say_prompt(self):
-        goal = TTS.Goal()
-        goal.text = "¿Qué quieres que repita?"
-        self.get_logger().info(f'Speaking: "{goal.text}"')
-        self.tts_client.send_goal_async(goal).add_done_callback(self.on_prompt_sent)
-
-    def on_prompt_sent(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('TTS prompt goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(lambda f: self.transition_to('LISTEN'))
-
-    def listen(self):
-        goal = STT.Goal()
-        self.get_logger().info('Listening for speech...')
-        self.stt_client.send_goal_async(goal).add_done_callback(self.on_listen_sent)
-
-    def on_listen_sent(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('STT goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(self.on_listen_result)
-
-    def on_listen_result(self, future):
-        self.get_logger().info('Speech recognition completed.')
-        result = future.result().result
-        self.transcribed_text = result.transcription.text if hasattr(result.transcription, 'text') else ''
-        self.get_logger().info(f'Recognized: "{self.transcribed_text}"')
-
-        if not self.transcribed_text.strip():
-            self.get_logger().warn('No speech recognized.')
-            self.transition_to('DONE')
-        else:
-            self.transition_to('REPEAT')
-
-    def say_transcription(self):
-        goal = TTS.Goal()
-        goal.text = self.transcribed_text
-        self.get_logger().info(f'Repeating: "{goal.text}"')
-        self.tts_client.send_goal_async(goal).add_done_callback(self.on_repeat_sent)
-
-    def on_repeat_sent(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('TTS repeat goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(lambda f: self.transition_to('DONE'))
+        elif self.state == State.DONE:
+            self.get_logger().info('Interaction finished')
+            self.timer.cancel()
+            raise SystemExit
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = RepeatNode()
-    rclpy.spin(node)
+
+    try:
+        rclpy.spin(node)
+    except SystemExit:
+        pass  # Clean exit when State == DONE
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

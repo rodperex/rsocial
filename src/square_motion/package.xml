@@ -3,9 +3,9 @@
 <package format="3">
   <name>square_motion</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="rodrigo.perez@urjc.es">roi</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Open-loop square motion (time-based control)</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>

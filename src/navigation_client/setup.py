@@ -16,8 +16,8 @@ setup(
     zip_safe=True,
     maintainer='migueldm',
     maintainer_email='midemig@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Reusable client for the Nav2 NavigateToPose action',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

@@ -1,235 +1,120 @@
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from enum import auto, Enum
+
+from hri_client.hri_client import HRIClient
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.action import ActionClient
-from ament_index_python.packages import get_package_share_directory
 
-import os
 
-import json
-
-from llama_msgs.action import GenerateResponse
-from audio_common_msgs.action import TTS
-from whisper_msgs.action import STT
+class State(Enum):
+    ASK = auto()
+    WAITING_ASK = auto()
+    WAITING_LISTEN = auto()
+    WAITING_EXTRACT = auto()
+    WAITING_ANSWER = auto()
+    DONE = auto()
 
 
 class GenerateResponseNode(Node):
+    """
+    Ask a question, understand the answer with a language model and respond.
+
+    The language model runs inside the simple_hri Extract service: it receives the
+    transcribed sentence and the 'interest' (e.g. 'bebida') and returns only the
+    relevant information (e.g. 'agua'). The question, the interest and the answer
+    are parameters (see config/hri.yaml).
+    """
 
     def __init__(self):
         super().__init__('generate_response_node')
 
-        self.llama_client = ActionClient(self, GenerateResponse, '/llama/generate_response')
-        self.tts_client = ActionClient(self, TTS, 'say')
-        self.stt_client = ActionClient(self, STT, 'whisper/listen')
-
-        self.declare_parameter('prompt_file', 'prompt.txt')
-        self.declare_parameter('grammar_file', 'grammar.txt')
-        self.declare_parameter('placeholder', '[]')
         self.declare_parameter('initial_prompt', '¿Qué quieres beber?')
-        self.declare_parameter('intention', 'order_drink')
+        self.declare_parameter('interest', 'bebida')
+        self.declare_parameter('response_prefix', 'Quieres beber: ')
 
-        self.prompt_file = self.get_parameter('prompt_file').get_parameter_value().string_value
-        self.grammar_file = self.get_parameter('grammar_file').get_parameter_value().string_value
-        self.placeholder = self.get_parameter('placeholder').get_parameter_value().string_value
-        self.initial_prompt = self.get_parameter('initial_prompt').get_parameter_value().string_value
-        self.intention_input = self.get_parameter('intention').get_parameter_value().string_value
+        self.initial_prompt = self.get_parameter('initial_prompt').value
+        self.interest = self.get_parameter('interest').value
+        self.response_prefix = self.get_parameter('response_prefix').value
 
-        self.get_logger().info(f'Using prompt file: {self.prompt_file}')
-        self.get_logger().info(f'Using grammar file: {self.grammar_file}')
-        self.get_logger().info(f'Using placeholder: "{self.placeholder}"')
-        self.get_logger().info(f'Initial prompt: "{self.initial_prompt}"')
-        self.get_logger().info(f'Intention input: "{self.intention_input}"')
+        self.get_logger().info(f'Question: "{self.initial_prompt}". Interest: "{self.interest}"')
 
-        self.state = 'INIT'        
+        self.hri_client = HRIClient(self)
+        if not self.hri_client.wait_for_services(10.0):
+            self.get_logger().error(
+                'simple_hri services not available. Did you launch simple_hri?')
 
-        self.start()
+        self.state = State.ASK
+        self.timer = self.create_timer(0.1, self.control_loop)
 
-    def start(self):
-        if not self.llama_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('Llama server not available.')
-            return
-        if not self.tts_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('TTS server not available.')
-            return
-        if not self.stt_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('STT server not available.')
-            return
-        self.transition_to('SAY_PROMPT')
+    def control_loop(self):
+        if self.state == State.ASK:
+            self.hri_client.start_speaking(self.initial_prompt)
+            self.state = State.WAITING_ASK
 
-    def transition_to(self, new_state):
-        self.get_logger().info(f'Transitioning to state: {new_state}')
-        self.state = new_state
+        elif self.state == State.WAITING_ASK:
+            if self.hri_client.is_speaking_done():
+                self.hri_client.start_listen()
+                self.state = State.WAITING_LISTEN
 
-        if self.state == 'SAY_PROMPT':
-            self.say_prompt()
-        elif self.state == 'LISTEN':
-            self.listen()
-        elif self.state == 'GENERATE':
-            self.prepare_and_send_prompt()
-        elif self.state == 'PARSE':
-            self.parse_response()
-        elif self.state == 'SAY_RESULT':
-            self.say_intention()
-        elif self.state == 'DONE':
-            rclpy.shutdown()
+        elif self.state == State.WAITING_LISTEN:
+            if self.hri_client.is_listen_done():
+                heard = self.hri_client.get_listened_text()
+                if not heard.strip():
+                    self.get_logger().warning('No sentence was recognized')
+                    self.state = State.DONE
+                    return
+                self.get_logger().info(f'Heard: "{heard}"')
+                self.hri_client.start_extract(self.interest, heard)
+                self.state = State.WAITING_EXTRACT
 
-    def say_prompt(self):
-        goal = TTS.Goal()
-        goal.text = self.initial_prompt
-        self.get_logger().info(f'Speaking: "{goal.text}"')
-        self.tts_client.send_goal_async(goal).add_done_callback(self.tts_prompt_callback)
+        elif self.state == State.WAITING_EXTRACT:
+            if self.hri_client.is_extract_done():
+                info = self.hri_client.get_extracted_info()
+                if not info or info.startswith('ERROR') or info == 'NONE':
+                    self.get_logger().warning(f'Could not extract "{self.interest}": {info}')
+                    self.hri_client.start_speaking('Perdona, no te he entendido.')
+                else:
+                    self.get_logger().info(f'{self.interest}: {info}')
+                    self.hri_client.start_speaking(f'{self.response_prefix}{info}')
+                self.state = State.WAITING_ANSWER
 
-    def tts_prompt_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('Prompt goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(lambda _: self.transition_to('LISTEN'))
+        elif self.state == State.WAITING_ANSWER:
+            if self.hri_client.is_speaking_done():
+                self.state = State.DONE
 
-    def listen(self):
-        goal = STT.Goal()
-        self.get_logger().info('Listening...')
-        self.stt_client.send_goal_async(goal).add_done_callback(self.stt_goal_callback)
-
-    def stt_goal_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('STT goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(self.stt_result_callback)
-
-    def stt_result_callback(self, future):
-        result = future.result().result
-        self.transcribed_text = result.transcription.text if hasattr(result.transcription, 'text') else ''
-        self.get_logger().info(f'Heard: "{self.transcribed_text}"')
-
-        if not self.transcribed_text.strip():
-            self.get_logger().warn('No valid transcription received.')
-            self.transition_to('DONE')
-            return
-
-        self.transition_to('GENERATE')
-
-    def prepare_and_send_prompt(self):
-        self.goal = GenerateResponse.Goal()
-        self.result = None
-        self.intention = ''
-        
-
-        try:
-            package_share = get_package_share_directory('hri_examples')
-            self.prompt_path = os.path.join(package_share, 'config', self.prompt_file)
-            self.grammar_path = os.path.join(package_share, 'config', self.grammar_file)
-        except Exception as e:
-            self.get_logger().error(f'Could not resolve package path: {e}')
-            self.transition_to('DONE')
-            return
-
-        prompt = self.load_text_file(self.prompt_path)
-        grammar = self.load_text_file(self.grammar_path)
-
-        if not prompt or not grammar:
-            self.get_logger().error('Error loading prompt or grammar.')
-            self.transition_to('DONE')
-            return
-
-        prompt = self.swap_placeholders(prompt, [self.transcribed_text, self.intention_input])
-
-        self.goal = GenerateResponse.Goal()
-        self.goal.prompt = prompt
-        self.goal.reset = True
-        self.goal.sampling_config.temp = 0.0
-        self.goal.sampling_config.grammar = grammar
-
-        self.get_logger().info(f'Sending prompt:\n{prompt}')
-        self.llama_client.send_goal_async(self.goal).add_done_callback(self.llama_goal_callback)
-
-    def llama_goal_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('Llama goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(self.llama_result_callback)
-
-    def llama_result_callback(self, future):
-        self.result = future.result().result
-        self.transition_to('PARSE')
-
-    def parse_response(self):
-        response_text = self.result.response.text
-        self.get_logger().info(f'Raw response:\n{response_text}')
-
-        if not response_text or response_text.strip() == "{}":
-            self.get_logger().error('Empty or invalid response.')
-            self.transition_to('DONE')
-            return
-
-        try:
-            start = response_text.find('{')
-            brace_count = 0
-            for i in range(start, len(response_text)):
-                if response_text[i] == '{':
-                    brace_count += 1
-                elif response_text[i] == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        response_text = response_text[start:i + 1]
-                        break
-
-            data = json.loads(response_text)
-            self.intention = data.get('intention', '')
-
-            if not self.intention:
-                self.get_logger().error('No intention found.')
-                self.transition_to('DONE')
-                return
-
-            self.get_logger().info(f'Extracted intention: {self.intention}')
-            self.transition_to('SAY_RESULT')
-
-        except Exception as e:
-            self.get_logger().error(f'Error parsing JSON: {e}')
-            self.transition_to('DONE')
-
-    def say_intention(self):
-        goal = TTS.Goal()
-        goal.text = f'Quieres beber: {self.intention}'
-        self.get_logger().info(f'Speaking: "{goal.text}"')
-        self.tts_client.send_goal_async(goal).add_done_callback(self.tts_result_callback)
-
-    def tts_result_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error('TTS goal was rejected.')
-            self.transition_to('DONE')
-            return
-        goal_handle.get_result_async().add_done_callback(lambda _: self.transition_to('DONE'))
-
-    def load_text_file(self, path):
-        try:
-            with open(path, 'r') as f:
-                return f.read()
-        except Exception as e:
-            self.get_logger().error(f'Failed to read {path}: {e}')
-            return ''
-
-    def swap_placeholders(self, text, elements):
-
-        for elem in elements:
-            pos = text.find(self.placeholder)
-            if pos != -1:
-                text = text[:pos] + elem + text[pos + len(self.placeholder):]
-            else:
-                self.get_logger().warn(f'Placeholder "{self.placeholder}" not found.')
-        return text
+        elif self.state == State.DONE:
+            self.get_logger().info('Interaction finished')
+            self.timer.cancel()
+            raise SystemExit
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = GenerateResponseNode()
-    rclpy.spin(node)
+
+    try:
+        rclpy.spin(node)
+    except SystemExit:
+        pass  # Clean exit when State == DONE
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

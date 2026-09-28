@@ -1,7 +1,7 @@
-# Copyright 2025 Rodrigo Pérez-Rodríguez
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
-# You may not use this file except in compliance with the License.
+# you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
@@ -9,12 +9,17 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+import math
+
+from geometry_msgs.msg import Vector3
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Vector3
-import math
+
 
 class ObstacleDetectorNode(Node):
     def __init__(self):
@@ -37,16 +42,21 @@ class ObstacleDetectorNode(Node):
             LaserScan,
             'input_laser',
             self.laser_callback,
-            10
+            rclpy.qos.qos_profile_sensor_data
         )
 
     def laser_callback(self, scan: LaserScan):
         if not scan.ranges:
             return
 
+        # Invalid readings (NaN, inf, 0.0 or outside [range_min, range_max], typical
+        # of real lasers) are replaced by inf so they are ignored by min()
+        ranges = [r if math.isfinite(r) and scan.range_min <= r <= scan.range_max else float('inf')
+                  for r in scan.ranges]
+
         # Closest obstacle
-        min_idx = min(range(len(scan.ranges)), key=lambda i: scan.ranges[i])
-        distance_min = scan.ranges[min_idx]
+        distance_min = min(ranges)
+        min_idx = ranges.index(distance_min)
         self.get_logger().debug(f'Closest obstacle at distance {distance_min:.2f} m')
 
         if distance_min <= self.min_distance:
@@ -57,10 +67,11 @@ class ObstacleDetectorNode(Node):
                 # Laser faces backward: add pi (180°)
                 # Laser upside down: flip angle (multiply by -1)
                 angle = -(scan.angle_min + scan.angle_increment * min_idx) + math.pi
-            
+
             angle_deg = math.degrees(angle)
-   
-            self.get_logger().info('Obstacle at {:.2f} m, angle {:.2f} deg'.format(distance_min, angle_deg))
+
+            self.get_logger().info(
+                'Obstacle at {:.2f} m, angle {:.2f} deg'.format(distance_min, angle_deg))
 
             self.publish_repulsive_vector(distance_min, angle)
 
@@ -78,9 +89,14 @@ class ObstacleDetectorNode(Node):
         self.repulsive_vector_pub.publish(vec)
         self.get_logger().debug(f'Repulsive vector x={x:.3f}, y={y:.3f}. d={math.hypot(x, y):.3f}')
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = ObstacleDetectorNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()

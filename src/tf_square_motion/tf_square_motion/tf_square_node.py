@@ -1,10 +1,25 @@
-import math
-import time
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import rclpy
-from rclpy.node import Node
+import math
+
 from geometry_msgs.msg import Twist
-from tf2_ros import TransformListener, Buffer
+import rclpy
+from rclpy.duration import Duration
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from tf2_ros import Buffer, TransformException, TransformListener
 from tf_transformations import euler_from_quaternion
 
 
@@ -24,6 +39,15 @@ class TFSquareMover(Node):
         self.start_y = 0.0
         self.start_yaw = 0.0
         self.side_count = 0
+        # Non-blocking pause between movements (never call time.sleep inside a
+        # callback: it blocks the executor and the TF buffer stops updating)
+        self.pause_until = self.get_clock().now()
+
+    def pause(self, seconds):
+        self.pause_until = self.get_clock().now() + Duration(seconds=seconds)
+
+    def is_paused(self):
+        return self.get_clock().now() < self.pause_until
 
     def control_loop(self):
         try:
@@ -35,8 +59,11 @@ class TFSquareMover(Node):
             q = trans.transform.rotation
             _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
 
-        except Exception as e:
-            self.get_logger().warn(f"TF lookup failed: {e}")
+        except TransformException as e:
+            self.get_logger().warn(f'TF lookup failed: {e}')
+            return
+
+        if self.is_paused():
             return
 
         if self.state == 'init':
@@ -44,14 +71,15 @@ class TFSquareMover(Node):
             self.start_y = y
             self.start_yaw = yaw
             self.state = 'forward'
-            self.get_logger().info(f"Starting side {self.side_count + 1}")
+            self.get_logger().info(f'Starting side {self.side_count + 1}')
             return
 
         elif self.state == 'forward':
             dx = x - self.start_x
             dy = y - self.start_y
             distance = math.sqrt(dx**2 + dy**2)
-            self.get_logger().info(f"Moving forward on side {self.side_count + 1}. distance: {distance:.2f}")
+            self.get_logger().info(
+                f'Moving forward on side {self.side_count + 1}. distance: {distance:.2f}')
 
             if distance < 1.0:  # move 1 meter
                 twist = Twist()
@@ -61,12 +89,13 @@ class TFSquareMover(Node):
                 self.publisher.publish(Twist())  # stop
                 self.state = 'turn'
                 self.start_yaw = yaw
-                time.sleep(0.5)
+                self.pause(0.5)
 
         elif self.state == 'turn':
             # Compute angle turned
             yaw_diff = self.normalize_angle(yaw - self.start_yaw)
-            self.get_logger().info(f"Turning at side {self.side_count + 1}. angle: {math.degrees(yaw_diff):.2f} deg")
+            self.get_logger().info(
+                f'Turning at side {self.side_count + 1}. angle: {math.degrees(yaw_diff):.2f} deg')
 
             if abs(yaw_diff) < math.pi / 2:
                 twist = Twist()
@@ -76,11 +105,11 @@ class TFSquareMover(Node):
                 self.publisher.publish(Twist())  # stop
                 self.side_count += 1
                 if self.side_count >= 4:
-                    self.get_logger().info("Finished square.")
+                    self.get_logger().info('Finished square.')
                     self.state = 'done'
                 else:
                     self.state = 'init'
-                time.sleep(0.5)
+                self.pause(0.5)
 
         elif self.state == 'done':
             self.publisher.publish(Twist())
@@ -96,9 +125,13 @@ class TFSquareMover(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = TFSquareMover()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

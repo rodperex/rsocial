@@ -3,11 +3,19 @@
 <package format="3">
   <name>camera</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="rodrigo.perez@urjc.es">roi</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Conversion of yolo_ros detections to standard vision_msgs messages (2D and 3D)</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>yolo_ros</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>vision_msgs</depend>
+  <depend>yolo_msgs</depend>
+  <depend>ament_index_python</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

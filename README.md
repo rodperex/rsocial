@@ -146,4 +146,5 @@ La guía Docker es la referencia para todo lo relacionado con contenedores; el r
 
 ## Licencia
 
-[Apache License 2.0](LICENSE)
+Copyright 2026 Rodrigo Pérez-Rodríguez. Distribuido bajo la
+[Apache License 2.0](LICENSE) (ver también [NOTICE](NOTICE)).

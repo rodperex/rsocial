@@ -1,59 +1,65 @@
+# Copyright 2026 Rodrigo Pérez-Rodríguez
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from hri_client.hri_client import HRIClient
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.action import ActionClient
 
-from audio_common_msgs.action import TTS 
-
-from std_msgs.msg import String
 
 class SayClientNode(Node):
+    """Minimal example: say a sentence with the simple_hri TTS service and exit."""
 
     def __init__(self):
         super().__init__('say_client_node')
 
-        # Create the action client for 'say' action
-        self._action_client = ActionClient(self, TTS, 'say')
+        self.declare_parameter('text', 'Hola, ¿qué tal estáis?')
+        self.text = self.get_parameter('text').value
 
-        # Optional: listen for topic or timer to send goal
-        # self.create_timer(2.0, self.send_goal)
-        self.send_goal()
+        self.hri_client = HRIClient(self)
+        if not self.hri_client.wait_for_services(10.0):
+            self.get_logger().error(
+                'simple_hri services not available. Did you launch simple_hri?')
 
-    def send_goal(self):
-        if not self._action_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error('TTS action server not available!')
-            return
+        self.speaking = False
+        self.timer = self.create_timer(0.1, self.control_loop)
 
-        # Define the goal
-        goal_msg = TTS.Goal()
-        goal_msg.text = "Hola, ¿qué tal estáis?"
-        
-        self.get_logger().info(f'Sending goal: "{goal_msg.text}"')
+    def control_loop(self):
+        if not self.speaking:
+            self.hri_client.start_speaking(self.text)
+            self.speaking = True
 
-        # Send goal asynchronously
-        self._send_goal_future = self._action_client.send_goal_async(goal_msg)
-        self._send_goal_future.add_done_callback(self.goal_response_callback)
-
-    def goal_response_callback(self, future):
-        goal_handle = future.result()
-
-        if not goal_handle.accepted:
-            self.get_logger().error('Goal rejected!')
-            return
-
-        self.get_logger().info('Goal accepted! Waiting for result...')
-        self._get_result_future = goal_handle.get_result_async()
-        self._get_result_future.add_done_callback(self.get_result_callback)
-
-    def get_result_callback(self, future):
-        # result = future.result().result
-        # self.get_logger().info(f'Result: {result.success}')
-        rclpy.shutdown()
+        elif self.hri_client.is_speaking_done():
+            if not self.hri_client.get_speaking_result():
+                self.get_logger().error('TTS error')
+            self.timer.cancel()
+            raise SystemExit
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = SayClientNode()
-    rclpy.spin(node)
+
+    try:
+        rclpy.spin(node)
+    except SystemExit:
+        pass  # Clean exit when speaking is finished
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

@@ -3,15 +3,19 @@
 <package format="3">
   <name>bt_bumpgo</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="rodrigo.perez@urjc.es">roi</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Bump-and-go behavior implemented with behavior trees (py_trees)</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>py_trees</depend>
   <depend>py_trees_ros</depend>
+  <depend>kobuki_ros_interfaces</depend>
+  <depend>ament_index_python</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

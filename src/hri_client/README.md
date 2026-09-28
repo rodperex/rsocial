@@ -10,58 +10,71 @@ Este paquete proporciona una clase `HRIClient` que encapsula la funcionalidad de
 
 - **Speech-to-Text (STT)**: Transcribir audio a texto
 - **Text-to-Speech (TTS)**: Convertir texto a audio y reproducirlo
-- **Extract**: Extraer información específica del audio (ej. nombres, colores, números)
-- **YesNo**: Detectar respuestas afirmativas/negativas del audio
+- **Extract**: Extraer información específica de un texto (ej. nombres, colores, números)
+- **YesNo**: Detectar respuestas afirmativas/negativas en un texto
 - API asíncrona con métodos `start_*`, `is_*_done()` y `get_*_result()`
 - Suscripción al topic `/listened_text` para recibir actualizaciones de STT
 
 ## Uso
 
-```cpp
-#include "hri_client/hri_client.hpp"
+La API es asíncrona y **no bloqueante**: se lanza una operación con `start_*()` y en
+cada ciclo de control se consulta `is_*_done()`. Así el nodo sigue procesando
+callbacks mientras el robot habla o escucha. Ver `hri_examples/hri_example_client.py`.
 
-auto hri_client = std::make_shared<HRIClient>();
+```python
+import rclpy
+from rclpy.node import Node
+from hri_client.hri_client import HRIClient
 
-// Esperar a que los servicios estén disponibles
-if (!hri_client->wait_for_services()) {
-  // Servicios no disponibles
-  return;
-}
 
-// Uso asíncrono - Speech-to-Text
-hri_client->start_listen();
-while (!hri_client->is_listen_done()) {
-  rclcpp::spin_some(hri_client);
-  // Hacer otras cosas mientras escucha...
-}
-auto text = hri_client->get_listened_text();
+class MyNode(Node):
+    def __init__(self):
+        super().__init__('my_node')
+        self.hri = HRIClient(self)
+        if not self.hri.wait_for_services(5.0):
+            self.get_logger().error('Servicios HRI no disponibles')
 
-// Uso asíncrono - Text-to-Speech
-hri_client->start_speaking("Hola, ¿cómo estás?");
-while (!hri_client->is_speaking_done()) {
-  rclcpp::spin_some(hri_client);
-  // Hacer otras cosas mientras habla...
-}
+        self.state = 'SAY'
+        self.timer = self.create_timer(0.1, self.control_cycle)
 
-// Uso asíncrono - Extract
-hri_client->start_extract("name", "");  // Vacío = usar audio
-while (!hri_client->is_extract_done()) {
-  rclcpp::spin_some(hri_client);
-}
-auto name = hri_client->get_extracted_info();
+    def control_cycle(self):
+        if self.state == 'SAY':
+            self.hri.start_speaking('Hola, ¿cómo te llamas?')
+            self.state = 'WAIT_SAY'
 
-// Uso asíncrono - YesNo
-hri_client->start_yesno("");  // Vacío = usar audio
-while (!hri_client->is_yesno_done()) {
-  rclcpp::spin_some(hri_client);
-}
-auto answer = hri_client->get_yesno_result();  // "yes" o "no"
+        elif self.state == 'WAIT_SAY' and self.hri.is_speaking_done():
+            self.hri.start_listen()  # graba por el micrófono y transcribe
+            self.state = 'WAIT_LISTEN'
+
+        elif self.state == 'WAIT_LISTEN' and self.hri.is_listen_done():
+            self.hri.start_extract('nombre', self.hri.get_listened_text())
+            self.state = 'WAIT_NAME'
+
+        elif self.state == 'WAIT_NAME' and self.hri.is_extract_done():
+            self.get_logger().info(f'Nombre: {self.hri.get_extracted_info()}')
+            self.state = 'DONE'
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(MyNode())
 ```
+
+| Operación | Iniciar | ¿Terminada? | Resultado |
+|---|---|---|---|
+| STT | `start_listen()` | `is_listen_done()` | `get_listened_text()` |
+| TTS | `start_speaking(text)` | `is_speaking_done()` | `get_speaking_result()` |
+| Extract | `start_extract(interest, text)` | `is_extract_done()` | `get_extracted_info()` |
+| YesNo | `start_yesno(text)` | `is_yesno_done()` | `get_yesno_result()` (`"yes"`/`"no"`) |
+
+Solo STT graba audio. Extract y YesNo trabajan sobre un texto, normalmente el
+obtenido con `start_listen()`. Si falla, `simple_hri` devuelve un resultado que
+empieza por `ERROR`, y la operación termina en error. Si Extract no encuentra
+nada, devuelve `NONE`.
 
 ## Dependencias
 
-- rclcpp
+- rclpy
 - std_srvs
 - std_msgs
 - simple_hri_interfaces
-

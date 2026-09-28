@@ -1,4 +1,4 @@
-# Copyright 2025 Intelligent Robotics Lab
+# Copyright 2026 Rodrigo Pérez-Rodríguez
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+
 
 class LoggerNode(Node):
     def __init__(self):
@@ -25,12 +27,18 @@ class LoggerNode(Node):
         self.get_logger().info(f'Counter: {self.counter}')
         self.counter += 1
 
+
 def main(args=None):
     rclpy.init(args=args)
     logger_node = LoggerNode()
-    rclpy.spin(logger_node)
-    logger_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(logger_node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        logger_node.destroy_node()
+        rclpy.try_shutdown()
+
 
 if __name__ == '__main__':
     main()

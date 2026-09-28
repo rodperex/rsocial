@@ -3,8 +3,8 @@
 <package format="3">
   <name>hri_client</name>
   <version>1.0.0</version>
-  <description>Cliente reutilizable para servicios de simple_hri (STT, TTS, Extract, YesNo)</description>
-  <maintainer email="user@todo.todo">ASR Course</maintainer>
+  <description>Reusable client for the simple_hri services (STT, TTS, Extract, YesNo)</description>
+  <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
   <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
