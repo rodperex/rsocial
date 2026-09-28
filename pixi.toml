@@ -100,13 +100,34 @@ google-cloud-texttospeech = ">=2.16.0"
 torch = ">=2.5.0"
 huggingface-hub = ">=0.20.0"
 
+# Dependencias extra del simulador Kobuki/Gazebo (entorno `kobuki`).
+# Uso: pixi install -e kobuki && pixi run -e kobuki build
+[feature.kobuki.dependencies]
+# Drivers y librerias de kobuki_core/ecl
+libusb = "*"
+libftdi = "*"
+libuvc = "*"
+sophus = "==22.10"
+magic_enum = "*"
+ros-jazzy-image-publisher = "*"
+# Simulador y navegacion
+ros-jazzy-ros-gz-sim = "*"
+ros-jazzy-navigation2 = "*"
+ros-jazzy-nav2-bringup = "*"
+ros-jazzy-laser-filters = "*"
+
+[environments]
+# Mismo solve-group: las dependencias comunes tienen las mismas versiones en ambos
+default = { solve-group = "default" }
+kobuki = { features = ["kobuki"], solve-group = "default" }
+
 [activation.env]
 UV_SYSTEM_SITE_PACKAGES = "true" # in case a thirdparty uses a venv
 
 [tasks]
 prepare-colcon = "mkdir -p src/thirdparty/nao_lola/nao_lola && touch src/thirdparty/nao_lola/nao_lola/COLCON_IGNORE"
 # Compila tu workspace local
-build = "pixi run prepare-colcon && colcon build --symlink-install --cmake-args -DBoost_NO_BOOST_CMAKE=ON"
+build = {cmd = "colcon build --symlink-install --cmake-args -DBoost_NO_BOOST_CMAKE=ON", depends-on = ["prepare-colcon"]}
 # Configura el workspace local compilado
 source-local = "bash -c 'source install/setup.bash && exec bash'"
 test = {cmd = "colcon test", description = "Run tests for the workspace"}

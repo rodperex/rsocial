@@ -83,50 +83,50 @@ Esta variante es solo para simulacion con Gazebo. No permite usar el Kobuki
 real desde Pixi. Para el robot real, sigue el README de Kobuki e instala sus
 drivers, librerias del sistema y reglas udev fuera de Pixi.
 
+Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
+`pixi.toml` (seccion `[feature.kobuki.dependencies]`). Añade Gazebo, Nav2 y
+las librerias de Kobuki sobre el entorno normal. Todos los comandos se
+ejecutan desde la raiz del workspace añadiendo `-e kobuki`.
+
 ### 1. Importar Kobuki y sus terceros
 
 ```bash
 cd ~/rsocial/src
 vcs import < kobuki-pixi.repos
+cd ..
 ```
 
 ### 2. Instalar el entorno del simulador
 
 ```bash
-cd ~/rsocial/kobuki-pixi
-pixi install
-```
-
-El manifiesto y el lockfile de esta variante son:
-
-```text
-kobuki-pixi/pixi.toml
-kobuki-pixi/pixi.lock
+cd ~/rsocial
+pixi install -e kobuki
 ```
 
 ### 3. Compilar y lanzar Gazebo
 
-Desde `kobuki-pixi/`:
-
 ```bash
-pixi run build
-source ../install/setup.bash
+cd ~/rsocial
+pixi run -e kobuki build
+pixi shell -e kobuki
+source install/setup.bash
 ros2 launch kobuki simulation.launch.py
 ```
 
-Para abrir una shell en la raiz del workspace:
+Con los repositorios de Kobuki importados, compila siempre con `-e kobuki`:
+el entorno normal no tiene sus dependencias. Si cambias de entorno, ejecuta
+antes `pixi run clean` para no mezclar compilaciones.
+
+### Desinstalar Kobuki
 
 ```bash
-pixi run shell
+cd ~/rsocial
+pixi clean -e kobuki
 ```
 
-Despues de usar `pixi run shell`, vuelve a `kobuki-pixi/` para ejecutar tareas
-de esa variante:
-
-```bash
-cd kobuki-pixi
-pixi run build
-```
+Esto borra solo `.pixi/envs/kobuki`. Para volver al workspace normal, borra
+tambien los repositorios importados con `kobuki-pixi.repos` y recompila con
+`pixi run clean && pixi run build`.
 
 ## Reinstalar desde cero
 
@@ -145,4 +145,4 @@ pixi run build
 ```
 
 Si tambien usas Kobuki, importa de nuevo `kobuki-pixi.repos` y ejecuta
-`pixi install` y `pixi run build` desde `kobuki-pixi/`.
+`pixi install -e kobuki` y `pixi run -e kobuki build`.

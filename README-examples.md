@@ -48,12 +48,6 @@ ros2 launch laser laser.launch.py
 
 ### Camara y YOLO
 
-Para una camara OAK-D:
-
-echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/80-movidius.rules
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-
 ```bash
 ros2 launch oak_d_camera camera.launch.py \
   use_disparity:=False use_lr_raw:=False use_pointcloud:=False

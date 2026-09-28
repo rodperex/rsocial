@@ -7,6 +7,7 @@ log/
 
 # Vendored workspace dependency checkout
 src/thirdparty/
+src/kobuki/
 
 # Python cache (any subdirectory)
 **/__pycache__/
