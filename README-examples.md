@@ -215,7 +215,7 @@ son los que usan los bloques siguientes.
 YOLO usa la GPU por defecto (`device:=cuda:0`). El PyTorch del entorno está
 compilado para CUDA 13, que necesita un driver NVIDIA 580 o posterior;
 compruébalo con `nvidia-smi`. Sin GPU compatible, añade `device:=cpu` a los
-comandos de `yolo.launch.py`; irá unas 6-7 veces más lento.
+comandos de `yolo.launch.py`; irá mucho más lento.
 
 ### Con el simulador
 
@@ -232,14 +232,16 @@ ros2 topic echo /detections_2d
 ```
 
 Detecciones 3D (posición en metros usando la profundidad), publicadas en
-`/detections_3d`. Hay que lanzar YOLO con `use_3d:=True`:
+`/detections_3d`. Hay que lanzar YOLO con `use_3d:=True`. La profundidad de
+Gazebo va en metros (`32FC1`), así que también hace falta
+`depth_image_units_divisor:=1` (el valor por defecto, 1000, supone milímetros):
 
 ```bash
 ros2 launch yolo_bringup yolo.launch.py \
   input_image_topic:=/rgbd_camera/image \
   input_depth_topic:=/rgbd_camera/depth_image \
   input_depth_info_topic:=/rgbd_camera/camera_info \
-  target_frame:=camera_link use_3d:=True
+  target_frame:=camera_link use_3d:=True depth_image_units_divisor:=1
 ros2 launch camera yolo_to_standard3d.launch.py
 ros2 topic echo /detections_3d
 ```

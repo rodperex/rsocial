@@ -55,6 +55,8 @@ def generate_launch_description():
                 'input_depth_info_topic': '/rgbd_camera/camera_info',
                 'target_frame': 'camera_link',
                 'use_3d': 'True',  # needed to publish /yolo/detections_3d
+                # Gazebo depth is 32FC1 in meters (the default 1000 assumes mm)
+                'depth_image_units_divisor': '1',
             }.items()
         ),
 

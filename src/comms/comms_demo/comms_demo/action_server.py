@@ -16,8 +16,9 @@ import time
 
 from comms_interfaces.action import GenerateInformation
 import rclpy
-from rclpy.action import ActionServer
-from rclpy.executors import ExternalShutdownException
+from rclpy.action import ActionServer, CancelResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 
 
@@ -28,16 +29,30 @@ class GenerateServer(Node):
             self,
             GenerateInformation,
             'generate_information',
-            self.execute_callback
+            self.execute_callback,
+            cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup()
         )
 
-    async def execute_callback(self, goal_handle):
+    def cancel_callback(self, goal_handle):
+        self.get_logger().info('Cancel request received')
+        return CancelResponse.ACCEPT
+
+    def execute_callback(self, goal_handle):
         self.get_logger().info(f'Received key: {goal_handle.request.key}')
         feedback_msg = GenerateInformation.Feedback()
 
         # Simulate generating the content step by step
         content = ''
         for i in range(3):
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                self.get_logger().info('Goal canceled')
+                result = GenerateInformation.Result()
+                result.success = False
+                result.final_content = content.strip()
+                return result
+
             content += f'[fragment {i}] '
             feedback_msg.provisional_content = content
             goal_handle.publish_feedback(feedback_msg)
@@ -56,7 +71,8 @@ def main(args=None):
     rclpy.init(args=args)
     node = GenerateServer()
     try:
-        rclpy.spin(node)
+        # Multithreaded so that cancel requests are handled while executing
+        rclpy.spin(node, executor=MultiThreadedExecutor())
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
