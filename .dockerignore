@@ -1,0 +1,5 @@
+# The Docker image clones rsocial from GitHub and copies nothing from this
+# directory, so no file is sent as build context (it would include .pixi,
+# build, install... which take many GB). If a COPY is ever added to the
+# Dockerfile, allow here only the files it needs (e.g. !docker/some-file).
+*
