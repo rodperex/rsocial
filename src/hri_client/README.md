@@ -72,9 +72,38 @@ obtenido con `start_listen()`. Si falla, `simple_hri` devuelve un resultado que
 empieza por `ERROR`, y la operación termina en error. Si Extract no encuentra
 nada, devuelve `NONE`.
 
+### Timeout, cancelación y *feedback*
+
+Escuchar y hablar usan las **acciones** de `simple_hri` (`/stt_action`, `/tts_action`);
+extraer información y sí/no usan sus **servicios**.
+
+| Método | Comportamiento |
+|---|---|
+| `start_listen(timeout_sec)` | El servidor deja de grabar si nadie empieza a hablar en `timeout_sec` → `TIMEOUT`; si habla, espera a que termine |
+| `cancel_listen()` | El servidor deja de grabar |
+| `is_speaking_done()` | `True` cuando termina de verdad la reproducción |
+| `cancel_speaking()` | El servidor corta el audio |
+| `get_listen_feedback()` | `listening`, `speech_detected`, `transcribing` |
+| `get_speaking_feedback()` | Segundos que faltan |
+
+- Todos los `start_*()` aceptan `timeout_sec` (por defecto, sin límite). Si vence,
+  `is_*_done()` devuelve `True` con el estado `TIMEOUT`. En Extract y YesNo el
+  *timeout* es del cliente: la respuesta que llegue tarde se descarta.
+- `cancel_*()` termina la operación con el estado `CANCELED`.
+- `get_*_state()` devuelve el `OperationState` (`COMPLETED`, `ERROR`, `TIMEOUT`,
+  `CANCELED`...) para saber cómo terminó cada operación.
+
+```python
+self.hri.start_listen(timeout_sec=8.0)
+...
+if self.hri.is_listen_done():
+    if self.hri.get_listen_state() == OperationState.TIMEOUT:
+        self.hri.start_speaking('No te he oído. ¿Quieres ir a comer?')  # reformular
+```
+
 ## Dependencias
 
 - rclpy
-- std_srvs
 - std_msgs
-- simple_hri_interfaces
+- simple_hri_interfaces (con las acciones `Listen` y `Say`)
+- action_msgs
