@@ -1,14 +1,16 @@
-# Instalacion con Pixi
+# Instalación con Pixi
 
-Esta guia instala ROS 2 Jazzy y el workspace `rsocial` dentro de Pixi. Los
+Esta guía instala ROS 2 Jazzy y el workspace `rsocial` dentro de Pixi. Los
 comandos usan `~/rsocial` como ruta de ejemplo; puedes sustituirla por otra.
 
 ## Requisitos
 
-Necesitas Ubuntu 24.04, `git`, `curl` y Pixi. No necesitas instalar ROS 2 en
-el sistema ni ejecutar `source /opt/ros/jazzy/setup.bash`.
+Necesitas una distribución Linux de 64 bits (x86_64), `git`, `curl` y Pixi.
+Funciona en cualquier versión de Ubuntu (se ha probado en Ubuntu 26.04), porque
+Pixi instala ROS 2 Jazzy y sus dependencias dentro del workspace. No necesitas
+instalar ROS 2 en el sistema ni ejecutar `source /opt/ros/jazzy/setup.bash`.
 
-Instala Pixi si no esta disponible:
+Instala Pixi si no está disponible:
 
 ```bash
 curl -fsSL https://pixi.sh/install.sh | bash
@@ -16,9 +18,9 @@ source "$HOME/.bashrc"
 pixi --version
 ```
 
-## Instalacion normal
+## Instalación normal
 
-Esta es la opcion recomendada. No incluye Kobuki ni Gazebo.
+Esta es la opción recomendada. No incluye Kobuki ni Gazebo.
 
 ### 1. Clonar e instalar el entorno
 
@@ -31,7 +33,7 @@ pixi install
 
 ### 2. Importar los repositorios
 
-Desde la raiz del workspace, activa la shell de Pixi antes de importar los
+Desde la raíz del workspace, activa la shell de Pixi antes de importar los
 repositorios:
 
 ```bash
@@ -44,18 +46,18 @@ git -C src/thirdparty/nao_lola submodule update --init --recursive
 ```
 
 `thirdparty-pixi.repos` es el manifiesto completo para Pixi. No ejecutes
-`vcs import < thirdparty.repos` en este flujo.
+`vcs import < thirdparty-native.repos` en este flujo.
 
 ### 3. Compilar
 
-Desde la raiz del workspace:
+Desde la raíz del workspace:
 
 ```bash
 cd ~/rsocial
 pixi run build
 ```
 
-La tarea crea automaticamente el `COLCON_IGNORE` del paquete legacy
+La tarea crea automáticamente el `COLCON_IGNORE` del paquete legacy
 `nao_lola`. Mantiene `nao_lola_client` y los paquetes actuales de mensajes.
 
 ### 4. Usar el workspace
@@ -74,19 +76,19 @@ Por ejemplo:
 ros2 launch node_programming pubsub.launch.py
 ```
 
-No uses `rosdep` con Pixi. Las dependencias estan declaradas en `pixi.toml` y
+No uses `rosdep` con Pixi. Las dependencias están declaradas en `pixi.toml` y
 se instalan con `pixi install`.
 
 ## Kobuki/Gazebo opcional
 
-Esta variante es solo para simulacion con Gazebo. No permite usar el Kobuki
+Esta variante es solo para simulación con Gazebo. No permite usar el Kobuki
 real desde Pixi. Para el robot real, sigue el README de Kobuki e instala sus
-drivers, librerias del sistema y reglas udev fuera de Pixi.
+drivers, librerías del sistema y reglas udev fuera de Pixi.
 
 Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
-`pixi.toml` (seccion `[feature.kobuki.dependencies]`). Añade Gazebo, Nav2 y
-las librerias de Kobuki sobre el entorno normal. Todos los comandos se
-ejecutan desde la raiz del workspace añadiendo `-e kobuki`.
+`pixi.toml` (sección `[feature.kobuki.dependencies]`). Añade Gazebo, Nav2 y
+las librerías de Kobuki sobre el entorno normal. Todos los comandos se
+ejecutan desde la raíz del workspace añadiendo `-e kobuki`.
 
 ### 1. Importar Kobuki y sus terceros
 
@@ -125,12 +127,12 @@ pixi clean -e kobuki
 ```
 
 Esto borra solo `.pixi/envs/kobuki`. Para volver al workspace normal, borra
-tambien los repositorios importados con `kobuki-pixi.repos` y recompila con
+también los repositorios importados con `kobuki-pixi.repos` y recompila con
 `pixi run clean && pixi run build`.
 
 ## Reinstalar desde cero
 
-Para repetir la instalacion normal:
+Para repetir la instalación normal:
 
 ```bash
 cd ~/rsocial
@@ -144,5 +146,5 @@ git -C src/thirdparty/nao_lola submodule update --init --recursive
 pixi run build
 ```
 
-Si tambien usas Kobuki, importa de nuevo `kobuki-pixi.repos` y ejecuta
+Si también usas Kobuki, importa de nuevo `kobuki-pixi.repos` y ejecuta
 `pixi install -e kobuki` y `pixi run -e kobuki build`.

@@ -123,6 +123,9 @@ kobuki = { features = ["kobuki"], solve-group = "default" }
 
 [activation.env]
 UV_SYSTEM_SITE_PACKAGES = "true" # in case a thirdparty uses a venv
+# Ignore ~/.local/lib/pythonX.Y/site-packages: packages installed with `pip install --user`
+# (e.g. old nvidia-* CUDA wheels) would shadow the ones of this environment and break torch
+PYTHONNOUSERSITE = "1"
 
 [tasks]
 prepare-colcon = "mkdir -p src/thirdparty/nao_lola/nao_lola && touch src/thirdparty/nao_lola/nao_lola/COLCON_IGNORE"

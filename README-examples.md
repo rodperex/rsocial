@@ -212,8 +212,10 @@ YOLO (`yolo_ros`) detecta objetos en la imagen y publica sus propios mensajes;
 el paquete `camera` los convierte a los mensajes estándar de `vision_msgs`, que
 son los que usan los bloques siguientes.
 
-YOLO usa la GPU por defecto. Sin GPU, añade `device:=cpu` a los comandos de
-`yolo.launch.py`; irá bastante más lento.
+YOLO usa la GPU por defecto (`device:=cuda:0`). El PyTorch del entorno está
+compilado para CUDA 13, que necesita un driver NVIDIA 580 o posterior;
+compruébalo con `nvidia-smi`. Sin GPU compatible, añade `device:=cpu` a los
+comandos de `yolo.launch.py`; irá unas 6-7 veces más lento.
 
 ### Con el simulador
 

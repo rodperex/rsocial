@@ -1,12 +1,16 @@
-version: '3.8'
-
+# Build and run the rsocial Jazzy image with Docker Compose.
+# From the repository root:
+#   docker compose -f docker/docker-compose.yaml up -d --build
+# Then open http://localhost:6080/ (user and password: ubuntu).
 services:
-  ros2_clase:
-    image: tu_usuario/ros2_clase:latest
-    container_name: workspace_ros2
-    stdin_open: true 
-    tty: true        
-    command: /bin/bash
+  rsocial-jazzy:
+    build:
+      context: ..
+      dockerfile: docker/jazzy/Dockerfile
+    image: rsocial-jazzy
+    container_name: rsocial-jazzy
+    ports:
+      - "6080:6080"
     volumes:
-      # Vincula la carpeta local "src" del alumno con la del contenedor
-      - ./src:/home/ubuntu/ros2_ws/src
+      # Folder shared between the host (docker/shared) and the container (~/shared)
+      - ./shared:/home/ubuntu/shared

@@ -1,77 +1,132 @@
 # rsocial
 
-Workspace docente de ROS 2 con ejemplos de nodos, sensores, navegación,
-máquinas de estados, árboles de comportamiento e interacción humano-robot.
+Workspace docente de ROS 2 Jazzy con ejemplos de nodos, comunicaciones, TF,
+sensores, máquinas de estados, árboles de comportamiento, navegación e
+interacción humano-robot. Los ejemplos y cómo lanzarlos están en
+[README-examples.md](README-examples.md).
 
 ## Instalación
 
-Elige una de estas instalaciones:
+Hay tres formas de instalar el workspace. Elige una y no las mezcles en la
+mismo directorio:
 
-- **Nativa:** Ubuntu 24.04 con ROS 2 Jazzy. Es la opción descrita en este
-	README.
-- **Pixi:** ROS 2 Jazzy aislado en Pixi. Sigue [README-pixi-install.md](README-pixi-install.md).
-- **Docker:** entorno preparado en un contenedor. Sigue [README-docker-install.md](README-docker-install.md).
+| Opción | Cuándo usarla | Guía |
+| --- | --- | --- |
+| Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real. | Este README |
+| Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. | [README-pixi-install.md](README-pixi-install.md) |
+| Docker | Entorno ya preparado en un contenedor, con escritorio en el navegador. | [README-docker-install.md](README-docker-install.md) |
 
-Los comandos de este README usan `~/rsocial` como ruta de ejemplo. Puedes
-usar otra ubicación sustituyendo esa ruta en los comandos.
+Los comandos usan `~/rsocial` como directorio del workspace; puedes usar otra
+sustituyendo esa ruta.
 
-La instalación nativa usa `src/thirdparty.repos`; la instalación Pixi usa
-`src/thirdparty-pixi.repos` y no deben mezclarse.
+## Instalación nativa
 
-## Requisitos para la instalación nativa
+### Requisitos
 
-- Ubuntu 24.04 con ROS 2 Jazzy instalado.
-- `git`, `python3`, `python3-rosdep`, `python3-vcstool`, `python3-colcon-common-extensions` y [`uv`](https://docs.astral.sh/uv/).
-- Para movimiento y navegación: un robot Kobuki o una simulación que publique
-	los topics y TF necesarios. El simulador recomendado es
-	[Kobuki](https://github.com/IntelligentRoboticsLabs/kobuki). Sigue su README
-	para instalarlo. La configuración USB/udev del robot real siempre se hace en
-	el sistema anfitrión.
+- Ubuntu 24.04 con [ROS 2 Jazzy](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)
+  (variante `desktop`).
+- Unos 20 GB libres: los modelos de voz y visión usan PyTorch.
+- Opcional, para ejecutar YOLO y Whisper en la GPU: tarjeta NVIDIA con driver
+  580 o posterior (`nvidia-smi` lo muestra). Sin ella funcionan en la CPU,
+  más despacio.
 
-En cada terminal desde la que se ejecute ROS hay que cargar ROS y este workspace:
-
-```bash
-source /opt/ros/jazzy/setup.bash
-source ~/rsocial/install/setup.bash
-```
-
-## Instalación nativa desde cero
+### 1. Herramientas
 
 ```bash
-mkdir -p ~/rsocial/src
-git clone https://github.com/rodperex/rsocial.git ~/rsocial/src/rsocial
-cd ~/rsocial/src
-vcs import < rsocial/src/thirdparty.repos
-cd ~/rsocial
-
-# Cargar ROS antes de continuar.
-source /opt/ros/jazzy/setup.bash
-
+sudo apt update
+sudo apt install -y git curl python3-rosdep python3-vcstool python3-colcon-common-extensions
+[ -e /etc/ros/rosdep/sources.list.d/20-default.list ] || sudo rosdep init  # solo la primera vez
+rosdep update
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source "$HOME/.local/bin/env"
-
-rosdep update
-rosdep install --from-paths src --ignore-src -r -y \
-	--skip-keys="ament_python rclpy_lifecycle"
-
-uv venv --seed .venv
-source .venv/bin/activate
-
-# Dependencias de audio de sound_play.
-sudo apt update && sudo apt install -y libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly python3-gi python3-gst-1.0
-
-python3 -m pip install colcon-common-extensions
-python3 -m pip install -r src/thirdparty/simple_hri/simple_hri/requirements.txt
-python3 -m colcon build --symlink-install
-source install/setup.bash
 ```
 
-Activa `.venv` antes de compilar y en cada terminal desde la que ejecutes
-nodos ROS. `colcon-common-extensions` se instala dentro del entorno virtual
-para que `python3 -m colcon` use el mismo intérprete que `simple_hri`.
+[`uv`](https://docs.astral.sh/uv/) gestiona los entornos virtuales de Python.
+`yolo_ros` también lo usa al compilar para crear su propio entorno.
 
-En cada terminal que ejecute nodos hay que activar también `.venv` después de
-cargar ROS y el workspace:
+### 2. Descargar el código
+
+El repositorio es la raíz del workspace. Los paquetes de terceros se
+descargan con `vcs` a partir de los manifiestos `.repos` de `src/`:
+
+```bash
+git clone https://github.com/rodperex/rsocial.git ~/rsocial
+cd ~/rsocial/src
+vcs import < thirdparty-native.repos
+vcs import < kobuki-native.repos
+```
+
+Si algún `vcs import` falla por la red, vuelve a ejecutarlo.
+
+| Manifiesto | Contenido | Instalación |
+| --- | --- | --- |
+| `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO... | Nativa |
+| `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara | Nativa |
+| `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi | Pixi |
+| `kobuki-pixi.repos` | Kobuki para el simulador, adaptado a Pixi | Pixi |
+
+Todos descargan en `src/kobuki` y `src/thirdparty`, que Git ignora. No mezcles
+los manifiestos de las dos instalaciones en el mismo workspace.
+
+### 3. Dependencias del sistema
+
+```bash
+cd ~/rsocial
+source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src --ignore-src -r -y \
+  --skip-keys="ament_python rclpy_lifecycle gazebo_plugins python3-torchvision-pip python3-ultralytics-pip"
+sudo apt install -y libusb-1.0-0-dev libftdi1-dev libuvc-dev \
+  libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
+  python3-gi python3-gst-1.0
+```
+
+`rosdep` instala las dependencias ROS declaradas por los paquetes. El resto son
+librerías del Kobuki (USB) y de audio (`sound_play`) que no declara ningún
+paquete. `--skip-keys` omite claves que no se pueden o no se deben instalar
+así: dos claves inválidas de `simple_hri`, un plugin de Gazebo clásico que
+no existe en Jazzy (lo declara un mundo del simulador y no se usa) y las
+dependencias Python de `yolo_ros`, que se instalan en su propio entorno al
+compilar.
+
+### 4. Entorno virtual de Python
+
+Las dependencias Python de la interacción humano-robot (PyTorch, Whisper,
+Transformers...) se instalan en un entorno virtual para no interferir con las
+del sistema:
+
+```bash
+cd ~/rsocial
+uv venv --python /usr/bin/python3 --system-site-packages --seed .venv
+source .venv/bin/activate
+python3 -m pip install colcon-common-extensions \
+  -r src/thirdparty/simple_hri/simple_hri/requirements.txt
+```
+
+- `--python /usr/bin/python3` usa el Python del sistema, el mismo con el que
+  está compilado ROS 2.
+- `--system-site-packages` permite ver los paquetes Python que instala `apt`
+  (por ejemplo, los que acaba de instalar `rosdep`).
+- `colcon` se instala dentro del entorno para que los nodos compilados usen
+  su Python y encuentren sus dependencias.
+
+### 5. Compilar
+
+```bash
+cd ~/rsocial
+source /opt/ros/jazzy/setup.bash
+source .venv/bin/activate
+python3 -m colcon build --symlink-install
+```
+
+La primera compilación tarda un rato: `yolo_ros` crea su propio entorno
+(`src/thirdparty/yolo_ros/yolo_ros/.venv`) y descarga sus dependencias. Si el
+equipo se queda sin memoria, compila con `--parallel-workers 1`.
+
+### 6. Usar el workspace
+
+En cada terminal nueva, carga ROS 2, el entorno virtual y el workspace, en este
+orden:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -79,70 +134,76 @@ source ~/rsocial/.venv/bin/activate
 source ~/rsocial/install/setup.bash
 ```
 
-`yolo_ros` no usa `requirements.txt` en su versión actual. Sus dependencias
-están declaradas en `yolo_ros/pyproject.toml` y `colcon build` ejecuta `uv sync`
-automáticamente para crear o actualizar `src/thirdparty/yolo_ros/yolo_ros/.venv`.
-Si se quiere preparar ese entorno antes de compilar, se puede ejecutar:
+Para no repetirlo, puedes añadir esas tres líneas al final de `~/.bashrc`.
+Comprueba que todo funciona con el simulador:
 
 ```bash
-cd src/thirdparty/yolo_ros/yolo_ros
-uv venv --python python3 --system-site-packages .venv
-uv sync --no-install-project --no-dev
-cd ../../../..
+ros2 launch kobuki simulation.launch.py
 ```
 
-La restricción `numpy<2` de `yolo_ros` es intencionada: evita
-incompatibilidades entre `cv_bridge`/ROS 2 Jazzy y NumPy 2. No se debe
-sustituir por la versión global de NumPy sin comprobar antes que la cámara y
-la conversión de imágenes siguen funcionando.
+### Kobuki real
 
-### Portabilidad de `simple_hri`
-
-`simple_hri` incluye servicios locales y servicios que requieren credenciales.
-El entorno virtual aísla sus dependencias Python de las versiones instaladas
-en el sistema, incluido el wheel de WebRTC VAD. Los launchers
-locales no necesitan claves, pero sí descargan modelos la primera
-vez y requieren micrófono y salida de audio accesibles desde el sistema:
-
-El extractor local usa `google/flan-t5-small` con la tarea
-`text2text-generation`. El requirements fija una versión compatible de
-`transformers` y de NumPy para que todos los servicios funcionen dentro del
-entorno virtual y declara una versión de Numba que no hereda una copia
-incompatible del sistema.
+Para conectar el Kobuki, su láser o su cámara por USB hacen falta reglas udev
+que den permisos a los dispositivos (una sola vez por equipo):
 
 ```bash
-ros2 launch simple_hri local_simple_hri.launch.py
+cd ~/rsocial/src/thirdparty
+sudo cp kobuki_ros/60-kobuki.rules rplidar_ros/scripts/rplidar.rules \
+  ros_astra_camera/astra_camera/scripts/56-orbbec-usb.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-Si el nodo no arranca fuera del equipo original, comprueba primero el
-dispositivo de audio y las importaciones desde la misma terminal donde se
-cargaron ROS y el entorno virtual:
+Después, en lugar del simulador: `ros2 launch kobuki kobuki.launch.py` (ver
+las opciones de láser y cámara en `src/kobuki/README.md`).
+
+## Varios equipos en la misma red
+
+ROS 2 descubre automáticamente los nodos de otros equipos de la red. En un aula
+eso hace que los robots y simuladores de distintos alumnos se mezclen. Para
+evitarlo, cada alumno puede limitar ROS 2 a su propio equipo, o usar un
+dominio distinto (un número entre 1 y 101). Añade una de estas líneas a
+`~/.bashrc`:
 
 ```bash
-python3 -c "import numpy, torch, transformers, whisper, sounddevice, webrtcvad; print('Dependencias Python OK')"
+export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST  # solo este equipo
+export ROS_DOMAIN_ID=42                         # o un número distinto por alumno
+```
+
+Para comunicarse con el robot real desde otro equipo, ambos deben tener el
+mismo `ROS_DOMAIN_ID` y no usar `LOCALHOST`.
+
+## Interacción humano-robot
+
+Los ejemplos de interacción usan
+[`simple_hri`](https://github.com/rodperex/simple_hri), que ofrece
+reconocimiento de voz, síntesis de voz y extracción de información con modelos
+de lenguaje. Puede usar modelos locales o servicios en la nube (ver
+[README-examples.md](README-examples.md#12-interacción-humano-robot)). Los
+modelos locales se descargan la primera vez que se lanzan, así que esa vez
+necesitan Internet.
+
+Hacen falta micrófono y altavoces accesibles desde el sistema. Si no funciona,
+comprueba los dispositivos de audio y las dependencias desde una terminal con
+el workspace cargado:
+
+```bash
 python3 -c "import sounddevice as sd; print(sd.query_devices())"
+python3 -c "import torch, whisper, transformers; print('OK, GPU:', torch.cuda.is_available())"
 ```
 
-En sistemas sin micrófono o servidor de audio, se pueden probar los servicios
-de texto, pero los servicios STT/TTS locales no podrán grabar o reproducir
-audio hasta configurar ALSA/PulseAudio o el equivalente del sistema.
+## Actualizar el workspace
 
-## Ejemplos y uso
+```bash
+cd ~/rsocial
+git pull
+vcs pull src/thirdparty src/kobuki
+source /opt/ros/jazzy/setup.bash
+source .venv/bin/activate
+python3 -m colcon build --symlink-install
+```
 
-Consulta [README-examples.md](README-examples.md) para los comandos de nodos,
-sensores, navegación, árboles de comportamiento e interacción humano-robot.
-
-## Docker
-
-Para trabajar con el entorno Docker, sigue la guía específica [README-docker-install.md](README-docker-install.md). La documentación histórica y las variantes de la imagen siguen disponibles en [docker/howto.md](docker/howto.md). Ahí se explica cómo:
-
-- construir y arrancar las imágenes Jazzy y Lyrical;
-- acceder al escritorio ROS 2 desde el navegador;
-- usar el workspace que ya viene compilado;
-- clonar el workspace desde cero o copiar tus repositorios al contenedor;
-- recompilar y detener/eliminar el contenedor.
-
-La guía Docker es la referencia para todo lo relacionado con contenedores; el resto de este README describe los ejemplos y sus comandos ROS 2.
+Si tras actualizar la compilación falla por restos antiguos, borra
+`build install log` y vuelve a compilar.
 
 ## Licencia
 
