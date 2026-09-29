@@ -37,6 +37,28 @@ class TFSquareMover(Node):
     pose of frame B expressed in frame A (the matrix that maps points from B to A).
     With this convention transforms chain like A2B @ B2C = A2C: the last frame of the first
     term and the first frame of the second term cancel out. Also, inv(A2B) = B2A.
+
+    Why the square is NOT perfect even though TF is used (see tf_square_node3 for a fix):
+
+    1. Errors accumulate. Each side and each turn is measured relative to the pose where
+       the PREVIOUS movement ended (the reference is reset in 'init' and before each turn).
+       If a turn ends at 93 degrees, the next side starts 3 degrees off and nothing ever
+       corrects it: the errors of the 4 sides and 4 turns add up and the square does not
+       close.
+    2. Overshoot. The speed is constant (bang-bang control) and the robot is only told to
+       stop once the goal has been passed, so it always goes a bit too far:
+       - Inertia: the robot does not stop instantly when it receives a zero Twist.
+       - TF latency: lookup_transform(..., Time()) returns the LATEST available transform,
+         which can be tens of milliseconds old. With odometry at 20 Hz, 0.5 rad/s means
+         ~1.5 degrees of rotation that we have not seen yet (0.5 m/s means ~2.5 cm).
+       - Sampling: the condition is only checked when a new TF arrives, not at the exact
+         moment the threshold is crossed.
+    3. No heading correction. While moving forward only linear.x is commanded, so any
+       lateral drift (uneven wheels, slip) is never corrected, and sqrt(x^2 + y^2) accepts
+       the side as done even if the robot went sideways.
+    4. 'odom' is not the ground truth. The odom -> base_link transform is estimated from
+       the wheel encoders (and maybe an IMU), so it drifts because of wheel slip or a badly
+       calibrated wheel radius. Even a perfect square in 'odom' is not perfect in reality.
     """
 
     def __init__(self):
@@ -120,12 +142,19 @@ class TFSquareMover(Node):
             distance = math.sqrt(x**2 + y**2)
 
             if distance < 1.0:  # move 1 meter
+                # [Error 2] Constant speed until the goal: no slowing down near it.
+                # [Error 3] Only linear.x: lateral drift is never corrected, and 'distance'
+                # counts sideways displacement as progress.
                 twist = Twist()
                 twist.linear.x = 0.5
                 self.publisher.publish(twist)
             else:
+                # [Error 2] By the time we get here the robot has already passed 1 m (TF
+                # latency + sampling), and it will keep moving a bit more due to inertia.
                 self.publisher.publish(Twist())  # stop
                 self.state = 'turn'
+                # [Error 1] New relative reference: the turn is measured from here, so any
+                # heading error accumulated so far is simply ignored.
                 self.T_odom2blref = T_odom2bl  # New reference to measure the turn
                 self.get_logger().info(f'Finished side {self.side_count + 1}, starting turn.')
                 self.pause(0.5)
@@ -138,17 +167,23 @@ class TFSquareMover(Node):
 
             # Turn 90 degrees (pi/2)
             if abs(yaw) < math.pi / 2:
+                # [Error 2] Constant angular speed until the goal: no slowing down near it.
                 twist = Twist()
                 twist.angular.z = 0.5  # Slightly lower speed for precision
                 self.publisher.publish(twist)
             else:
+                # [Error 2] The robot has already turned more than 90 degrees, and it keeps
+                # turning a bit due to inertia. This overshoot is never corrected.
                 self.publisher.publish(Twist())  # stop
                 self.side_count += 1
                 if self.side_count >= 4:
                     self.get_logger().info('Finished square.')
                     self.state = 'done'
                 else:
-                    self.state = 'init'  # Back to init to take the reference of the next side
+                    # [Error 1] Back to init to take the reference of the next side. The
+                    # reference is the CURRENT pose (with the turn overshoot included), not
+                    # the ideal one, so the overshoot is carried over to the next side.
+                    self.state = 'init'
                 self.pause(0.5)
 
         elif self.state == 'done':
