@@ -50,7 +50,8 @@ class TFSquareMover(Node):
         self.timer = self.create_timer(0.01, self.control_loop)
 
         self.state = 'init'
-        self.odom2blref = None  # Robot pose (base_link) in odom when the movement started
+        # Robot pose (base_link) in odom when the movement started, as a 4x4 matrix
+        self.T_odom2blref = None
         self.side_count = 0
         # Non-blocking pause between movements (never call time.sleep inside a callback:
         # it blocks the executor and the TF buffer stops updating)
@@ -87,16 +88,6 @@ class TFSquareMover(Node):
 
         return x, y, yaw
 
-    def relative_motion(self, odom2bl):
-        """Return blref2bl: current robot pose expressed in the reference (start) pose."""
-        T_odom2blref = self.transform_to_matrix(self.odom2blref)
-        T_odom2bl = self.transform_to_matrix(odom2bl)
-
-        T_blref2odom = np.linalg.inv(T_odom2blref)  # inv(A2B) = B2A
-
-        # blref2odom @ odom2bl = blref2bl  ('odom' cancels out)
-        return T_blref2odom @ T_odom2bl
-
     def control_loop(self):
         try:
             # Current robot pose in odom
@@ -108,16 +99,24 @@ class TFSquareMover(Node):
         if self.is_paused():
             return
 
+        # Current robot pose in odom as a 4x4 homogeneous matrix
+        T_odom2bl = self.transform_to_matrix(odom2bl)
+
         if self.state == 'init':
             # Store the reference pose to start the side
-            self.odom2blref = odom2bl
+            self.T_odom2blref = T_odom2bl
             self.state = 'forward'
             self.get_logger().info(f'Starting side {self.side_count + 1}')
             return
 
         elif self.state == 'forward':
             # Where the robot is NOW with respect to where the movement STARTED
-            x, y, _ = self.matrix_to_pose(self.relative_motion(odom2bl))
+            # 1. Invert the reference pose: inv(odom2blref) = blref2odom
+            T_blref2odom = np.linalg.inv(self.T_odom2blref)
+            # 2. Chain transforms: blref2odom @ odom2bl = blref2bl  ('odom' cancels out)
+            T_blref2bl = T_blref2odom @ T_odom2bl
+            # 3. Extract the displacement from the reference pose
+            x, y, _ = self.matrix_to_pose(T_blref2bl)
             distance = math.sqrt(x**2 + y**2)
 
             if distance < 1.0:  # move 1 meter
@@ -127,12 +126,15 @@ class TFSquareMover(Node):
             else:
                 self.publisher.publish(Twist())  # stop
                 self.state = 'turn'
-                self.odom2blref = odom2bl  # New reference to measure the turn
+                self.T_odom2blref = T_odom2bl  # New reference to measure the turn
                 self.get_logger().info(f'Finished side {self.side_count + 1}, starting turn.')
                 self.pause(0.5)
 
         elif self.state == 'turn':
-            _, _, yaw = self.matrix_to_pose(self.relative_motion(odom2bl))
+            # Same steps as in 'forward', but now we are interested in the rotation
+            T_blref2odom = np.linalg.inv(self.T_odom2blref)
+            T_blref2bl = T_blref2odom @ T_odom2bl
+            _, _, yaw = self.matrix_to_pose(T_blref2bl)
 
             # Turn 90 degrees (pi/2)
             if abs(yaw) < math.pi / 2:
