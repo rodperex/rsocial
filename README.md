@@ -12,7 +12,7 @@ mismo directorio:
 
 | Opción | Cuándo usarla | Guía |
 | --- | --- | --- |
-| Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real. | Este README |
+| Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real con cámara Astra o Xtion. | Este README |
 | Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. | [README-pixi-install.md](README-pixi-install.md) |
 | Docker | Entorno ya preparado en un contenedor, con escritorio en el navegador. | [README-docker-install.md](README-docker-install.md) |
 
@@ -63,7 +63,7 @@ Si algún `vcs import` falla por la red, vuelve a ejecutarlo.
 | `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO... | Nativa |
 | `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara | Nativa |
 | `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi | Pixi |
-| `kobuki-pixi.repos` | Kobuki para el simulador, adaptado a Pixi | Pixi |
+| `kobuki-pixi.repos` | Kobuki (simulador y robot real con láser RPLIDAR), adaptado a Pixi | Pixi |
 
 Todos descargan en `src/kobuki` y `src/thirdparty`, que Git ignora. No mezcles
 los manifiestos de las dos instalaciones en el mismo workspace.

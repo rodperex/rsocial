@@ -20,7 +20,7 @@ pixi --version
 
 ## Instalación normal
 
-Esta es la opción recomendada. No incluye Kobuki ni Gazebo.
+Esta es la opción por defecto. No incluye Kobuki ni Gazebo.
 
 ### 1. Clonar e instalar el entorno
 
@@ -79,11 +79,13 @@ ros2 launch node_programming pubsub.launch.py
 No uses `rosdep` con Pixi. Las dependencias están declaradas en `pixi.toml` y
 se instalan con `pixi install`.
 
-## Kobuki/Gazebo opcional
+## Kobuki: simulador y robot real (opcional)
 
-Esta variante es solo para simulación con Gazebo. No permite usar el Kobuki
-real desde Pixi. Para el robot real, sigue el README de Kobuki e instala sus
-drivers, librerías del sistema y reglas udev fuera de Pixi.
+Esta variante añade el simulador Gazebo y los drivers del Kobuki real: la base
+y el láser RPLIDAR (A2 o S2). Como cámara del robot real solo se admite la
+OAK-D, incluida en `thirdparty-pixi.repos`. Las cámaras Astra y Xtion
+necesitan la [instalación nativa](README.md#instalación-nativa), porque sus
+drivers no compilan en Pixi.
 
 Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
 `pixi.toml` (sección `[feature.kobuki.dependencies]`). Añade Gazebo, Nav2 y
@@ -118,6 +120,37 @@ ros2 launch kobuki simulation.launch.py
 Con los repositorios de Kobuki importados, compila siempre con `-e kobuki`:
 el entorno normal no tiene sus dependencias. Si cambias de entorno, ejecuta
 antes `pixi run clean` para no mezclar compilaciones.
+
+### 4. Usar el robot real
+
+Los dispositivos USB del robot necesitan reglas udev que les den permisos y
+nombres fijos (`/dev/kobuki`, `/dev/rplidar`). Se instalan una sola vez en el
+sistema, fuera de Pixi (ver también el
+[README de Kobuki](https://github.com/IntelligentRoboticsLabs/kobuki/tree/jazzy)):
+
+```bash
+cd ~/rsocial/src/thirdparty
+sudo cp kobuki_ros/60-kobuki.rules rplidar_ros/scripts/rplidar.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+Con el robot conectado, en lugar del simulador lanza sus drivers, indicando el
+modelo de láser (`lidar_a2:=true` o `lidar_s2:=true`):
+
+```bash
+cd ~/rsocial
+pixi shell -e kobuki
+source install/setup.bash
+ros2 launch kobuki kobuki.launch.py lidar_s2:=true
+```
+
+Para la cámara OAK-D, en otra terminal (las reglas udev de la cámara están en
+[README-examples.md](README-examples.md#9-sensores-cámara-y-yolo)):
+
+```bash
+ros2 launch oak_d_camera camera.launch.py \
+  use_disparity:=False use_lr_raw:=False use_pointcloud:=False
+```
 
 ### Desinstalar Kobuki
 
