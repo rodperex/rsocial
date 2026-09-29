@@ -10,6 +10,13 @@ Funciona en cualquier versión de Ubuntu (se ha probado en Ubuntu 26.04), porque
 Pixi instala ROS 2 Jazzy y sus dependencias dentro del workspace. No necesitas
 instalar ROS 2 en el sistema ni ejecutar `source /opt/ros/jazzy/setup.bash`.
 
+El TTS de `simple_hri` reproduce el audio con `aplay`, que no está en Pixi y
+se usa el del sistema. Ubuntu lo trae instalado; si no lo tienes:
+
+```bash
+sudo apt install alsa-utils
+```
+
 Instala Pixi si no está disponible:
 
 ```bash

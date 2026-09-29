@@ -74,20 +74,22 @@ los manifiestos de las dos instalaciones en el mismo workspace.
 cd ~/rsocial
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src --ignore-src -r -y \
-  --skip-keys="ament_python rclpy_lifecycle gazebo_plugins python3-torchvision-pip python3-ultralytics-pip"
+  --skip-keys="gazebo gazebo_ros gazebo_plugins python3-torchvision-pip python3-ultralytics-pip"
 sudo apt install -y libusb-1.0-0-dev libftdi1-dev libuvc-dev \
-  libportaudio2 gstreamer1.0-tools gstreamer1.0-alsa \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly \
-  python3-gi python3-gst-1.0
+  libportaudio2 alsa-utils
 ```
 
-`rosdep` instala las dependencias ROS declaradas por los paquetes. El resto son
-librerías del Kobuki (USB) y de audio (`sound_play`) que no declara ningún
-paquete. `--skip-keys` omite claves que no se pueden o no se deben instalar
-así: dos claves inválidas de `simple_hri`, un plugin de Gazebo clásico que
-no existe en Jazzy (lo declara un mundo del simulador y no se usa) y las
-dependencias Python de `yolo_ros`, que se instalan en su propio entorno al
-compilar.
+- `rosdep` instala las dependencias que declaran los `package.xml` de los
+  paquetes.
+- `sudo apt install` instala lo que ningún paquete declara: las librerías USB
+  del Kobuki, PortAudio (para grabar audio) y `alsa-utils` (`aplay`, para
+  reproducirlo).
+- `--skip-keys` indica a `rosdep` qué dependencias no debe intentar instalar:
+
+  | Clave | Quién la declara | Por qué se omite |
+  | --- | --- | --- |
+  | `gazebo`, `gazebo_ros` y `gazebo_plugins` | `aws-robomaker-small-house-world` | Son de Gazebo clásico, que no existe en Jazzy; el mundo usa el Gazebo actual (`ros_gz_sim`), que sí se instala |
+  | `python3-torchvision-pip` y `python3-ultralytics-pip` | `yolo_ros` | Son dependencias Python que `yolo_ros` instala en su propio entorno al compilar |
 
 ### 4. Entorno virtual de Python
 

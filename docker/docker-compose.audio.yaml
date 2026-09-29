@@ -1,0 +1,10 @@
+# Optional: host microphone and speakers inside the container (Linux host with
+# PipeWire or PulseAudio). Use it together with docker-compose.yaml:
+#   docker compose -f docker/docker-compose.yaml -f docker/docker-compose.audio.yaml up -d --build
+services:
+  rsocial-jazzy:
+    volumes:
+      # Socket of the host sound server
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/pulse/native:/run/pulse/native
+    environment:
+      - PULSE_SERVER=unix:/run/pulse/native

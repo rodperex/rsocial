@@ -7,14 +7,10 @@ repositories:
     type: git
     url: https://github.com/tier4/ros2_v4l2_camera.git
     version: ed965b487b8d23ebaa477a9eb2c6ce4cf3c151a0
-  thirdparty/audio_common:
-    type: git
-    url: https://github.com/rodperex/audio_common.git
-    version: 18f8ddb5ff9ac698e70b1efc099ad802d05bd1ea
   thirdparty/simple_hri:
     type: git
     url: https://github.com/rodperex/simple_hri.git
-    version: 0ee26f7bd9758bf3ad044669e1de138c4f1161d1
+    version: 951b380af6a9828ab59e8076f8864da5bd037d19
   thirdparty/nao_pos:
     type: git
     url: https://github.com/andoniroldan/nao_pos.git

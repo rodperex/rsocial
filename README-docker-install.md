@@ -6,20 +6,22 @@ con un escritorio Linux accesible desde el navegador.
 
 ## Qué incluye
 
-La imagen **Jazzy** (la del curso) contiene:
+La imagen contiene:
 
 - Ubuntu 24.04 con ROS 2 Jazzy (`desktop`), Gazebo y Nav2.
-- El workspace `~/ros2_ws` con `rsocial` y el simulador del Kobuki, ya
-  compilados.
+- El workspace `~/rsocial` ya compilado, con los mismos paquetes que la
+  [instalación nativa](README.md#instalación-nativa): los de
+  `thirdparty-native.repos` (`simple_hri`, `yolo_ros`, cámaras, NAO) y los de
+  `kobuki-native.repos` (Kobuki y su simulador).
+- El entorno de Python `~/rsocial/.venv` con las dependencias de `simple_hri` y
+  `yolo_ros` (PyTorch, Whisper, Transformers, Ultralytics...).
 - Escritorio XFCE accesible por el navegador (noVNC), con Firefox, VSCodium y
   Terminator.
 
-Con ella funcionan los ejemplos de los bloques 1 a 8 y 11 de
-[README-examples.md](README-examples.md). **No incluye** los paquetes de
-`src/thirdparty-native.repos` (`simple_hri`, `yolo_ros`, cámara OAK-D, NAO), así que
-los ejemplos de cámara y YOLO (bloque 9), VFF (bloque 10) e interacción
-humano-robot (bloque 12) necesitan la instalación nativa o Pixi. El contenedor
-tampoco tiene acceso a la GPU, al micrófono ni a los altavoces del equipo.
+El contenedor no usa la GPU: PyTorch está instalado solo para CPU, así que
+Whisper y YOLO van más despacio que en una instalación nativa con GPU. Por
+defecto tampoco tiene acceso al micrófono ni a los altavoces del equipo (ver
+[Micrófono y altavoces](#micrófono-y-altavoces)).
 
 La imagen descarga `rsocial` de GitHub al construirse: los cambios que tengas
 en tu copia local y no hayas subido no se incluyen (ver
@@ -29,8 +31,9 @@ en tu copia local y no hayas subido no se incluyen (ver
 
 - [Docker Engine](https://docs.docker.com/engine/install/) y permisos para
   usarlo sin `sudo` (usuario en el grupo `docker`).
-- Unos 15 GB libres y acceso a Internet durante la construcción, que tarda
-  bastante la primera vez.
+- Unos 40 GB libres y acceso a Internet durante la construcción, que tarda
+  bastante la primera vez. La imagen final ocupa unos 17 GB; el resto es caché
+  de construcción, que puedes borrar después con `docker builder prune -a`.
 
 ## Construir y arrancar
 
@@ -73,12 +76,49 @@ Dentro del contenedor Gazebo no tiene GPU y renderiza por software, así que la
 simulación va bastante más lenta que en tiempo real. Para trabajar con fluidez
 con el simulador es mejor la instalación nativa o Pixi.
 
+## Micrófono y altavoces
+
+Solo en equipos Linux con PipeWire o PulseAudio (lo habitual en Ubuntu). El
+contenedor usa el servidor de sonido del equipo a través de su socket, así que
+el sonido del equipo sigue funcionando a la vez. Arranca el contenedor con el
+socket montado:
+
+```bash
+docker run -d --name rsocial-jazzy -p 6080:6080 \
+  -v /run/user/$(id -u)/pulse/native:/run/pulse/native \
+  -e PULSE_SERVER=unix:/run/pulse/native \
+  rsocial-jazzy
+```
+
+O con Docker Compose:
+
+```bash
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.audio.yaml up -d --build
+```
+
+Si el contenedor ya existía, bórralo antes (`docker rm -f rsocial-jazzy`): el
+socket solo se puede montar al crearlo. Para comprobarlo, dentro del
+contenedor:
+
+```bash
+aplay /usr/share/sounds/alsa/Front_Center.wav   # debe sonar en el equipo
+python3 -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+Limitaciones:
+
+- El sonido sale por los altavoces del equipo que ejecuta Docker, no por el
+  navegador: noVNC no transmite audio.
+- No funciona con Docker Desktop en macOS o Windows.
+- Con PulseAudio (no PipeWire) puede hacer falta montar también la cookie de
+  autenticación: `-v ~/.config/pulse/cookie:/home/ubuntu/.config/pulse/cookie:ro`.
+
 ## Recompilar
 
 Dentro del contenedor, tras modificar el código:
 
 ```bash
-cd ~/ros2_ws
+cd ~/rsocial
 colcon build --symlink-install
 ```
 
@@ -86,41 +126,34 @@ Si cambian las dependencias de los paquetes, instálalas antes con `rosdep`
 (Docker usa ROS 2 del sistema, no Pixi):
 
 ```bash
-cd ~/ros2_ws
+cd ~/rsocial
 sudo apt update
 rosdep update
-rosdep install --from-paths src --ignore-src -r -y --skip-keys="ament_python rclpy_lifecycle gazebo_plugins"
+rosdep install --from-paths src --ignore-src -r -y \
+  --skip-keys="gazebo gazebo_ros gazebo_plugins python3-torchvision-pip python3-ultralytics-pip"
 colcon build --symlink-install
 ```
+
+El significado de cada clave de `--skip-keys` está en el
+[README](README.md#3-dependencias-del-sistema).
 
 ## Trabajar con tu propio código
 
 Para usar dentro del contenedor tu copia local del repositorio (aquí en
-`~/rsocial`), sustituye con ella la de la imagen y recompila. El comando copia
-solo el código fuente, sin compilaciones ni entornos locales:
+`~/rsocial`), copia su código fuente sobre el de la imagen y recompila. El
+comando copia solo tus ficheros, sin compilaciones, entornos ni paquetes de
+terceros; los de la imagen se conservan:
 
 ```bash
-docker exec rsocial-jazzy bash -c "rm -rf ~/ros2_ws/src/rsocial && mkdir ~/ros2_ws/src/rsocial"
 tar -C ~/rsocial --exclude=.git --exclude=.pixi --exclude=.venv --exclude=build \
   --exclude=install --exclude=log --exclude=src/thirdparty --exclude=src/kobuki \
-  -cf - . | docker exec -i rsocial-jazzy tar -xf - -C /home/ubuntu/ros2_ws/src/rsocial
-docker exec rsocial-jazzy bash -ic "cd ~/ros2_ws && colcon build --symlink-install"
+  -cf - . | docker exec -i rsocial-jazzy tar -xf - -C /home/ubuntu/rsocial
+docker exec rsocial-jazzy bash -ic "cd ~/rsocial && colcon build --symlink-install"
 ```
 
-Para empezar desde cero dentro del contenedor, vuelve a clonar los
-repositorios:
-
-```bash
-cd ~/ros2_ws
-rm -rf src build install log
-mkdir src && cd src
-git clone https://github.com/rodperex/rsocial.git
-git clone -b jazzy https://github.com/IntelligentRoboticsLabs/kobuki.git
-vcs import < kobuki/thirdparty.repos
-cd ~/ros2_ws
-rosdep install --from-paths src --ignore-src -r -y --skip-keys="ament_python rclpy_lifecycle gazebo_plugins"
-colcon build --symlink-install
-```
+Los ficheros que hayas borrado en tu copia siguen en el contenedor. Para
+empezar desde cero, lo más sencillo es crear un contenedor nuevo a partir de
+la imagen (ver [Parar, reanudar y borrar](#parar-reanudar-y-borrar)).
 
 ## Parar, reanudar y borrar
 
@@ -133,17 +166,3 @@ docker image rm rsocial-jazzy  # borrar la imagen
 
 Con Docker Compose: `docker compose -f docker/docker-compose.yaml stop`,
 `start` y `down` (borra el contenedor).
-
-## Imagen Lyrical (experimental)
-
-`docker/lyrical/Dockerfile` construye una imagen equivalente con Ubuntu 26.04
-y ROS 2 Lyrical. Todavía no incluye el Kobuki, porque no está disponible para
-esa versión, así que solo sirven los ejemplos que no usan simulador (bloques 1
-a 3 de [README-examples.md](README-examples.md)).
-
-```bash
-docker build -f docker/lyrical/Dockerfile -t rsocial-lyrical .
-docker run -d --name rsocial-lyrical -p 6081:6080 rsocial-lyrical
-```
-
-Se abre en <http://localhost:6081/>.
