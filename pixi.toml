@@ -127,6 +127,12 @@ UV_SYSTEM_SITE_PACKAGES = "true" # in case a thirdparty uses a venv
 # (e.g. old nvidia-* CUDA wheels) would shadow the ones of this environment and break torch
 PYTHONNOUSERSITE = "1"
 
+[activation]
+# Keep the fontconfig cache of this environment separate from the host one:
+# sharing ~/.cache/fontconfig between different fontconfig versions makes Qt
+# apps (Gazebo GUI, rviz2, rqt) segfault at startup. See the script for details.
+scripts = ["pixi/activate-fontconfig.sh"]
+
 [tasks]
 prepare-colcon = "mkdir -p src/thirdparty/nao_lola/nao_lola && touch src/thirdparty/nao_lola/nao_lola/COLCON_IGNORE"
 # Compila tu workspace local
