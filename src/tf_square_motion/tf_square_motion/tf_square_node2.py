@@ -49,8 +49,8 @@ class TFSquareMover(Node):
        stop once the goal has been passed, so it always goes a bit too far:
        - Inertia: the robot does not stop instantly when it receives a zero Twist.
        - TF latency: lookup_transform(..., Time()) returns the LATEST available transform,
-         which can be tens of milliseconds old. With odometry at 20 Hz, 0.5 rad/s means
-         ~1.5 degrees of rotation that we have not seen yet (0.5 m/s means ~2.5 cm).
+         which can be tens of milliseconds old. With odometry at 30 Hz, 0.5 rad/s means
+         ~1 degree of rotation that we have not seen yet (0.5 m/s means ~1.7 cm).
        - Sampling: the condition is only checked when a new TF arrives, not at the exact
          moment the threshold is crossed.
     3. No heading correction. While moving forward only linear.x is commanded, so any
