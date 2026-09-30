@@ -10,6 +10,12 @@ Funciona en cualquier versión de Ubuntu (se ha probado en Ubuntu 26.04), porque
 Pixi instala ROS 2 Jazzy y sus dependencias dentro del workspace. No necesitas
 instalar ROS 2 en el sistema ni ejecutar `source /opt/ros/jazzy/setup.bash`.
 
+Reserva unos 25 GB libres. La instalación descarga varios GB (ROS 2, PyTorch
+y lo que añada cada entorno adicional), así que la primera vez tarda un rato.
+Para ejecutar YOLO y Whisper en la GPU hace falta una tarjeta NVIDIA con
+driver 580 o posterior (`nvidia-smi` lo muestra); sin ella funcionan en la
+CPU, más despacio.
+
 El TTS de `simple_hri` reproduce el audio con `aplay`, que no está en Pixi y
 se usa el del sistema. Ubuntu lo trae instalado; si no lo tienes:
 
@@ -67,6 +73,9 @@ pixi run build
 La tarea crea automáticamente el `COLCON_IGNORE` del paquete legacy
 `nao_lola`. Mantiene `nao_lola_client` y los paquetes actuales de mensajes.
 
+La compilación muestra avisos (*stderr output*) de varios paquetes; son
+normales mientras el resumen final no indique paquetes fallidos (*failed*).
+
 ### 4. Usar el workspace
 
 En nuevas terminales:
@@ -83,8 +92,15 @@ Por ejemplo:
 ros2 launch node_programming pubsub.launch.py
 ```
 
+Si has instalado un entorno adicional de `pixi.toml` (por ejemplo, el de
+Kobuki, más abajo), compila y abre la shell con ese entorno:
+`pixi run -e <entorno> build` y `pixi shell -e <entorno>`.
+
 No uses `rosdep` con Pixi. Las dependencias están declaradas en `pixi.toml` y
 se instalan con `pixi install`.
+
+Si compartes red con otros equipos, configura también ROS 2 para no mezclar
+tus nodos con los suyos (ver [Varios equipos en la misma red](README.md#varios-equipos-en-la-misma-red)).
 
 ## Kobuki: simulador y robot real (opcional)
 
@@ -103,9 +119,12 @@ ejecutan desde la raíz del workspace añadiendo `-e kobuki`.
 
 ```bash
 cd ~/rsocial/src
-vcs import < kobuki-pixi.repos
+pixi run vcs import < kobuki-pixi.repos
 cd ..
 ```
+
+`vcs` es el de Pixi, así que se ejecuta con `pixi run` (o dentro de
+`pixi shell`).
 
 ### 2. Instalar el entorno del simulador
 
@@ -116,6 +135,9 @@ pixi install -e kobuki
 
 ### 3. Compilar y lanzar Gazebo
 
+Si ya habías compilado con el entorno normal (`pixi run build`), ejecuta
+antes `pixi run clean` para no mezclar compilaciones de los dos entornos.
+
 ```bash
 cd ~/rsocial
 pixi run -e kobuki build
@@ -124,9 +146,15 @@ source install/setup.bash
 ros2 launch kobuki simulation.launch.py
 ```
 
-Con los repositorios de Kobuki importados, compila siempre con `-e kobuki`:
-el entorno normal no tiene sus dependencias. Si cambias de entorno, ejecuta
-antes `pixi run clean` para no mezclar compilaciones.
+Con los repositorios de Kobuki importados, compila y abre la shell siempre con
+`-e kobuki`: el entorno normal no tiene sus dependencias. En cada terminal
+nueva:
+
+```bash
+cd ~/rsocial
+pixi shell -e kobuki
+source install/setup.bash
+```
 
 ### 4. Usar el robot real
 

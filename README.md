@@ -7,7 +7,7 @@ interacción humano-robot. Los ejemplos y cómo lanzarlos están en
 
 ## Instalación
 
-Hay tres formas de instalar el workspace. Elige una y no las mezcles en la
+Hay tres formas de instalar el workspace. Elige una y no las mezcles en el
 mismo directorio:
 
 | Opción | Cuándo usarla | Guía |
@@ -160,15 +160,14 @@ las opciones de láser y cámara en `src/kobuki/README.md`).
 
 ## Varios equipos en la misma red
 
-ROS 2 descubre automáticamente los nodos de otros equipos de la red. En un aula
-eso hace que los robots y simuladores de distintos alumnos se mezclen. Para
-evitarlo, cada alumno puede limitar ROS 2 a su propio equipo, o usar un
+ROS 2 descubre automáticamente los nodos de otros equipos de la red. En un laboratorio eso hace que los robots y simuladores de distintas personas se mezclen. Para
+evitarlo, cada persona puede limitar ROS 2 a su propio equipo, o usar un
 dominio distinto (un número entre 1 y 101). Añade una de estas líneas a
 `~/.bashrc`:
 
 ```bash
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST  # solo este equipo
-export ROS_DOMAIN_ID=42                         # o un número distinto por alumno
+export ROS_DOMAIN_ID=42                         # o un número distinto por persona
 ```
 
 Para comunicarse con el robot real desde otro equipo, ambos deben tener el
