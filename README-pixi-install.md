@@ -115,22 +115,24 @@ Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
 las librerías de Kobuki sobre el entorno normal. Todos los comandos se
 ejecutan desde la raíz del workspace añadiendo `-e kobuki`.
 
-### 1. Importar Kobuki y sus terceros
-
-```bash
-cd ~/rsocial/src
-pixi run vcs import < kobuki-pixi.repos
-cd ..
-```
-
-`vcs` es el de Pixi, así que se ejecuta con `pixi run` (o dentro de
-`pixi shell`).
-
-### 2. Instalar el entorno del simulador
+### 1. Instalar el entorno del simulador
 
 ```bash
 cd ~/rsocial
 pixi install -e kobuki
+```
+
+### 2. Importar Kobuki y sus terceros
+
+Desde la raíz del workspace, activa la shell de Pixi del entorno `kobuki`
+antes de importar los repositorios:
+
+```bash
+cd ~/rsocial
+pixi shell -e kobuki
+cd ~/rsocial/src
+vcs import < kobuki-pixi.repos
+cd ..
 ```
 
 ### 3. Compilar y lanzar Gazebo
@@ -138,10 +140,11 @@ pixi install -e kobuki
 Si ya habías compilado con el entorno normal (`pixi run build`), ejecuta
 antes `pixi run clean` para no mezclar compilaciones de los dos entornos.
 
+Desde la raíz del workspace, en la misma shell:
+
 ```bash
 cd ~/rsocial
 pixi run -e kobuki build
-pixi shell -e kobuki
 source install/setup.bash
 ros2 launch kobuki simulation.launch.py
 ```
@@ -155,6 +158,10 @@ cd ~/rsocial
 pixi shell -e kobuki
 source install/setup.bash
 ```
+
+El `source` va siempre después de `pixi shell -e kobuki`. Sin él, Gazebo no
+encuentra los modelos del mundo y termina enseguida (`process has died ...
+exit code 255`).
 
 ### 4. Usar el robot real
 
