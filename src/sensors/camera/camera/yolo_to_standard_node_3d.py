@@ -25,9 +25,9 @@ class YoloToStandardNode3D(Node):
     def __init__(self):
         super().__init__('yolo_to_standard_node_3d')
 
-        self.declare_parameter('kobuki_sim', False)
+        self.declare_parameter('fix_image_frame', False)
         self.declare_parameter('optical_frame', 'camera_rgb_optical_frame')
-        self.kobuki_sim = self.get_parameter('kobuki_sim').get_parameter_value().bool_value
+        self.fix_image_frame = self.get_parameter('fix_image_frame').value
         self.optical_frame = self.get_parameter('optical_frame').get_parameter_value().string_value
 
         self.detection_sub = self.create_subscription(
@@ -53,7 +53,9 @@ class YoloToStandardNode3D(Node):
             # modify the same object shared by every detection and by the array
             detection_msg.header = Header()
             detection_msg.header.stamp = msg.header.stamp
-            if self.kobuki_sim:
+            # Some cameras (e.g. the Kobuki simulator) stamp their images with a frame that
+            # is not the optical one, so the 3D points would be read in the wrong axes
+            if self.fix_image_frame:
                 detection_msg.header.frame_id = self.optical_frame
             else:
                 detection_msg.header.frame_id = detection.bbox3d.frame_id

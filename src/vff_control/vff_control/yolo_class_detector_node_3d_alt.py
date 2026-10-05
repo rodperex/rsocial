@@ -39,9 +39,14 @@ class AltThreeDYOLOClassDetectorNode(Node):
 
         self.declare_parameter('target_class', 'person')
         self.declare_parameter('base_frame', 'base_footprint')
+        self.declare_parameter('optical_frame', 'camera_rgb_optical_frame')
 
         self.target_class = self.get_parameter('target_class').value
         self.base_frame = self.get_parameter('base_frame').value
+        # The point is computed with the pinhole model, so it is in the optical frame of the
+        # camera. The frame of the detection header is not used: some cameras (e.g. the
+        # Kobuki simulator) stamp their images with a frame that is not the optical one
+        self.optical_frame = self.get_parameter('optical_frame').value
 
         self.f_x = None  # Focal length in x (fx)
         self.c_x = None  # Principal point x-coordinate (cx)
@@ -174,10 +179,11 @@ class AltThreeDYOLOClassDetectorNode(Node):
         target_point.point.y = Y
         target_point.point.z = Z  # Z (depth) is the distance along the camera's optical axis
 
-        # Use the header of the selected detection (not the loop variable, which
+        # Use the stamp of the selected detection (not the loop variable, which
         # would be the last detection of the array)
-        target_point.header = target_detection.header
-        source_frame = target_detection.header.frame_id
+        target_point.header.stamp = target_detection.header.stamp
+        target_point.header.frame_id = self.optical_frame
+        source_frame = self.optical_frame
         target_frame = self.base_frame
         detection_time = target_detection.header.stamp
         try:
