@@ -62,7 +62,7 @@ Si algún `vcs import` falla por la red, vuelve a ejecutarlo.
 | --- | --- | --- |
 | `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO... | Nativa |
 | `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara | Nativa |
-| `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi | Pixi |
+| `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi, más la casa para el simulador del TurtleBot 4 | Pixi |
 | `kobuki-pixi.repos` | Kobuki (simulador y robot real con láser RPLIDAR), adaptado a Pixi | Pixi |
 
 Todos descargan en `src/kobuki` y `src/thirdparty`, que Git ignora. No mezcles

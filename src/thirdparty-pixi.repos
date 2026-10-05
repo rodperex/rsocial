@@ -31,3 +31,7 @@ repositories:
     type: git
     url: https://github.com/rodperex/nao_lola.git
     version: 37490c27e775f2084b20fb104455dc31cc811deb
+  thirdparty/aws-robomaker-small-house-world:
+    type: git
+    url: https://github.com/Juancams/aws-robomaker-small-house-world
+    version: 37c0bf89ddcd5fc6cafbe011a86fdd93087c95d6

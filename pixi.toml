@@ -158,6 +158,11 @@ sim = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = 
 sim-nvidia = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", __NV_PRIME_RENDER_OFFLOAD = "1", __GLX_VENDOR_LIBRARY_NAME = "nvidia", __EGL_VENDOR_LIBRARY_FILENAMES = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"}, description = "TurtleBot 4 simulator on the NVIDIA GPU"}
 # Any computer: software rendering on the CPU. Slower, but the simulated lidar always works
 sim-generic = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", LIBGL_ALWAYS_SOFTWARE = "1"}, description = "TurtleBot 4 simulator with software rendering"}
+# Same three variants in the AWS small house (package tb4_worlds, needs the workspace built).
+# Extra launch arguments are passed through "$@", e.g. `pixi run sim-house x:=-5.0 y:=0.0`.
+sim-house = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_worlds small_house.launch.py \"$@\"' sim-house", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp"}, description = "TurtleBot 4 simulator in a house"}
+sim-house-nvidia = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_worlds small_house.launch.py \"$@\"' sim-house", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", __NV_PRIME_RENDER_OFFLOAD = "1", __GLX_VENDOR_LIBRARY_NAME = "nvidia", __EGL_VENDOR_LIBRARY_FILENAMES = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"}, description = "TurtleBot 4 simulator in a house on the NVIDIA GPU"}
+sim-house-generic = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_worlds small_house.launch.py \"$@\"' sim-house", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", LIBGL_ALWAYS_SOFTWARE = "1"}, description = "TurtleBot 4 simulator in a house with software rendering"}
 
 # `install/setup.bash` is created only after the first build. Source it
 # explicitly with `pixi run source-local` after building the workspace.

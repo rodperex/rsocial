@@ -192,6 +192,24 @@ que abre RViz con el mapa. Por ejemplo:
 pixi run sim rviz:=true
 ```
 
+Las tareas solo lanzan `turtlebot4_gz.launch.py` con algunas variables de
+entorno ya puestas. Si prefieres lanzarlo a mano, en una terminal preparada
+como arriba (`tb4sim` ya pone `RMW_IMPLEMENTATION`), estos comandos equivalen
+a cada tarea, con las mismas opciones detrás:
+
+```bash
+# pixi run sim
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py rviz:=true
+
+# pixi run sim-nvidia
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+  __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+  ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py rviz:=true
+
+# pixi run sim-generic
+LIBGL_ALWAYS_SOFTWARE=1 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py rviz:=true
+```
+
 Espera a que Gazebo muestre el almacén con el robot. La primera vez tarda más.
 RViz se abre sin mapa todavía: aparecerá en el paso 3.
 
@@ -289,6 +307,7 @@ Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim world:=ma
 | `warehouse` (por defecto) | Almacén con estanterías | `warehouse.yaml` |
 | `depot` | Nave industrial. Se descarga de internet la primera vez, así que tarda más | `depot.yaml` |
 | `maze` | Recinto cerrado con paredes y obstáculos | `maze.yaml` |
+| `empty` | Suelo plano sin nada más (solo la base de carga). Útil para probar movimientos sin obstáculos | No tiene: sirve para mover el robot, no para navegar con Nav2 |
 
 Con otro mundo, en el paso 3 usa su mapa. Por ejemplo, con `maze`:
 
@@ -305,6 +324,49 @@ Otras opciones de la tarea:
 | `model:=lite` | TurtleBot 4 Lite (sin torre ni pantalla) | `standard` |
 | `x:=`, `y:=`, `yaw:=` | Posición inicial del robot (metros y radianes) | `0.0` |
 | `rviz:=true` | RViz con el mapa, para dar la posición inicial y objetivos | `false` |
+
+### Simular en una casa
+
+Para robótica social viene mejor una vivienda que un almacén. El paquete
+`tb4_worlds` de este repositorio lanza el TurtleBot 4 en la casa de AWS
+RoboMaker (salón, cocina, dormitorio y gimnasio, con muebles). La casa la
+descarga `thirdparty-pixi.repos` y se compila con el resto del workspace
+(`pixi run build`).
+
+Esta casa no se elige con `world:=`: tiene sus propias tareas, con las mismas
+tres variantes que el simulador normal:
+
+| Tarea | Cuándo usarla |
+| --- | --- |
+| `pixi run sim-house` | Como `sim` |
+| `pixi run sim-house-nvidia` | Como `sim-nvidia` |
+| `pixi run sim-house-generic` | Como `sim-generic` |
+
+Admiten las mismas opciones que el simulador normal (`rviz:=true`,
+`model:=lite`, `x:=`, `y:=`, `yaw:=`), salvo `world:=`. El robot aparece con
+su base de carga en el centro de la casa (`x:=0.0 y:=1.5`). Si lo pones en
+otro sitio, deja al menos un metro libre alrededor para la base.
+
+Sin tareas de Pixi, el lanzamiento es este (con las variables de
+`sim-nvidia` o `sim-generic` delante si las necesitas, como en el paso 1):
+
+```bash
+ros2 launch tb4_worlds small_house.launch.py rviz:=true
+```
+
+Para navegar, sigue los pasos de arriba cambiando solo el mapa del paso 3:
+
+```bash
+pixi run sim-house rviz:=true      # paso 1
+ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
+  map:=$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml   # paso 3
+```
+
+¿Por qué no basta con `world:=small_house`? El lanzamiento del TurtleBot 4
+busca el mundo solo en sus propios directorios, y el fichero de la casa no
+está preparado para este robot. `small_house.launch.py` hace una copia
+adaptada de la casa, le añade sus directorios a Gazebo y lanza el robot igual
+que `turtlebot4_gz.launch.py`.
 
 ### Moverlo sin navegación
 
