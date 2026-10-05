@@ -89,12 +89,18 @@ ros2 launch kobuki kobuki.launch.py lidar_s2:=true
 ```
 
 Para la cámara OAK-D, en otra terminal (las reglas udev de la cámara están en
-[README-examples.md](README-examples.md#9-sensores-cámara-y-yolo)):
+[README-examples.md](README-examples.md#con-la-cámara-oak-d)):
 
 ```bash
 ros2 launch oak_d_camera camera.launch.py \
   use_disparity:=False use_lr_raw:=False use_pointcloud:=False
 ```
+
+Los ejemplos se lanzan con `robot:=kobuki` (ver
+[README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)). Esa
+entrada supone la cámara Astra: con la OAK-D, cambia sus topics de cámara en
+`src/rsocial_robots/config/robots.yaml` por los de la OAK-D (`/color/image`,
+`/stereo/depth`, `/stereo/camera_info`).
 
 ## Desinstalar Kobuki
 
