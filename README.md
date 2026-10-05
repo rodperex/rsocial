@@ -13,7 +13,7 @@ mismo directorio:
 | Opción | Cuándo usarla | Guía |
 | --- | --- | --- |
 | Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real con cámara Astra o Xtion. | Este README |
-| Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. | [README-pixi-install.md](README-pixi-install.md) |
+| Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. Incluye el simulador y la navegación del TurtleBot 4. | [README-pixi-install.md](README-pixi-install.md) |
 | Docker | Entorno ya preparado en un contenedor, con escritorio en el navegador. | [README-docker-install.md](README-docker-install.md) |
 
 Los comandos usan `~/rsocial` como directorio del workspace; puedes usar otra

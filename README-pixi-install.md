@@ -33,7 +33,8 @@ pixi --version
 
 ## Instalación normal
 
-Esta es la opción por defecto. No incluye Kobuki ni Gazebo.
+Esta es la opción por defecto. Incluye el simulador del TurtleBot 4 (Gazebo)
+y su navegación (ver [TurtleBot 4](#turtlebot-4-simulador-y-navegación)).
 
 ### 1. Clonar e instalar el entorno
 
@@ -101,6 +102,221 @@ se instalan con `pixi install`.
 
 Si compartes red con otros equipos, configura también ROS 2 para no mezclar
 tus nodos con los suyos (ver [Varios equipos en la misma red](README.md#varios-equipos-en-la-misma-red)).
+
+## TurtleBot 4: simulador y navegación
+
+El entorno por defecto trae el simulador del TurtleBot 4 (Gazebo), la
+navegación (Nav2) y RViz. No hace falta instalar ni compilar nada más.
+
+Vas a usar varias terminales a la vez (simulador, localización, Nav2 y
+comandos). Todas tienen que estar preparadas igual; si no, no se ven entre
+ellas.
+
+### Preparar cada terminal: simulador o robot real
+
+El TurtleBot 4, real o simulado, necesita dos variables:
+
+- `RMW_IMPLEMENTATION=rmw_fastrtps_cpp`: el middleware de comunicaciones. El
+  robot real usa Fast DDS, y el simulador solo funciona bien con él.
+- `ROS_DOMAIN_ID`: separa grupos de nodos. Solo se ven los nodos con el mismo
+  número. El robot real usa el **0**, así que el simulador tiene que ir en
+  otro (por ejemplo, el 1); si no, se mezclan el robot real y el simulado.
+
+| | Robot real | Simulador |
+| --- | --- | --- |
+| `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` | `rmw_fastrtps_cpp` |
+| `ROS_DOMAIN_ID` | `0` | cualquiera del 1 al 100 (no el 0) |
+
+Para no escribirlas cada vez, añade estas dos funciones al final de tu
+`~/.bashrc` (solo una vez):
+
+```bash
+# TurtleBot 4 real
+function tb4() {
+    export ROS_DOMAIN_ID=0
+    export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    ros2 daemon stop > /dev/null 2>&1
+    echo "TurtleBot 4: ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION"
+}
+
+# TurtleBot 4 simulado: fuera del dominio del robot real
+function tb4sim() {
+    export ROS_DOMAIN_ID=1
+    export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    ros2 daemon stop > /dev/null 2>&1
+    echo "TurtleBot 4 (simulador): ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION"
+}
+```
+
+`ros2 daemon stop` reinicia la caché de `ros2 topic list` y similares, que si
+no seguiría mostrando lo del dominio anterior. Si estáis varios en la misma
+red, que cada uno ponga en `tb4sim` un número distinto (ver
+[Varios equipos en la misma red](README.md#varios-equipos-en-la-misma-red)).
+
+Después, **en cada terminal nueva**:
+
+```bash
+cd ~/rsocial
+pixi shell
+source install/setup.bash
+tb4sim     # con el simulador; con el robot real, tb4
+```
+
+No mezcles: en todas las terminales de una misma sesión, la misma función.
+
+### 1. Lanzar el simulador (terminal 1)
+
+Antes de lanzarlo, comprueba que no queda ningún Gazebo de una ejecución
+anterior (si se cerró mal, su servidor sigue vivo en segundo plano y estropea
+el reloj del nuevo):
+
+```bash
+pgrep -af "gz sim"         # no debe salir nada
+pkill -f "gz sim"          # si ha salido algo
+```
+
+Lanza el simulador con RViz:
+
+```bash
+pixi run sim rviz:=true
+```
+
+Espera a que Gazebo muestre el almacén con el robot. La primera vez tarda más.
+RViz se abre sin mapa todavía: aparecerá en el paso 3.
+
+**Comprueba el láser** en otra terminal:
+
+```bash
+ros2 topic echo --once /scan --field ranges | head -c 300
+```
+
+Tienen que salir números distintos (y algunos `inf`). Si **todos** son
+`0.164`, tu tarjeta gráfica no calcula bien el láser: el robot creerá que está
+rodeado de obstáculos y no navegará. Cierra el simulador (Ctrl+C) y lánzalo con
+una de estas dos tareas:
+
+```bash
+pixi run sim-nvidia rviz:=true    # si tienes tarjeta NVIDIA (rápido)
+pixi run sim-generic rviz:=true   # cualquier ordenador (usa la CPU, más lento)
+```
+
+### 2. Desacoplar el robot (terminal 2)
+
+El robot aparece en su base de carga. Antes de moverlo hay que sacarlo:
+
+```bash
+ros2 action send_goal /undock irobot_create_msgs/action/Undock '{}'
+```
+
+El robot retrocede, gira y termina con `Goal finished with status: SUCCEEDED`.
+
+### 3. Localización (terminal 3)
+
+Carga el mapa del almacén y localiza el robot en él (AMCL):
+
+```bash
+ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
+  map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/warehouse.yaml
+```
+
+Espera a `Managed nodes are active`; el mapa aparece en RViz. Con otro mundo,
+cambia `warehouse.yaml` por su mapa (ver [Elegir el mundo](#elegir-el-mundo)).
+
+`use_sim_time:=true` hace que use el reloj del simulador. Sin él descarta los
+datos del simulador y no funciona.
+
+### 4. Posición inicial (RViz)
+
+1. Pulsa **2D Pose Estimate** (barra de arriba).
+2. Haz clic en el mapa donde está el robot (junto a la base de carga) y, sin
+   soltar, arrastra hacia donde mira.
+3. Las lecturas del láser (puntos de color) tienen que quedar encima de las
+   paredes del mapa. Si no coinciden, repite el paso con más cuidado.
+
+### 5. Navegación (terminal 4)
+
+**Después de dar la posición inicial**:
+
+```bash
+ros2 launch turtlebot4_navigation nav2.launch.py use_sim_time:=true
+```
+
+Espera a `Managed nodes are active`.
+
+### 6. Enviar objetivos
+
+En RViz, pulsa **Nav2 Goal** y haz clic (y arrastra para la orientación) en un
+punto libre del mapa. El robot calcula la ruta y va hasta allí.
+
+También se puede enviar desde una terminal (punto libre del almacén):
+
+```bash
+ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
+  "{pose: {header: {frame_id: map}, pose: {position: {x: -2.0, y: -0.5}, orientation: {w: 1.0}}}}"
+```
+
+### Si algo no funciona
+
+| Síntoma | Causa y solución |
+| --- | --- |
+| Las terminales no ven los topics del simulador (`ros2 topic list` casi vacío) | Alguna terminal no está preparada igual. Ejecuta `echo $ROS_DOMAIN_ID $RMW_IMPLEMENTATION` en todas: tiene que salir lo mismo. |
+| Se ven topics o nodos raros, o el robot real se mueve | Estás en el dominio 0, el del robot real. Usa `tb4sim`, no `tb4`. |
+| La localización repite `Detected jump back in time` | Hay dos Gazebo abiertos (uno de una ejecución anterior). Cierra todo, `pkill -f "gz sim"` y vuelve a empezar. |
+| El undock responde `Goal was rejected` | El robot ya no está en la base: puedes seguir. |
+| El undock se queda en `Sending goal` | Revisa el dominio (fila anterior) y que solo haya un Gazebo. |
+| Nav2 termina con `Failed to bring up all requested nodes` | Lo lanzaste antes de dar la posición inicial. Ciérralo (Ctrl+C), da la posición y vuelve a lanzarlo. |
+| Se ve la ruta en RViz pero el robot no se mueve | El láser da `0.164` en todo (ver paso 1), o falta `use_sim_time:=true` en algún comando. |
+| Todo va muy lento | Es normal con `sim-generic`: el simulador usa la CPU. |
+
+### Elegir el mundo
+
+Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim world:=maze`.
+
+| Mundo | Descripción | Mapa para la localización |
+| --- | --- | --- |
+| `warehouse` (por defecto) | Almacén con estanterías | `warehouse.yaml` |
+| `depot` | Nave industrial. Se descarga de internet la primera vez, así que tarda más | `depot.yaml` |
+| `maze` | Recinto cerrado con paredes y obstáculos | `maze.yaml` |
+
+Con otro mundo, en el paso 3 usa su mapa. Por ejemplo, con `maze`:
+
+```bash
+pixi run sim world:=maze rviz:=true      # paso 1
+ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
+  map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/maze.yaml   # paso 3
+```
+
+Otras opciones de la tarea:
+
+| Opción | Para qué sirve | Por defecto |
+| --- | --- | --- |
+| `model:=lite` | TurtleBot 4 Lite (sin torre ni pantalla) | `standard` |
+| `x:=`, `y:=`, `yaw:=` | Posición inicial del robot (metros y radianes) | `0.0` |
+| `rviz:=true` | RViz con el mapa, para dar la posición inicial y objetivos | `false` |
+
+### Moverlo sin navegación
+
+El robot espera velocidades `geometry_msgs/TwistStamped` en `/cmd_vel`, igual
+que el TurtleBot 4 real. También acepta `geometry_msgs/Twist` en
+`/cmd_vel_unstamped`. Por ejemplo, para avanzar 3 segundos:
+
+```bash
+timeout 3 ros2 topic pub -r 10 /cmd_vel_unstamped geometry_msgs/msg/Twist "{linear: {x: 0.2}}"
+```
+
+### Robot real
+
+Con el TurtleBot 4 real no se lanza el simulador: el robot ya ejecuta sus
+drivers. Prepara cada terminal con `tb4` en lugar de `tb4sim` (dominio 0) y
+comprueba que lo ves:
+
+```bash
+ros2 topic list     # deben salir /scan, /odom, /hazard_detection...
+```
+
+En Jazzy, el robot real también espera `TwistStamped` en `/cmd_vel`. Los
+ajustes que necesitan los ejemplos (topic del bumper, límites de la base Create
+3) están en [README-examples.md](README-examples.md#7-máquinas-de-estados-bump-and-go).
 
 ## Kobuki: simulador y robot real (opcional)
 

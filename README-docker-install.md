@@ -69,7 +69,7 @@ ejemplo:
 
 ```bash
 ros2 launch kobuki simulation.launch.py
-ros2 run square_motion square_move
+ros2 launch square_motion square_move.launch.py
 ```
 
 Dentro del contenedor Gazebo no tiene GPU y renderiza por software, así que la

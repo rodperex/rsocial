@@ -22,18 +22,53 @@ necesita varios procesos, cada comando va en una terminal distinta.
 
 ## Simulador
 
-Los bloques 4 a 11 usan el simulador del Kobuki (Gazebo). Lánzalo en una
-terminal aparte y déjalo abierto:
+Los bloques 4 a 11 necesitan un robot, real o simulado. Hay dos simuladores:
+el del Kobuki y el del TurtleBot 4. Los ejemplos están pensados para el Kobuki;
+la tabla de [TurtleBot 4](#turtlebot-4) indica cuáles funcionan también con él
+y cómo.
+
+### Kobuki
+
+Lánzalo en una terminal aparte y déjalo abierto (necesita el entorno Kobuki,
+ver [README-pixi-install.md](README-pixi-install.md#kobuki-simulador-y-robot-real-opcional)):
 
 ```bash
 ros2 launch kobuki simulation.launch.py
 ```
 
-El simulador publica los topics que usan los ejemplos: `/cmd_vel` (velocidad),
-`/scan_raw` (láser), `/rgbd_camera/*` (cámara RGB-D), `/events/bumper`
-(bumper simulado a partir del láser) y las TF `odom` → `base_footprint` →
-`base_link`. Con el robot real se usa `ros2 launch kobuki kobuki.launch.py`
-(ver el README del paquete `kobuki`).
+El simulador publica los topics que usan los ejemplos: `/cmd_vel` (velocidad,
+`geometry_msgs/Twist`), `/scan_raw` (láser), `/rgbd_camera/*` (cámara RGB-D),
+`/events/bumper` (bumper simulado a partir del láser) y las TF `odom` →
+`base_footprint` → `base_link`. Con el robot real se usa
+`ros2 launch kobuki kobuki.launch.py` (ver el README del paquete `kobuki`).
+
+### TurtleBot 4
+
+Viene en el entorno Pixi por defecto. Cómo preparar las terminales (`tb4sim`),
+lanzarlo y desacoplar el robot está en
+[README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación).
+Con el robot real, lo mismo con `tb4` en lugar de `tb4sim`.
+
+Lo que cambia respecto al Kobuki:
+
+- Espera `geometry_msgs/TwistStamped` en `/cmd_vel`. Los ejemplos que mueven
+  el robot publican `Twist` por defecto; añade `enable_stamped_cmd_vel:=true`
+  a su launcher.
+- El simulador usa su propio reloj: añade también `use_sim_time:=true` a los
+  launchers que lo admiten.
+- El bumper no es un topic propio: llega en `/hazard_detection` (por eso los
+  bump and go tienen versión `_tb4`).
+- El láser está en `/scan` y la cámara en `/oakd/rgb/preview/*`.
+- El robot empieza en su base de carga: desacóplalo antes de moverlo.
+
+| Bloque | Con el TurtleBot 4 |
+| --- | --- |
+| 4. Lazo abierto | `ros2 launch square_motion square_move.launch.py use_sim_time:=true enable_stamped_cmd_vel:=true` |
+| 5. TF | `ros2 launch tf_square_motion tf_square.launch.py use_sim_time:=true enable_stamped_cmd_vel:=true` (igual con `tf_square2`)<br>`ros2 launch tf_seeker tf_seeker.launch.py enable_stamped_cmd_vel:=true` |
+| 6. Láser | `ros2 run laser obstacle_detector_node_no_tf --ros-args -r input_laser:=/scan -p use_sim_time:=true`<br>`laser.launch.py` tiene fijo el remap a `/scan_raw`: cámbialo por `/scan` |
+| 7 y 8. Bump and go | Launchers terminados en `_tb4` (ya publican `TwistStamped`) |
+| 9 y 10. Cámara y VFF | Preparados para la cámara y el láser del Kobuki; con el TB4 hay que cambiar los topics de sus launchers |
+| 11. Nav2 | Lanza la navegación del TB4 (ver [README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3)) en lugar de `kobuki navigation_sim.launch.py`; los clientes de navegación funcionan igual |
 
 ## 1. Nodos, topics y ciclo de vida
 
@@ -116,7 +151,7 @@ controlando solo el tiempo que avanza y gira, sin mirar la odometría: el error
 se acumula y el cuadrado no se cierra.
 
 ```bash
-ros2 run square_motion square_move
+ros2 launch square_motion square_move.launch.py
 ```
 
 ## 5. TF: movimiento con odometría y seguimiento
@@ -125,8 +160,8 @@ Con el simulador en marcha. El mismo cuadrado, pero midiendo con la TF
 `odom` → `base_link` cuánto ha avanzado y girado el robot:
 
 ```bash
-ros2 run tf_square_motion tf_square   # restando posiciones y ángulos (yaw)
-ros2 run tf_square_motion tf_square2  # con matrices homogéneas 4x4
+ros2 launch tf_square_motion tf_square.launch.py   # restando posiciones y ángulos (yaw)
+ros2 launch tf_square_motion tf_square2.launch.py  # con matrices homogéneas 4x4
 ```
 
 `tf_square2` sigue el convenio de nombres `A2B` = `lookup_transform(A, B)`.
@@ -179,9 +214,42 @@ La misma FSM con una clase por estado (`on_entry`, `on_do`, `on_exit`) y
 transiciones explícitas:
 
 ```bash
-ros2 run fsm_bumpgo bump_go_fsm_node --ros-args \
-  -r /bumper:=/events/bumper -r /out_vel:=/cmd_vel
+ros2 launch fsm_bumpgo bumpgo_fsm.launch.py
 ```
+
+Estos usan el bumper del Kobuki (`/events/bumper`). Cada ejemplo de los
+bloques 7 y 8 tiene una versión para el TurtleBot 4 (ficheros y launchers
+terminados en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper: la
+base iRobot Create 3 no tiene un topic de bumper, y los golpes llegan en
+`/hazard_detection`, un vector con todos los peligros activos (golpe, precipicio,
+límite de marcha atrás…). Un golpe es una detección de tipo `BUMP`. Estos
+launchers publican `TwistStamped` por defecto, que es lo que espera el TB4 con
+Jazzy:
+
+```bash
+ros2 launch fsm_bumpgo bumpgo_tb4.launch.py
+ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py
+```
+
+En el TurtleBot 4 con Jazzy, la Create 3 publica bajo `/_do_not_use` y el
+Raspberry Pi solo republica los topics de
+`/opt/ros/jazzy/share/turtlebot4_bringup/config/republisher.yaml`.
+`hazard_detection` viene comentado: si `ros2 topic info /hazard_detection`
+indica 0 publicadores, descoméntalo en el robot y reinicia el servicio
+(`turtlebot4-service-restart`). Una actualización del paquete deshace el cambio.
+
+La Create 3 reacciona por su cuenta a los golpes (reflejos) y limita la marcha
+atrás (hazard `BACKUP_LIMIT`), así que el retroceso va a trompicones. Para
+desactivar ambos, ejecuta en el robot (se pierde al reiniciar la base):
+
+```bash
+ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/SetParameters \
+  "{parameters: [{name: safety_override, value: {type: 4, string_value: backup_only}},
+                 {name: reflexes_enabled, value: {type: 1, bool_value: false}}]}"
+```
+
+Con `backup_only` el robot puede caer marcha atrás por un escalón: úsalo en
+suelo plano.
 
 ## 8. Árboles de comportamiento: bump and go
 
@@ -195,6 +263,15 @@ ros2 launch bt_bumpgo side_bumpgo.launch.py  # gira hacia el lado contrario al c
 ros2 launch bt_bumpgo groot_bumpgo.launch.py # árbol cargado desde un XML de Groot
 ```
 
+Versiones para el TurtleBot 4 (ver el bloque 7): solo cambia `CheckBump` (y
+`Turn` en la versión side); el resto de comportamientos se reutilizan:
+
+```bash
+ros2 launch bt_bumpgo bumpgo_tb4.launch.py
+ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py
+ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py
+```
+
 `groot_bumpgo.launch.py` carga el árbol desde `src/bt_bumpgo/bt_xml/bumpgo.xml`
 (formato BehaviorTree.CPP v4, editable con Groot). El parser está en
 `bt_bumpgo/groot_loader.py` y no requiere dependencias externas. Soporta
@@ -205,6 +282,9 @@ ros2 launch bt_bumpgo groot_bumpgo.launch.py # árbol cargado desde un XML de Gr
 ros2 run bt_bumpgo bumpgo_groot --ros-args -p xml_file:=/ruta/a/arbol.xml \
   -r /out_vel:=/cmd_vel -r /bumper:=/events/bumper
 ```
+
+Con un TurtleBot 4, usa `bumpgo_groot_tb4` y `-p enable_stamped_cmd_vel:=true`
+(sin el remap de `/bumper`).
 
 ## 9. Sensores: cámara y YOLO
 
