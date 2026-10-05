@@ -12,7 +12,7 @@ mismo directorio:
 
 | Opción | Cuándo usarla | Guía |
 | --- | --- | --- |
-| Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real con cámara Astra o Xtion. | Este README |
+| Nativa | Ubuntu 24.04 con ROS 2 Jazzy instalado en el sistema. Necesaria para usar el Kobuki real con cámara Astra o Xtion. Incluye también el simulador y la navegación del TurtleBot 4. | Este README |
 | Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. Incluye el simulador y la navegación del TurtleBot 4. | [README-pixi-install.md](README-pixi-install.md) |
 | Docker | Entorno ya preparado en un contenedor, con escritorio en el navegador. | [README-docker-install.md](README-docker-install.md) |
 
@@ -77,6 +77,9 @@ rosdep install --from-paths src --ignore-src -r -y \
   --skip-keys="gazebo gazebo_ros gazebo_plugins python3-torchvision-pip python3-ultralytics-pip"
 sudo apt install -y libusb-1.0-0-dev libftdi1-dev libuvc-dev \
   libportaudio2 alsa-utils
+sudo apt install -y ros-jazzy-turtlebot4-simulator ros-jazzy-turtlebot4-navigation \
+  ros-jazzy-turtlebot4-viz ros-jazzy-gz-ros2-control ros-jazzy-irobot-create-msgs \
+  ros-jazzy-rmw-fastrtps-cpp
 ```
 
 - `rosdep` instala las dependencias que declaran los `package.xml` de los
@@ -84,6 +87,11 @@ sudo apt install -y libusb-1.0-0-dev libftdi1-dev libuvc-dev \
 - `sudo apt install` instala lo que ningún paquete declara: las librerías USB
   del Kobuki, PortAudio (para grabar audio) y `alsa-utils` (`aplay`, para
   reproducirlo).
+- El segundo `sudo apt install` instala lo necesario para el TurtleBot 4: su
+  simulador (Gazebo), su navegación (Nav2), su configuración de RViz, el
+  plugin de Gazebo que mueve la base Create 3 (`gz_ros2_control`), los
+  mensajes de la Create 3 (los usan los bump and go) y Fast DDS, el
+  middleware que usa el robot.
 - `--skip-keys` indica a `rosdep` qué dependencias no debe intentar instalar:
 
   | Clave | Quién la declara | Por qué se omite |
@@ -137,10 +145,12 @@ source ~/rsocial/install/setup.bash
 ```
 
 Para no repetirlo, puedes añadir esas tres líneas al final de `~/.bashrc`.
-Comprueba que todo funciona con el simulador:
+Comprueba que todo funciona con el simulador del Kobuki o con el del
+TurtleBot 4 (cierra cada uno con Ctrl+C):
 
 ```bash
 ros2 launch kobuki simulation.launch.py
+RMW_IMPLEMENTATION=rmw_fastrtps_cpp ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py
 ```
 
 ### Kobuki real
@@ -156,7 +166,28 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
 Después, en lugar del simulador: `ros2 launch kobuki kobuki.launch.py` (ver
-las opciones de láser y cámara en `src/kobuki/README.md`).
+las opciones de láser y cámara en `src/kobuki/README.md`). Los ejemplos se
+lanzan entonces con `robot:=kobuki` en lugar de `robot:=kobuki_sim` (ver
+[README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)).
+
+### TurtleBot 4
+
+El uso del TurtleBot 4 (simulador, navegación y robot real) es igual que con
+Pixi y está explicado en
+[README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación).
+Solo cambian dos cosas:
+
+- Para preparar cada terminal, en lugar de `pixi shell` y
+  `source install/setup.bash`, carga el workspace como en el paso 6. Después
+  ejecuta `tb4sim` o `tb4` igual que con Pixi.
+- Las tareas `pixi run sim`, `sim-nvidia`, `sim-generic` y `sim-house*` no
+  existen. Usa los comandos `ros2 launch` equivalentes que aparecen en esa
+  guía. Por ejemplo:
+
+  ```bash
+  ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py rviz:=true   # pixi run sim rviz:=true
+  ros2 launch tb4_worlds small_house.launch.py rviz:=true                # pixi run sim-house rviz:=true
+  ```
 
 ## Varios equipos en la misma red
 
@@ -179,7 +210,7 @@ Los ejemplos de interacción usan
 [`simple_hri`](https://github.com/rodperex/simple_hri), que ofrece
 reconocimiento de voz, síntesis de voz y extracción de información con modelos
 de lenguaje. Puede usar modelos locales o servicios en la nube (ver
-[README-examples.md](README-examples.md#12-interacción-humano-robot)). Los
+[README-examples.md](README-examples.md#10-interacción-humano-robot)). Los
 modelos locales se descargan la primera vez que se lanzan, así que esa vez
 necesitan Internet.
 
