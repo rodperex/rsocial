@@ -13,6 +13,7 @@
   <depend>py_trees</depend>
   <depend>py_trees_ros</depend>
   <depend>kobuki_ros_interfaces</depend>
+  <depend>irobot_create_msgs</depend>
   <depend>ament_index_python</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>

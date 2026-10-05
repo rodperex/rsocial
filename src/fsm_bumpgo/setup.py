@@ -23,7 +23,9 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/bumpgo.launch.py']),
+        ('share/' + package_name + '/launch',
+            ['launch/bumpgo.launch.py', 'launch/bumpgo_fsm.launch.py',
+             'launch/bumpgo_tb4.launch.py', 'launch/bumpgo_fsm_tb4.launch.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -36,6 +38,8 @@ setup(
         'console_scripts': [
             'bump_go_node = fsm_bumpgo.bumpgo_node:main',
             'bump_go_fsm_node = fsm_bumpgo.bumpgo_fsm_node:main',
+            'bump_go_tb4_node = fsm_bumpgo.bumpgo_tb4_node:main',
+            'bump_go_fsm_tb4_node = fsm_bumpgo.bumpgo_fsm_tb4_node:main',
         ],
     },
 )

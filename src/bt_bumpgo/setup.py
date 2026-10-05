@@ -42,6 +42,9 @@ setup(
             'bumpgo = bt_bumpgo.bumpgo:main',
             'bumpgo_side = bt_bumpgo.bumpgo_side:main',
             'bumpgo_groot = bt_bumpgo.bumpgo_groot:main',
+            'bumpgo_tb4 = bt_bumpgo.bumpgo_tb4:main',
+            'bumpgo_side_tb4 = bt_bumpgo.bumpgo_side_tb4:main',
+            'bumpgo_groot_tb4 = bt_bumpgo.bumpgo_groot_tb4:main',
         ],
     },
 )

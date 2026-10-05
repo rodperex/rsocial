@@ -12,13 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 from kobuki_ros_interfaces.msg import BumperEvent
 import py_trees
 import py_trees.behaviour
 from py_trees.blackboard import Client
 import py_trees.common
 import py_trees.composites
+
+
+def create_vel_publisher(node, topic):
+    """Create a Twist or TwistStamped publisher depending on 'enable_stamped_cmd_vel'."""
+    # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped.
+    # Several behaviours share the node, so the parameter is declared only once.
+    if not node.has_parameter('enable_stamped_cmd_vel'):
+        node.declare_parameter('enable_stamped_cmd_vel', False)
+    stamped = node.get_parameter('enable_stamped_cmd_vel').value
+    return node.create_publisher(TwistStamped if stamped else Twist, topic, 10)
+
+
+def publish_vel(node, publisher, twist):
+    """Publish a Twist, wrapping it in a TwistStamped if the publisher expects it."""
+    if publisher.msg_type is TwistStamped:
+        msg = TwistStamped()
+        msg.header.stamp = node.get_clock().now().to_msg()
+        msg.header.frame_id = 'base_link'
+        msg.twist = twist
+        publisher.publish(msg)
+    else:
+        publisher.publish(twist)
 
 
 class MoveForward(py_trees.behaviour.Behaviour):
@@ -30,13 +52,13 @@ class MoveForward(py_trees.behaviour.Behaviour):
 
     def setup(self, **kwargs):
         node = self.blackboard.node
-        self.cmd_pub = node.create_publisher(Twist, '/out_vel', 10)
+        self.cmd_pub = create_vel_publisher(node, '/out_vel')
 
     def update(self):
         self.blackboard.node.get_logger().debug('Moving forward...')
         msg = Twist()
         msg.linear.x = 0.2
-        self.cmd_pub.publish(msg)
+        publish_vel(self.blackboard.node, self.cmd_pub, msg)
         return py_trees.common.Status.RUNNING
 
 
@@ -76,7 +98,7 @@ class BackOff(py_trees.behaviour.Behaviour):
 
     def setup(self, **kwargs):
         node = self.blackboard.node
-        self.cmd_pub = node.create_publisher(Twist, '/out_vel', 10)
+        self.cmd_pub = create_vel_publisher(node, '/out_vel')
 
     def initialise(self):
         self.blackboard.node.get_logger().info('Backing off...')
@@ -95,12 +117,12 @@ class BackOff(py_trees.behaviour.Behaviour):
         if elapsed < self.duration_sec:
             msg = Twist()
             msg.linear.x = -0.2
-            self.cmd_pub.publish(msg)
+            publish_vel(self.blackboard.node, self.cmd_pub, msg)
             return py_trees.common.Status.RUNNING
         else:
             self.start_time = None
             stop = Twist()
-            self.cmd_pub.publish(stop)
+            publish_vel(self.blackboard.node, self.cmd_pub, stop)
             return py_trees.common.Status.SUCCESS
 
 
@@ -114,7 +136,7 @@ class Turn(py_trees.behaviour.Behaviour):
 
     def setup(self, **kwargs):
         node = self.blackboard.node
-        self.cmd_pub = node.create_publisher(Twist, '/out_vel', 10)
+        self.cmd_pub = create_vel_publisher(node, '/out_vel')
 
     def initialise(self):
         self.blackboard.node.get_logger().info('Turning...')
@@ -133,12 +155,12 @@ class Turn(py_trees.behaviour.Behaviour):
         if elapsed < self.duration_sec:
             msg = Twist()
             msg.angular.z = 0.5
-            self.cmd_pub.publish(msg)
+            publish_vel(self.blackboard.node, self.cmd_pub, msg)
             return py_trees.common.Status.RUNNING
         else:
             self.start_time = None
             stop = Twist()
-            self.cmd_pub.publish(stop)
+            publish_vel(self.blackboard.node, self.cmd_pub, stop)
             return py_trees.common.Status.SUCCESS
 
 

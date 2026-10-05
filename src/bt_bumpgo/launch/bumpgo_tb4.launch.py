@@ -19,29 +19,22 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-
-    stamped_arg = DeclareLaunchArgument(
-        'enable_stamped_cmd_vel',
-        default_value='false',
-        description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
-    )
-
-    bumpgo_cmd = Node(
-        package='fsm_bumpgo',
-        executable='bump_go_node',
-        name='bump_go_node',
-        output='screen',
-        parameters=[{
-            'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
-        }],
-        remappings=[
-                ('/bumper', '/events/bumper'),
+    return LaunchDescription([
+        DeclareLaunchArgument(
+            'enable_stamped_cmd_vel',
+            default_value='true',  # the TurtleBot 4 (Jazzy) expects TwistStamped
+            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
+        ),
+        Node(
+            package='bt_bumpgo',
+            executable='bumpgo_tb4',
+            name='bt_bumpgo',
+            output='screen',
+            parameters=[{
+                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
+            }],
+            remappings=[
                 ('/out_vel', '/cmd_vel'),
-        ]
-    )
-
-    ld = LaunchDescription()
-    ld.add_action(stamped_arg)
-    ld.add_action(bumpgo_cmd)
-
-    return ld
+            ]
+        )
+    ])

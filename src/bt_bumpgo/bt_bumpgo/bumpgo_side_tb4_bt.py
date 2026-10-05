@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TurtleBot 4 (iRobot Create 3 base) version of bumpgo_side_bt.py (Kobuki).
 # MoveForward and BackOff are the same as in the basic version: reuse them.
 # Only CheckBump (stores which side was hit) and Turn (uses it) change.
+# The Create 3 has no bumper topic: bumps arrive in /hazard_detection, and the
+# side is in the frame_id of the detection (bump_left, bump_front_center...).
 
 from bt_bumpgo.bumpgo_bt import BackOff, create_vel_publisher, MoveForward, publish_vel
 from geometry_msgs.msg import Twist
-from kobuki_ros_interfaces.msg import BumperEvent
+from irobot_create_msgs.msg import HazardDetection, HazardDetectionVector
 import py_trees
 import py_trees.behaviour
 from py_trees.blackboard import Client
 import py_trees.common
 import py_trees.composites
+from rclpy.qos import qos_profile_sensor_data
 
 
 class CheckBump(py_trees.behaviour.Behaviour):
@@ -32,23 +36,34 @@ class CheckBump(py_trees.behaviour.Behaviour):
         self.blackboard.register_key(key='node', access=py_trees.common.Access.READ)
         self.blackboard.register_key(key='side', access=py_trees.common.Access.WRITE)
         self.bumped = False
+        self.in_contact = False
         self.side = None
         self.sub = None
 
     def setup(self, **kwargs):
         node = self.blackboard.node
-        self.sub = node.create_subscription(BumperEvent, '/bumper', self.bumper_callback, 10)
+        # The Create 3 publishes best effort: a reliable subscriber would get nothing
+        self.sub = node.create_subscription(
+            HazardDetectionVector, '/hazard_detection', self.hazard_callback,
+            qos_profile_sensor_data)
 
-    def bumper_callback(self, msg):
-        if msg.state == BumperEvent.PRESSED:
-            self.side = msg.bumper
-            self.blackboard.side = msg.bumper
-            if self.side == BumperEvent.LEFT:
-                self.blackboard.node.get_logger().info('Bump on the LEFT side')
-            elif self.side == BumperEvent.RIGHT:
-                self.blackboard.node.get_logger().info('Bump on the RIGHT side')
-            elif self.side == BumperEvent.CENTER:
-                self.blackboard.node.get_logger().info('Bump on the CENTER side')
+    def hazard_callback(self, msg):
+        bumps = [d for d in msg.detections if d.type == HazardDetection.BUMP]
+        # React only to a new contact: the simulator repeats the bump while touching,
+        # and an old bump would trigger a second back off after the turn
+        new_contact = bumps and not self.in_contact
+        self.in_contact = bool(bumps)
+        if new_contact:
+            # frame_id: bump_left, bump_front_left, bump_front_center, bump_front_right...
+            frame = bumps[0].header.frame_id
+            if 'left' in frame:
+                self.side = 'left'
+            elif 'right' in frame:
+                self.side = 'right'
+            else:
+                self.side = 'center'
+            self.blackboard.side = self.side
+            self.blackboard.node.get_logger().info(f'Bump on the {self.side.upper()} side')
             self.bumped = True
 
     def update(self):
@@ -80,10 +95,10 @@ class Turn(py_trees.behaviour.Behaviour):
         node = self.blackboard.node
 
         if self.start_time is None:
-            if self.blackboard.side == BumperEvent.LEFT:
+            if self.blackboard.side == 'left':
                 self.blackboard.node.get_logger().info('Turning right...')
                 self.rotation_dir = -1  # Turn right
-            elif self.blackboard.side == BumperEvent.RIGHT:
+            elif self.blackboard.side == 'right':
                 self.blackboard.node.get_logger().info('Turning left...')
                 self.rotation_dir = 1   # Turn left
             else:

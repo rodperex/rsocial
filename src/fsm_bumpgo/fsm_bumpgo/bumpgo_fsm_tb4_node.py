@@ -13,7 +13,10 @@
 # limitations under the License.
 
 """
-Bump-and-go behavior implemented as an explicit FSM.
+Bump-and-go behavior implemented as an explicit FSM, for the TurtleBot 4.
+
+Same FSM as bumpgo_fsm_node.py (Kobuki); only the bumper input changes:
+bumps arrive in /hazard_detection (iRobot Create 3 base).
 
 Follows the classic FSM anatomy:
   - State: on_entry / on_do / on_exit lifecycle
@@ -28,11 +31,12 @@ from abc import ABC, abstractmethod
 from enum import auto, Enum
 
 from geometry_msgs.msg import Twist, TwistStamped
-from kobuki_ros_interfaces.msg import BumperEvent
+from irobot_create_msgs.msg import HazardDetection, HazardDetectionVector
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 
 
 SPEED_LINEAR = 0.2
@@ -123,15 +127,17 @@ class TurnState(State):
 class BumpGoFSM(Node):
 
     def __init__(self):
-        super().__init__('bump_go_fsm')
+        super().__init__('bump_go_fsm_tb4')
 
         self.last_event = None
         self.state_ts = self.get_clock().now()
 
-        self.bumper_sub = self.create_subscription(
-            BumperEvent, '/bumper', self.bumper_callback, 10)
+        # The Create 3 publishes best effort: a reliable subscriber would get nothing
+        self.hazard_sub = self.create_subscription(
+            HazardDetectionVector, '/hazard_detection', self.hazard_callback,
+            qos_profile_sensor_data)
         # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
-        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.declare_parameter('enable_stamped_cmd_vel', True)
         self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
         self.vel_pub = self.create_publisher(
             TwistStamped if self.stamped else Twist, '/out_vel', 10)
@@ -141,8 +147,9 @@ class BumpGoFSM(Node):
 
         self.timer = self.create_timer(0.05, self.control_cycle)
 
-    def bumper_callback(self, msg: BumperEvent):
-        if msg.state == BumperEvent.PRESSED:
+    def hazard_callback(self, msg: HazardDetectionVector):
+        # The Create 3 has no bumper topic: a bump is a detection of type BUMP
+        if any(d.type == HazardDetection.BUMP for d in msg.detections):
             self.last_event = Event.BUMP_PRESSED
         elif self.last_event != Event.BUMP_PRESSED:
             # Do not overwrite a PRESSED event not yet processed by control_cycle:

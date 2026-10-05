@@ -13,16 +13,26 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'enable_stamped_cmd_vel',
+            default_value='false',
+            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
+        ),
         Node(
             package='bt_bumpgo',
             executable='bumpgo_groot',
             name='bt_bumpgo',
             output='screen',
+            parameters=[{
+                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
+            }],
             remappings=[
                 ('/out_vel', '/cmd_vel'),
                 ('/bumper', '/events/bumper')

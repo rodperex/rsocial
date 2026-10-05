@@ -12,14 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Bump and go for the TurtleBot 4 (iRobot Create 3 base).
+
+Same FSM as bumpgo_node.py (Kobuki). Only the bumper input changes: the
+Create 3 has no bumper topic; bumps arrive in /hazard_detection, a vector with
+all the active hazards (bump, cliff, backup limit...). A bump is a detection of
+type HazardDetection.BUMP.
+"""
+
 from enum import IntEnum
 
 from geometry_msgs.msg import Twist, TwistStamped
-from kobuki_ros_interfaces.msg import BumperEvent
+from irobot_create_msgs.msg import HazardDetection, HazardDetectionVector
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 
 
 class State(IntEnum):
@@ -34,22 +44,22 @@ BACKING_TIME = Duration(seconds=2.0)
 TURNING_TIME = Duration(seconds=2.0)
 
 
-class BumpGoNode(Node):
+class BumpGoTB4Node(Node):
 
     def __init__(self):
-        super().__init__('bump_go')
+        super().__init__('bump_go_tb4')
 
         self.state = State.FORWARD
         self.state_ts = self.get_clock().now()
 
-        self.last_bump = BumperEvent()
-        self.last_bump.state = BumperEvent.RELEASED
+        self.bumped = False
 
-        self.bumper_sub = self.create_subscription(
-            BumperEvent,
-            '/bumper',
-            self.bumper_callback,
-            10
+        # The Create 3 publishes best effort: a reliable subscriber would get nothing
+        self.hazard_sub = self.create_subscription(
+            HazardDetectionVector,
+            '/hazard_detection',
+            self.hazard_callback,
+            qos_profile_sensor_data
         )
 
         # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
@@ -71,8 +81,9 @@ class BumpGoNode(Node):
         else:
             self.vel_pub.publish(twist)
 
-    def bumper_callback(self, msg):
-        self.last_bump = msg
+    def hazard_callback(self, msg):
+        # Published on every change: bumped while any detection is a bump
+        self.bumped = any(d.type == HazardDetection.BUMP for d in msg.detections)
 
     def control_cycle(self):
         out_vel = Twist()
@@ -101,7 +112,7 @@ class BumpGoNode(Node):
         self.state_ts = self.get_clock().now()
 
     def check_forward_2_back(self):
-        return self.last_bump.state == BumperEvent.PRESSED
+        return self.bumped
 
     def check_back_2_turn(self):
         return (self.get_clock().now() - self.state_ts) > BACKING_TIME
@@ -112,7 +123,7 @@ class BumpGoNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = BumpGoNode()
+    node = BumpGoTB4Node()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

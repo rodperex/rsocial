@@ -28,8 +28,8 @@ def generate_launch_description():
 
     bumpgo_cmd = Node(
         package='fsm_bumpgo',
-        executable='bump_go_node',
-        name='bump_go_node',
+        executable='bump_go_fsm_node',
+        name='bump_go_fsm_node',
         output='screen',
         parameters=[{
             'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
