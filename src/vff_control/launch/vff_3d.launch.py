@@ -13,12 +13,20 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
 
     return LaunchDescription([
+
+        DeclareLaunchArgument(
+            'enable_stamped_cmd_vel',
+            default_value='false',
+            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
+        ),
 
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
@@ -61,7 +69,8 @@ def generate_launch_description():
                 'max_angular_speed': 1.0,
                 'repulsive_gain_factor': 0.3,
                 'repulsive_influence_distance': 0.5,
-                'stay_distance': 1.0
+                'stay_distance': 1.0,
+                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
             }],
             remappings=[
                 ('/vel', '/cmd_vel')

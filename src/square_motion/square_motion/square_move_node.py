@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -21,7 +21,11 @@ from rclpy.node import Node
 class SquareMover(Node):
     def __init__(self):
         super().__init__('square_mover')
-        self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
+        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
+        self.publisher_ = self.create_publisher(
+            TwistStamped if self.stamped else Twist, '/cmd_vel', 10)
 
         # Movement Parameters
         self.forward_speed = 0.2
@@ -41,11 +45,22 @@ class SquareMover(Node):
         self.timer = self.create_timer(self.timer_period, self.control_loop)
         self.get_logger().info('SquareMover node initialized. Starting movement sequence...')
 
+    def publish_vel(self, twist):
+        """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
+        if self.stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist = twist
+            self.publisher_.publish(msg)
+        else:
+            self.publisher_.publish(twist)
+
     def control_loop(self):
 
         if self.step_index >= self.total_steps:
             # Stop the robot and the timer
-            self.publisher_.publish(Twist())  # Publish zero velocities to stop
+            self.publish_vel(Twist())  # Publish zero velocities to stop
             self.get_logger().info('Square complete. Stopping robot and shutting down timer.')
             self.timer.cancel()
             return
@@ -65,7 +80,7 @@ class SquareMover(Node):
 
         elapsed_time = (self.get_clock().now() - self.start_time).nanoseconds / 1e9
 
-        self.publisher_.publish(move_cmd)
+        self.publish_vel(move_cmd)
 
         if elapsed_time >= current_duration:
             self.get_logger().info(f'{action_name} step complete.')

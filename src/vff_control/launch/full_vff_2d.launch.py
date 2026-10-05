@@ -16,14 +16,21 @@ import os
 
 from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
 
     return LaunchDescription([
+
+        DeclareLaunchArgument(
+            'enable_stamped_cmd_vel',
+            default_value='false',
+            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
+        ),
 
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
@@ -97,7 +104,8 @@ def generate_launch_description():
                 'max_angular_speed': 1.0,
                 'repulsive_gain_factor': 1.0,
                 'repulsive_influence_distance': 0.2,
-                'stay_distance': -1.0  # No stay distance in 2D
+                'stay_distance': -1.0,  # No stay distance in 2D
+                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
             }],
             remappings=[
                 ('/vel', '/cmd_vel')

@@ -14,7 +14,7 @@
 
 import math
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
@@ -27,7 +27,11 @@ class TFSquareMover(Node):
     def __init__(self):
         super().__init__('tf_square_mover')
 
-        self.publisher = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
+        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
+        self.publisher = self.create_publisher(
+            TwistStamped if self.stamped else Twist, '/cmd_vel', 10)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -42,6 +46,17 @@ class TFSquareMover(Node):
         # Non-blocking pause between movements (never call time.sleep inside a
         # callback: it blocks the executor and the TF buffer stops updating)
         self.pause_until = self.get_clock().now()
+
+    def publish_vel(self, twist):
+        """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
+        if self.stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist = twist
+            self.publisher.publish(msg)
+        else:
+            self.publisher.publish(twist)
 
     def pause(self, seconds):
         self.pause_until = self.get_clock().now() + Duration(seconds=seconds)
@@ -84,9 +99,9 @@ class TFSquareMover(Node):
             if distance < 1.0:  # move 1 meter
                 twist = Twist()
                 twist.linear.x = 0.5
-                self.publisher.publish(twist)
+                self.publish_vel(twist)
             else:
-                self.publisher.publish(Twist())  # stop
+                self.publish_vel(Twist())  # stop
                 self.state = 'turn'
                 self.start_yaw = yaw
                 self.pause(0.5)
@@ -100,9 +115,9 @@ class TFSquareMover(Node):
             if abs(yaw_diff) < math.pi / 2:
                 twist = Twist()
                 twist.angular.z = 1.0
-                self.publisher.publish(twist)
+                self.publish_vel(twist)
             else:
-                self.publisher.publish(Twist())  # stop
+                self.publish_vel(Twist())  # stop
                 self.side_count += 1
                 if self.side_count >= 4:
                     self.get_logger().info('Finished square.')
@@ -112,7 +127,7 @@ class TFSquareMover(Node):
                 self.pause(0.5)
 
         elif self.state == 'done':
-            self.publisher.publish(Twist())
+            self.publish_vel(Twist())
 
     def normalize_angle(self, angle):
         while angle > math.pi:

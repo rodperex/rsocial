@@ -14,7 +14,7 @@
 
 import math
 
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist, TwistStamped, Vector3
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
@@ -58,7 +58,11 @@ class VFFControllerNode(Node):
         )
 
         # Publisher
-        self.cmd_pub = self.create_publisher(Twist, 'vel', 10)
+        # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
+        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
+        self.cmd_pub = self.create_publisher(
+            TwistStamped if self.stamped else Twist, 'vel', 10)
 
         # Internal state: last vector received and when it was received.
         # Callbacks only store data; the control law runs in the timer at a fixed rate,
@@ -70,6 +74,17 @@ class VFFControllerNode(Node):
         self.moving = False
 
         self.timer = self.create_timer(0.05, self.control_cycle)  # 20 Hz
+
+    def publish_vel(self, twist):
+        """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
+        if self.stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist = twist
+            self.cmd_pub.publish(msg)
+        else:
+            self.cmd_pub.publish(twist)
 
     def attractive_callback(self, msg: Vector3):
         self.attractive_vec = msg
@@ -93,7 +108,7 @@ class VFFControllerNode(Node):
     def stop(self):
         if self.moving:
             self.get_logger().info('Stopping robot')
-        self.cmd_pub.publish(Twist())
+        self.publish_vel(Twist())
         self.moving = False
 
     def control_cycle(self):
@@ -151,7 +166,7 @@ class VFFControllerNode(Node):
         cmd.linear.x = min(self.max_linear_speed, math.hypot(vff_x, vff_y))
         cmd.angular.z = max(-self.max_angular_speed, min(angle, self.max_angular_speed))
 
-        self.cmd_pub.publish(cmd)
+        self.publish_vel(cmd)
         self.moving = True
         self.get_logger().debug(f'Cmd: linear={cmd.linear.x:.2f}, angular={cmd.angular.z:.2f}')
 

@@ -14,7 +14,7 @@
 
 import math
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -36,7 +36,11 @@ class TFSeekerNode(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.vel_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
+        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
+        self.vel_publisher = self.create_publisher(
+            TwistStamped if self.stamped else Twist, '/cmd_vel', 10)
 
         if not self.erratic:
             # PID gains tuned to avoid overshoot and oscillation:
@@ -52,6 +56,17 @@ class TFSeekerNode(Node):
         self.timer_period = 0.05  # 20 Hz
         self.last_cycle_time = None
         self.timer = self.create_timer(self.timer_period, self.control_cycle)
+
+    def publish_vel(self, twist):
+        """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
+        if self.stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist = twist
+            self.vel_publisher.publish(msg)
+        else:
+            self.vel_publisher.publish(twist)
 
     def control_cycle(self):
 
@@ -87,7 +102,7 @@ class TFSeekerNode(Node):
             twist.linear.x = vel_lin
             twist.angular.z = vel_rot
 
-            self.vel_publisher.publish(twist)
+            self.publish_vel(twist)
 
             if abs(angle) < 0.2 and dist < 1.3:
                 self.get_logger().info('Target reached!')

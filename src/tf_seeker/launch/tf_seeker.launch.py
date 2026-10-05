@@ -26,6 +26,12 @@ def generate_launch_description():
         description='Set to True to use erratic PID constants that cause oscillation'
     )
 
+    stamped_arg = DeclareLaunchArgument(
+        'enable_stamped_cmd_vel',
+        default_value='false',
+        description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
+    )
+
     # Node for publishing TF
     publisher_cmd = Node(
         package='tf_seeker',
@@ -44,12 +50,14 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'use_sim_time': True,
-            'erratic': LaunchConfiguration('erratic')
+            'erratic': LaunchConfiguration('erratic'),
+            'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
         }],
     )
 
     ld = LaunchDescription()
     ld.add_action(erratic_arg)
+    ld.add_action(stamped_arg)
     ld.add_action(publisher_cmd)
     ld.add_action(seeker_cmd)
 

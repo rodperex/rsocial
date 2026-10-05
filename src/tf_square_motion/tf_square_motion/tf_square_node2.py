@@ -14,7 +14,7 @@
 
 import math
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 import numpy as np
 import rclpy
 from rclpy.duration import Duration
@@ -64,7 +64,11 @@ class TFSquareMover(Node):
     def __init__(self):
         super().__init__('tf_square_mover')
 
-        self.publisher = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
+        self.declare_parameter('enable_stamped_cmd_vel', False)
+        self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
+        self.publisher = self.create_publisher(
+            TwistStamped if self.stamped else Twist, '/cmd_vel', 10)
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -78,6 +82,17 @@ class TFSquareMover(Node):
         # Non-blocking pause between movements (never call time.sleep inside a callback:
         # it blocks the executor and the TF buffer stops updating)
         self.pause_until = self.get_clock().now()
+
+    def publish_vel(self, twist):
+        """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
+        if self.stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            msg.twist = twist
+            self.publisher.publish(msg)
+        else:
+            self.publisher.publish(twist)
 
     def pause(self, seconds):
         self.pause_until = self.get_clock().now() + Duration(seconds=seconds)
@@ -147,11 +162,11 @@ class TFSquareMover(Node):
                 # counts sideways displacement as progress.
                 twist = Twist()
                 twist.linear.x = 0.5
-                self.publisher.publish(twist)
+                self.publish_vel(twist)
             else:
                 # [Error 2] By the time we get here the robot has already passed 1 m (TF
                 # latency + sampling), and it will keep moving a bit more due to inertia.
-                self.publisher.publish(Twist())  # stop
+                self.publish_vel(Twist())  # stop
                 self.state = 'turn'
                 # [Error 1] New relative reference: the turn is measured from here, so any
                 # heading error accumulated so far is simply ignored.
@@ -170,11 +185,11 @@ class TFSquareMover(Node):
                 # [Error 2] Constant angular speed until the goal: no slowing down near it.
                 twist = Twist()
                 twist.angular.z = 0.5  # Slightly lower speed for precision
-                self.publisher.publish(twist)
+                self.publish_vel(twist)
             else:
                 # [Error 2] The robot has already turned more than 90 degrees, and it keeps
                 # turning a bit due to inertia. This overshoot is never corrected.
-                self.publisher.publish(Twist())  # stop
+                self.publish_vel(Twist())  # stop
                 self.side_count += 1
                 if self.side_count >= 4:
                     self.get_logger().info('Finished square.')
@@ -188,7 +203,7 @@ class TFSquareMover(Node):
 
         elif self.state == 'done':
             # Make sure the robot stays stopped
-            self.publisher.publish(Twist())
+            self.publish_vel(Twist())
 
 
 def main(args=None):
