@@ -70,6 +70,12 @@ ros-jazzy-tf2-ros-py = "*"
 ros-jazzy-visualization-msgs = "*"
 ros-jazzy-xacro = "*"
 ros-jazzy-nav2-msgs = "*"
+ros-jazzy-irobot-create-msgs = "*"  # TurtleBot 4 (Create 3) bumper in the bumpgo examples
+# TurtleBot 4: Gazebo simulator, navigation and RViz
+ros-jazzy-turtlebot4-simulator = "*"
+ros-jazzy-turtlebot4-navigation = "*"
+ros-jazzy-turtlebot4-viz = "*"
+ros-jazzy-gz-ros2-control = "*"  # Gazebo plugin for the Create 3 diff drive (not pulled by the simulator)
 ros-jazzy-py-trees = "*"
 ros-jazzy-py-trees-ros = "*"
 ros-jazzy-rclpy = "*"
@@ -126,6 +132,9 @@ UV_SYSTEM_SITE_PACKAGES = "true" # in case a thirdparty uses a venv
 # Ignore ~/.local/lib/pythonX.Y/site-packages: packages installed with `pip install --user`
 # (e.g. old nvidia-* CUDA wheels) would shadow the ones of this environment and break torch
 PYTHONNOUSERSITE = "1"
+# Gazebo looks for system plugins (e.g. gz_ros2_control, used by the TurtleBot 4 simulator)
+# only in this path; the ones installed by pixi live in the environment lib directory
+GZ_SIM_SYSTEM_PLUGIN_PATH = "$CONDA_PREFIX/lib"
 
 [activation]
 # Keep the fontconfig cache of this environment separate from the host one:
@@ -141,6 +150,14 @@ build = {cmd = "colcon build --symlink-install --cmake-args -DBoost_NO_BOOST_CMA
 source-local = "bash -c 'source install/setup.bash && exec bash'"
 test = {cmd = "colcon test", description = "Run tests for the workspace"}
 clean = {cmd = "rm -rf build install log", description = "Clean build artifacts (build, install, log directories)"}
+
+# TurtleBot 4 simulator (Gazebo). Extra launch arguments are appended, e.g. `pixi run sim world:=maze`.
+# Fast DDS: with CycloneDDS many of its ~45 processes fail to create their node.
+sim = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp"}, description = "TurtleBot 4 simulator"}
+# Laptops with hybrid graphics: render on the NVIDIA GPU (on some integrated GPUs the simulated lidar returns only its minimum range)
+sim-nvidia = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", __NV_PRIME_RENDER_OFFLOAD = "1", __GLX_VENDOR_LIBRARY_NAME = "nvidia", __EGL_VENDOR_LIBRARY_FILENAMES = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"}, description = "TurtleBot 4 simulator on the NVIDIA GPU"}
+# Any computer: software rendering on the CPU. Slower, but the simulated lidar always works
+sim-generic = {cmd = "ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", LIBGL_ALWAYS_SOFTWARE = "1"}, description = "TurtleBot 4 simulator with software rendering"}
 
 # `install/setup.bash` is created only after the first build. Source it
 # explicitly with `pixi run source-local` after building the workspace.

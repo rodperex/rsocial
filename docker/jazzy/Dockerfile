@@ -91,6 +91,7 @@ RUN apt install -y \
     ros-${ROS_DISTRO}-ecl-build \
     ros-${ROS_DISTRO}-ecl-license \
     ros-${ROS_DISTRO}-image-publisher \
+    ros-${ROS_DISTRO}-irobot-create-msgs \
     ros-${ROS_DISTRO}-joint-state-publisher \
     ros-${ROS_DISTRO}-kobuki-ros-interfaces \
     ros-${ROS_DISTRO}-kobuki-velocity-smoother \
