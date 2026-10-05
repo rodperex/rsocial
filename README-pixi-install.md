@@ -93,8 +93,8 @@ Por ejemplo:
 ros2 launch node_programming pubsub.launch.py
 ```
 
-Si has instalado un entorno adicional de `pixi.toml` (por ejemplo, el de
-Kobuki, más abajo), compila y abre la shell con ese entorno:
+Si has instalado un entorno adicional de `pixi.toml` (por ejemplo, el del
+[Kobuki](README-kobuki-pixi.md)), compila y abre la shell con ese entorno:
 `pixi run -e <entorno> build` y `pixi shell -e <entorno>`.
 
 No uses `rosdep` con Pixi. Las dependencias están declaradas en `pixi.toml` y
@@ -318,108 +318,11 @@ En Jazzy, el robot real también espera `TwistStamped` en `/cmd_vel`. Los
 ajustes que necesitan los ejemplos (topic del bumper, límites de la base Create
 3) están en [README-examples.md](README-examples.md#7-máquinas-de-estados-bump-and-go).
 
-## Kobuki: simulador y robot real (opcional)
+## Kobuki (alternativa)
 
-Esta variante añade el simulador Gazebo y los drivers del Kobuki real: la base
-y el láser RPLIDAR (A2 o S2). Como cámara del robot real solo se admite la
-OAK-D, incluida en `thirdparty-pixi.repos`. Las cámaras Astra y Xtion
-necesitan la [instalación nativa](README.md#instalación-nativa), porque sus
-drivers no compilan en Pixi.
-
-Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
-`pixi.toml` (sección `[feature.kobuki.dependencies]`). Añade Gazebo, Nav2 y
-las librerías de Kobuki sobre el entorno normal. Todos los comandos se
-ejecutan desde la raíz del workspace añadiendo `-e kobuki`.
-
-### 1. Instalar el entorno del simulador
-
-```bash
-cd ~/rsocial
-pixi install -e kobuki
-```
-
-### 2. Importar Kobuki y sus terceros
-
-Desde la raíz del workspace, activa la shell de Pixi del entorno `kobuki`
-antes de importar los repositorios:
-
-```bash
-cd ~/rsocial
-pixi shell -e kobuki
-cd ~/rsocial/src
-vcs import < kobuki-pixi.repos
-cd ..
-```
-
-### 3. Compilar y lanzar Gazebo
-
-Si ya habías compilado con el entorno normal (`pixi run build`), ejecuta
-antes `pixi run clean` para no mezclar compilaciones de los dos entornos.
-
-Desde la raíz del workspace, en la misma shell:
-
-```bash
-cd ~/rsocial
-pixi run -e kobuki build
-source install/setup.bash
-ros2 launch kobuki simulation.launch.py
-```
-
-Con los repositorios de Kobuki importados, compila y abre la shell siempre con
-`-e kobuki`: el entorno normal no tiene sus dependencias. En cada terminal
-nueva:
-
-```bash
-cd ~/rsocial
-pixi shell -e kobuki
-source install/setup.bash
-```
-
-El `source` va siempre después de `pixi shell -e kobuki`. Sin él, Gazebo no
-encuentra los modelos del mundo y termina enseguida (`process has died ...
-exit code 255`).
-
-### 4. Usar el robot real
-
-Los dispositivos USB del robot necesitan reglas udev que les den permisos y
-nombres fijos (`/dev/kobuki`, `/dev/rplidar`). Se instalan una sola vez en el
-sistema, fuera de Pixi (ver también el
-[README de Kobuki](https://github.com/IntelligentRoboticsLabs/kobuki/tree/jazzy)):
-
-```bash
-cd ~/rsocial/src/thirdparty
-sudo cp kobuki_ros/60-kobuki.rules rplidar_ros/scripts/rplidar.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && sudo udevadm trigger
-```
-
-Con el robot conectado, en lugar del simulador lanza sus drivers, indicando el
-modelo de láser (`lidar_a2:=true` o `lidar_s2:=true`):
-
-```bash
-cd ~/rsocial
-pixi shell -e kobuki
-source install/setup.bash
-ros2 launch kobuki kobuki.launch.py lidar_s2:=true
-```
-
-Para la cámara OAK-D, en otra terminal (las reglas udev de la cámara están en
-[README-examples.md](README-examples.md#9-sensores-cámara-y-yolo)):
-
-```bash
-ros2 launch oak_d_camera camera.launch.py \
-  use_disparity:=False use_lr_raw:=False use_pointcloud:=False
-```
-
-### Desinstalar Kobuki
-
-```bash
-cd ~/rsocial
-pixi clean -e kobuki
-```
-
-Esto borra solo `.pixi/envs/kobuki`. Para volver al workspace normal, borra
-también los repositorios importados con `kobuki-pixi.repos` y recompila con
-`pixi run clean && pixi run build`.
+Si prefieres usar el Kobuki en lugar del TurtleBot 4 (su simulador o el robot
+real), sigue [README-kobuki-pixi.md](README-kobuki-pixi.md) después de la
+instalación normal.
 
 ## Reinstalar desde cero
 
@@ -437,5 +340,5 @@ git -C src/thirdparty/nao_lola submodule update --init --recursive
 pixi run build
 ```
 
-Si también usas Kobuki, importa de nuevo `kobuki-pixi.repos` y ejecuta
-`pixi install -e kobuki` y `pixi run -e kobuki build`.
+Si también usas el Kobuki, repite después los pasos de
+[README-kobuki-pixi.md](README-kobuki-pixi.md).

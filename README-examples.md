@@ -30,7 +30,7 @@ y cómo.
 ### Kobuki
 
 Lánzalo en una terminal aparte y déjalo abierto (necesita el entorno Kobuki,
-ver [README-pixi-install.md](README-pixi-install.md#kobuki-simulador-y-robot-real-opcional)):
+ver [README-kobuki-pixi.md](README-kobuki-pixi.md)):
 
 ```bash
 ros2 launch kobuki simulation.launch.py
