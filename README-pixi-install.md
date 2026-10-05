@@ -175,7 +175,18 @@ pgrep -af "gz sim"         # no debe salir nada
 pkill -f "gz sim"          # si ha salido algo
 ```
 
-Lanza el simulador con RViz:
+Hay tres formas de lanzar el simulador. Hacen lo mismo y solo cambia cómo
+dibuja Gazebo la escena, que es también cómo calcula el láser:
+
+| Tarea | Cuándo usarla |
+| --- | --- |
+| `pixi run sim` | Primera opción en cualquier ordenador: usa la tarjeta gráfica que el sistema tenga por defecto |
+| `pixi run sim-nvidia` | Portátiles con dos tarjetas gráficas (integrada + NVIDIA): fuerza la NVIDIA. Es la más rápida |
+| `pixi run sim-generic` | Si las otras fallan: dibuja con la CPU. Funciona en cualquier ordenador, pero va varias veces más lento |
+
+A cualquiera de ellas se le pueden añadir opciones detrás (ver
+[Elegir el mundo](#elegir-el-mundo)). Para navegar hace falta `rviz:=true`,
+que abre RViz con el mapa. Por ejemplo:
 
 ```bash
 pixi run sim rviz:=true
@@ -191,13 +202,14 @@ ros2 topic echo --once /scan --field ranges | head -c 300
 ```
 
 Tienen que salir números distintos (y algunos `inf`). Si **todos** son
-`0.164`, tu tarjeta gráfica no calcula bien el láser: el robot creerá que está
-rodeado de obstáculos y no navegará. Cierra el simulador (Ctrl+C) y lánzalo con
-una de estas dos tareas:
+`0.164`, la tarjeta gráfica que se está usando no calcula bien el láser (se ha
+visto con gráficas Intel integradas): el robot creerá que está rodeado de
+obstáculos y no navegará. Cierra el simulador (Ctrl+C) y usa otra de las
+tareas de la tabla:
 
 ```bash
-pixi run sim-nvidia rviz:=true    # si tienes tarjeta NVIDIA (rápido)
-pixi run sim-generic rviz:=true   # cualquier ordenador (usa la CPU, más lento)
+pixi run sim-nvidia rviz:=true    # si el ordenador tiene NVIDIA
+pixi run sim-generic rviz:=true   # si no
 ```
 
 ### 2. Desacoplar el robot (terminal 2)
