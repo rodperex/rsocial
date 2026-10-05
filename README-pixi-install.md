@@ -404,13 +404,14 @@ todo eso. Muestra la misma simulación:
 gz sim -g
 ```
 
-**Desde la terminal.** El mundo de la casa se llama `small_house` (con otros
+**Desde la terminal** (preparada como las demás). El mundo de la casa se llama
+`small_house` (con otros
 mundos, `gz service -l | grep set_pose` muestra el nombre), la base de carga
 `standard_dock` y los objetos tienen nombres como `ChairA_01_001`
 (`gz model --list` los lista todos):
 
 ```bash
-# Quitar la base de carga
+# Quitar la base de carga (para apartarla, usa set_pose como con la silla)
 gz service -s /world/small_house/remove --reqtype gz.msgs.Entity --reptype gz.msgs.Boolean \
   --timeout 3000 --req 'name: "standard_dock" type: MODEL'
 

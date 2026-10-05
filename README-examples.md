@@ -40,11 +40,13 @@ déjalo abierto.
 | Robot real | `ros2 launch kobuki kobuki.launch.py` | Ya ejecuta sus drivers: no se lanza nada |
 | Instalación y detalles | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) |
 
-Los dos simuladores usan la misma casa (la de AWS RoboMaker), así que los
-objetivos de navegación y los objetos que buscan los ejemplos de cámara sirven
-para ambos. El TurtleBot 4 necesita además preparar cada terminal con `tb4sim`
-(o `tb4` con el robot real) y empieza en su base de carga: desacóplalo antes
-de moverlo (ver [README-pixi-install.md](README-pixi-install.md#2-desacoplar-el-robot-terminal-2)).
+Los dos simuladores usan la misma casa (la de AWS RoboMaker), con los mismos
+muebles y objetos para los ejemplos de cámara. El TurtleBot 4 necesita además
+preparar cada terminal con `tb4sim` (o `tb4` con el robot real) y empieza en su
+base de carga: desacóplalo antes de moverlo (ver
+[README-pixi-install.md](README-pixi-install.md#2-desacoplar-el-robot-terminal-2)).
+Para los ejemplos de cámara conviene además preparar la escena (ver el
+[bloque 8](#8-navegación-reactiva-con-vff)).
 
 ### Elegir el robot en los ejemplos
 
@@ -494,21 +496,24 @@ cualquier clase que detecte YOLO (las de COCO: `person`, `chair`, `cup`,
 
 ```bash
 ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:=person
+ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:='sports ball'  # con espacios, entre comillas
 ```
 
-Las ganancias y velocidades se cambian en los launchers de
-`src/vff_control/launch/`.
+Para ver qué clases está detectando YOLO en cada momento:
+`ros2 topic echo /yolo/detections --field detections | grep class_name`.
 
 **Preparar la escena.** El robot solo se mueve si la cámara ve un objeto de la
 clase objetivo; si no, se queda quieto. En simulación, coloca el objeto delante
 del robot y, para probar la repulsión, un obstáculo en medio (ver
 [Mover, quitar y añadir objetos](README-pixi-install.md#mover-quitar-y-añadir-objetos)).
-Con el TurtleBot 4, quita antes la base de carga: queda entre el robot y la
-habitación, y es más baja que el láser, así que el VFF no la esquiva. Por la
-misma razón, usa obstáculos que lleguen a la altura del láser (otra silla o una
-caja), no objetos bajos.
+Con el TurtleBot 4, ten en cuenta la base de carga: es más baja que el láser,
+así que el VFF no la ve ni la esquiva. Si queda entre el robot y el objetivo,
+apártala, quítala o coloca el objetivo en otra dirección. Por la misma razón,
+usa obstáculos que lleguen a la altura del láser (otra silla o una caja), no
+objetos bajos.
 
-El robot se detiene a `stay_distance` (1 m) del objetivo en las versiones 3D.
+**Cómo se comporta.** El robot se detiene a `stay_distance` (1 m) del objetivo
+en las versiones 3D.
 En las 2D no hay distancia, así que sigue avanzando hasta que la repulsión lo
 frena delante del objeto.
 
@@ -521,7 +526,8 @@ El controlador combina un vector unitario hacia el objetivo (solo importa su
 dirección) con una repulsión `k·(1/d − 1/ρ₀)` que solo actúa con obstáculos
 delante y a menos de `repulsive_influence_distance`. Solo avanza con la
 componente de la resultante que apunta hacia delante: si apunta hacia atrás,
-gira sin avanzar.
+gira sin avanzar. Avanza a 0,3 m/s y gira a 0,5 rad/s como máximo; estos valores
+y las ganancias se cambian en los launchers de `src/vff_control/launch/`.
 
 ## 9. Navegación con Nav2
 
@@ -545,6 +551,10 @@ ros2 launch fsm_nav fsm_nav.launch.py         # FSM que visita dos waypoints seg
 se configuran en `src/fsm_nav/config/waypoints.yaml`; si un objetivo falla, la
 FSM se detiene. Estos ejemplos solo hablan con Nav2, así que no necesitan
 `robot`.
+
+Las posiciones están pensadas para el mapa del Kobuki. El TurtleBot 4 usa otro
+mapa de la misma casa, con otro origen, así que con él comprueba en RViz que los
+puntos caen en zonas libres y, si no, cámbialos.
 
 ## 10. Interacción humano-robot
 

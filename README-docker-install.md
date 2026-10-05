@@ -12,7 +12,8 @@ La imagen contiene:
 - El workspace `~/rsocial` ya compilado, con los mismos paquetes que la
   [instalación nativa](README.md#instalación-nativa): los de
   `thirdparty-native.repos` (`simple_hri`, `yolo_ros`, cámaras, NAO) y los de
-  `kobuki-native.repos` (Kobuki y su simulador).
+  `kobuki-native.repos` (Kobuki y su simulador). No incluye el simulador del
+  TurtleBot 4: para usarlo, instala el workspace con Pixi o de forma nativa.
 - El entorno de Python `~/rsocial/.venv` con las dependencias de `simple_hri` y
   `yolo_ros` (PyTorch, Whisper, Transformers, Ultralytics...).
 - Escritorio XFCE accesible por el navegador (noVNC), con Firefox, VSCodium y
@@ -69,8 +70,11 @@ ejemplo:
 
 ```bash
 ros2 launch kobuki simulation.launch.py
-ros2 launch square_motion square_move.launch.py
+ros2 launch square_motion square_move.launch.py robot:=kobuki_sim
 ```
+
+Los ejemplos que mueven el robot necesitan el argumento `robot` (ver
+[Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos)).
 
 Dentro del contenedor Gazebo no tiene GPU y renderiza por software, así que la
 simulación va bastante más lenta que en tiempo real. Para trabajar con fluidez
