@@ -24,3 +24,6 @@ models/
 # Folder shared with the Docker container (docker-compose.yaml)
 docker/shared/*
 !docker/shared/.gitkeep
+
+# Local Claude Code settings
+.claude/
