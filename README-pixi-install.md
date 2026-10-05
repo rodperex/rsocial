@@ -297,6 +297,7 @@ ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
 | Nav2 termina con `Failed to bring up all requested nodes` | Lo lanzaste antes de dar la posición inicial. Ciérralo (Ctrl+C), da la posición y vuelve a lanzarlo. |
 | Se ve la ruta en RViz pero el robot no se mueve | El láser da `0.164` en todo (ver paso 1), o falta `use_sim_time:=true` en algún comando. |
 | Todo va muy lento | Es normal con `sim-generic`: el simulador usa la CPU. |
+| Gazebo se cierra nada más arrancar (`[gazebo-1]: process has died ... exit code 255`) y el resto se queda en `Requesting list of world names` | La terminal tiene cargado un ROS 2 del sistema (`source /opt/ros/...`), cuyas librerías de Gazebo se mezclan con las de Pixi. Abre una terminal nueva sin cargarlo; `echo $LD_LIBRARY_PATH` no debe contener `/opt/ros`. |
 
 ### Elegir el mundo
 
@@ -368,6 +369,70 @@ está preparado para este robot. `small_house.launch.py` hace una copia
 adaptada de la casa, le añade sus directorios a Gazebo y lanza el robot igual
 que `turtlebot4_gz.launch.py`.
 
+### Mover, quitar y añadir objetos
+
+Para probar los ejemplos a menudo hace falta cambiar la escena: poner una silla
+delante del robot, quitar la base de carga o colocar un obstáculo en medio.
+
+**Desde la ventana de Gazebo.** La ventana del TurtleBot 4 trae una disposición
+propia sin la herramienta para seleccionar objetos con el ratón. Añádela desde
+el menú **⋮** (arriba a la derecha), buscando **Select Entities**. Añade
+también **Entity Tree** (la lista de objetos) y, si quieres escribir las
+coordenadas a mano, **Component Inspector**. Después:
+
+- **Mover**: haz clic en el objeto (se resalta), pulsa **T** y arrastra la
+  flecha roja (x) o la verde (y). No toques la azul (altura). **R** gira el
+  objeto y **Esc** sale del modo.
+- **Escribir la posición**: con el objeto seleccionado, cambia su **Pose** en
+  el Component Inspector.
+- **Quitar**: clic derecho sobre el objeto en el Entity Tree → **Remove**.
+- **Añadir una forma simple**: los botones de la barra superior (cubo, esfera,
+  cilindro...). Para que funcionen hace falta el plugin **Spawn** (menú
+  **⋮**), que es el que coloca la forma en la escena. Con él, haz clic en la
+  forma, mueve el ratón hasta el sitio y vuelve a hacer clic para soltarla. El
+  cubo mide 1 m de lado: es un buen obstáculo, porque llega a la altura del
+  láser.
+- **Añadir un modelo**: plugin **Resource Spawner** (menú **⋮**), que muestra
+  los modelos de Gazebo Fuel (en internet) y los locales para arrastrarlos a la
+  escena.
+
+Si en la lista no aparece **Select Entities**, abre en otra terminal (preparada
+igual) una segunda ventana con la disposición estándar de Gazebo, que ya trae
+todo eso. Muestra la misma simulación:
+
+```bash
+gz sim -g
+```
+
+**Desde la terminal.** El mundo de la casa se llama `small_house` (con otros
+mundos, `gz service -l | grep set_pose` muestra el nombre), la base de carga
+`standard_dock` y los objetos tienen nombres como `ChairA_01_001`
+(`gz model --list` los lista todos):
+
+```bash
+# Quitar la base de carga
+gz service -s /world/small_house/remove --reqtype gz.msgs.Entity --reptype gz.msgs.Boolean \
+  --timeout 3000 --req 'name: "standard_dock" type: MODEL'
+
+# Poner una silla 1,5 m delante del punto de aparición del robot (x=0, y=1.5, mirando a +x)
+gz service -s /world/small_house/set_pose --reqtype gz.msgs.Pose --reptype gz.msgs.Boolean \
+  --timeout 3000 --req 'name: "ChairA_01_001" position: {x: 1.5, y: 1.5, z: 0}'
+
+# Añadir una caja de 0,4 x 0,4 x 0,5 m en (x=0.8, y=1.5), como obstáculo
+gz service -s /world/small_house/create --reqtype gz.msgs.EntityFactory --reptype gz.msgs.Boolean \
+  --timeout 3000 --req 'sdf: "<sdf version=\"1.9\"><model name=\"caja\"><static>true</static><pose>0.8 1.5 0.25 0 0 0</pose><link name=\"link\"><collision name=\"c\"><geometry><box><size>0.4 0.4 0.5</size></box></geometry></collision><visual name=\"v\"><geometry><box><size>0.4 0.4 0.5</size></box></geometry></visual></link></model></sdf>"'
+
+# Ver dónde está un objeto
+gz model -m turtlebot4 -p
+```
+
+Los cambios se pierden al cerrar el simulador.
+
+Ten en cuenta que el láser del robot está a unos 20 cm del suelo y solo ve lo
+que corta ese plano: la base de carga y los objetos bajos (una pesa, por
+ejemplo) pueden no verse, y el robot chocará con ellos aunque el ejemplo
+esquive obstáculos.
+
 ### Moverlo sin navegación
 
 El robot espera velocidades `geometry_msgs/TwistStamped` en `/cmd_vel`, igual
@@ -377,6 +442,14 @@ que el TurtleBot 4 real. También acepta `geometry_msgs/Twist` en
 ```bash
 timeout 3 ros2 topic pub -r 10 /cmd_vel_unstamped geometry_msgs/msg/Twist "{linear: {x: 0.2}}"
 ```
+
+### Ejemplos del curso
+
+Los ejemplos de [README-examples.md](README-examples.md) se lanzan con el
+simulador del TurtleBot 4 añadiendo `robot:=tb4_sim` (ver
+[Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos)).
+Lanza el simulador en la casa (`pixi run sim-house`): es el mundo para el que
+están preparados.
 
 ### Robot real
 
@@ -389,8 +462,13 @@ ros2 topic list     # deben salir /scan, /odom, /hazard_detection...
 ```
 
 En Jazzy, el robot real también espera `TwistStamped` en `/cmd_vel`. Los
-ajustes que necesitan los ejemplos (topic del bumper, límites de la base Create
-3) están en [README-examples.md](README-examples.md#7-máquinas-de-estados-bump-and-go).
+ejemplos se lanzan con `robot:=tb4` en lugar de `robot:=tb4_sim` (ver
+[README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)). Su
+cámara no publica profundidad de fábrica: para los ejemplos 3D hay que
+activarla (ver
+[README-examples.md](README-examples.md#turtlebot-4-real-activar-la-profundidad)). Los
+ajustes que necesitan los bump and go (topic del bumper, límites de la base
+Create 3) están en [README-examples.md](README-examples.md#turtlebot-4-real).
 
 ## Kobuki (alternativa)
 
