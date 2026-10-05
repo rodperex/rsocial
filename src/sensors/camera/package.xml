@@ -8,6 +8,7 @@
   <license>Apache-2.0</license>
 
   <depend>yolo_ros</depend>
+  <exec_depend>yolo_bringup</exec_depend>
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>vision_msgs</depend>
@@ -15,6 +16,7 @@
   <depend>ament_index_python</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>
+  <exec_depend>rsocial_robots</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

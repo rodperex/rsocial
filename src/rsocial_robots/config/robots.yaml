@@ -1,0 +1,73 @@
+# Settings of each robot used by the example launchers (robot:=<entry>).
+# The simulated and the real robot publish on different topics, so each one
+# has its own entry. The simulator entries match the simulators of this
+# workspace. The real robot entries depend on the sensors mounted and on how
+# their drivers are launched: check them with `ros2 topic list` and change them
+# here if your robot differs.
+kobuki_sim:
+  use_sim_time: true
+  scan_topic: /scan_raw
+  image_topic: /rgbd_camera/image
+  depth_topic: /rgbd_camera/depth_image
+  camera_info_topic: /rgbd_camera/camera_info
+  camera_frame: camera_link
+  optical_frame: camera_rgb_optical_frame
+  # The simulated camera stamps its images with camera_link instead of its
+  # optical frame, so the 3D detections are relabeled with optical_frame
+  fix_image_frame: true
+  depth_image_units_divisor: 1  # Gazebo depth is 32FC1 in meters
+  stamped_cmd_vel: false
+kobuki:
+  use_sim_time: false
+  # RPLIDAR with the footprint filter of kobuki.launch.py (lidar_a2 or lidar_s2)
+  scan_topic: /scan_filtered
+  # Astra camera (kobuki.launch.py astra:=true)
+  image_topic: /camera/color/image_raw
+  depth_topic: /camera/depth/image_raw
+  camera_info_topic: /camera/color/camera_info
+  camera_frame: camera_link
+  optical_frame: camera_color_optical_frame
+  fix_image_frame: false
+  depth_image_units_divisor: 1000  # depth in mm (16UC1)
+  stamped_cmd_vel: false
+tb4_sim:
+  use_sim_time: true
+  scan_topic: /scan
+  image_topic: /oakd/rgb/preview/image_raw
+  depth_topic: /oakd/rgb/preview/depth
+  camera_info_topic: /oakd/rgb/preview/camera_info
+  camera_frame: oakd_link
+  optical_frame: oakd_rgb_camera_optical_frame
+  fix_image_frame: false
+  depth_image_units_divisor: 1  # Gazebo depth is 32FC1 in meters
+  # The TurtleBot 4 (Jazzy) expects geometry_msgs/TwistStamped on cmd_vel
+  stamped_cmd_vel: true
+# TurtleBot 4 with the default configuration of its OAK-D camera, which only
+# publishes a small color preview: the 2D camera examples work, the 3D ones do
+# not (there is no depth). For depth, see tb4_rgbd.
+tb4:
+  use_sim_time: false
+  scan_topic: /scan
+  image_topic: /oakd/rgb/preview/image_raw
+  depth_topic: /oakd/stereo/image_raw  # not published with the default configuration
+  camera_info_topic: /oakd/rgb/preview/camera_info
+  camera_frame: oakd_link
+  optical_frame: oakd_rgb_camera_optical_frame
+  fix_image_frame: false
+  depth_image_units_divisor: 1000  # depth in mm (16UC1)
+  stamped_cmd_vel: true
+# TurtleBot 4 with the stereo pipeline of its OAK-D enabled on the robot
+# (i_pipeline_type: RGBD and rgb.i_publish_topic: true, see README-examples.md).
+# YOLO 3D needs the color and depth images to have the same size, so it uses
+# the full color image instead of the preview; the depth is aligned to it.
+tb4_rgbd:
+  use_sim_time: false
+  scan_topic: /scan
+  image_topic: /oakd/rgb/image_raw
+  depth_topic: /oakd/stereo/image_raw
+  camera_info_topic: /oakd/rgb/camera_info
+  camera_frame: oakd_link
+  optical_frame: oakd_rgb_camera_optical_frame
+  fix_image_frame: false
+  depth_image_units_divisor: 1000  # depth in mm (16UC1)
+  stamped_cmd_vel: true

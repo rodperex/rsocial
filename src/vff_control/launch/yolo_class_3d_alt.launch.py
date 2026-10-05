@@ -13,26 +13,42 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
 
-    return LaunchDescription([
-
+    return [
         Node(
             package='vff_control',
             executable='yolo_class_detector_node_3d_alt',
             name='yolo_class_detector_node_3d_alt',
             output='screen',
             parameters=[{
-                'target_class': 'chair',
-                'base_frame': 'base_footprint'
+                'use_sim_time': robot['use_sim_time'],
+                'target_class': LaunchConfiguration('target_class'),
+                'base_frame': 'base_footprint',
+                'optical_frame': robot['optical_frame']
             }],
             remappings=[
                 ('/input_detection_2d', '/detections_2d'),
-                ('/input_depth_image', '/rgbd_camera/depth_image'),
-                ('/camera_info', '/rgbd_camera/camera_info')
+                ('/input_depth_image', robot['depth_topic']),
+                ('/camera_info', robot['camera_info_topic'])
             ]
-        )
+        ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        DeclareLaunchArgument(
+            'target_class',
+            default_value='chair',
+            description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        OpaqueFunction(function=launch_setup),
     ])

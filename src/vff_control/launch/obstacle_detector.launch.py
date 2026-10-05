@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
 
-    return LaunchDescription([
-
+    return [
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
             package='vff_control',
@@ -27,11 +29,18 @@ def generate_launch_description():
             name='obstacle_detector_node',
             output='screen',
             parameters=[{
+                'use_sim_time': robot['use_sim_time'],
                 'min_distance': 0.5,
                 'base_frame': 'base_footprint'
             }],
             remappings=[
-                ('/input_laser', '/scan_raw')
+                ('/input_laser', robot['scan_topic'])
             ]
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        OpaqueFunction(function=launch_setup),
     ])

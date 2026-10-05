@@ -13,24 +13,14 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
-    # Command line argument to toggle between normal and erratic PID constants
-    erratic_arg = DeclareLaunchArgument(
-        'erratic',
-        default_value='False',
-        description='Set to True to use erratic PID constants that cause oscillation'
-    )
-
-    stamped_arg = DeclareLaunchArgument(
-        'enable_stamped_cmd_vel',
-        default_value='false',
-        description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
-    )
+def launch_setup(context):
+    robot = get_robot(context)
 
     # Node for publishing TF
     publisher_cmd = Node(
@@ -38,7 +28,7 @@ def generate_launch_description():
         executable='tf_publisher_node',
         name='tf_publisher_node',
         output='screen',
-        parameters=[{'use_sim_time': True,
+        parameters=[{'use_sim_time': robot['use_sim_time'],
                      'tf_update_time': 60.0}],
     )
 
@@ -49,16 +39,22 @@ def generate_launch_description():
         name='tf_seeker_node',
         output='screen',
         parameters=[{
-            'use_sim_time': True,
+            'use_sim_time': robot['use_sim_time'],
             'erratic': LaunchConfiguration('erratic'),
-            'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
+            'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
         }],
     )
 
-    ld = LaunchDescription()
-    ld.add_action(erratic_arg)
-    ld.add_action(stamped_arg)
-    ld.add_action(publisher_cmd)
-    ld.add_action(seeker_cmd)
+    return [publisher_cmd, seeker_cmd]
 
-    return ld
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        # Command line argument to toggle between normal and erratic PID constants
+        DeclareLaunchArgument(
+            'erratic',
+            default_value='False',
+            description='Set to True to use erratic PID constants that cause oscillation'
+        ),
+        OpaqueFunction(function=launch_setup),
+    ])

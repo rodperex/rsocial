@@ -13,21 +13,16 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
 
-    return LaunchDescription([
-
-        DeclareLaunchArgument(
-            'enable_stamped_cmd_vel',
-            default_value='false',
-            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
-        ),
-
+    return [
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
             package='vff_control',
@@ -35,11 +30,12 @@ def generate_launch_description():
             name='obstacle_detector_node',
             output='screen',
             parameters=[{
+                'use_sim_time': robot['use_sim_time'],
                 'min_distance': 0.5,
                 'base_frame': 'base_footprint'
             }],
             remappings=[
-                ('/input_laser', '/scan_raw')
+                ('/input_laser', robot['scan_topic'])
             ]
         ),
 
@@ -50,7 +46,8 @@ def generate_launch_description():
             name='yolo_class_detector_node_3d',
             output='screen',
             parameters=[{
-                'target_class': 'chair',
+                'use_sim_time': robot['use_sim_time'],
+                'target_class': LaunchConfiguration('target_class'),
                 'base_frame': 'base_footprint'
             }],
             remappings=[
@@ -65,15 +62,29 @@ def generate_launch_description():
             name='vff_controller_node',
             output='screen',
             parameters=[{
-                'max_linear_speed': 0.1,
-                'max_angular_speed': 1.0,
-                'repulsive_gain_factor': 0.3,
+                'use_sim_time': robot['use_sim_time'],
+                'max_linear_speed': 0.3,
+                'max_angular_speed': 0.5,
+                'repulsive_gain_factor': 0.5,
                 'repulsive_influence_distance': 0.5,
+                'search_angular_speed': 0.4,  # 0.0 disables the target search
+                'search_timeout': 2.0,
                 'stay_distance': 1.0,
-                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
             }],
             remappings=[
                 ('/vel', '/cmd_vel')
             ]
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        DeclareLaunchArgument(
+            'target_class',
+            default_value='chair',
+            description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        OpaqueFunction(function=launch_setup),
     ])

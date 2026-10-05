@@ -13,40 +13,33 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
+
+
+def launch_setup(context):
+    robot = get_robot(context)
+
+    return [
+        Node(
+            package='camera',
+            executable='yolo_to_standard_node_3d',
+            output='screen',
+            parameters=[{
+                'use_sim_time': robot['use_sim_time'],
+                'fix_image_frame': robot['fix_image_frame'],
+                'optical_frame': robot['optical_frame']
+            }],
+            remappings=[
+                ('input_detection', '/yolo/detections_3d'),
+                ('output_detection_3d', '/detections_3d')
+            ]
+        ),
+    ]
 
 
 def generate_launch_description():
-    optical_frame_arg = DeclareLaunchArgument(
-        'optical_frame',
-        default_value='camera_rgb_optical_frame',
-        description='Camera optical frame (default: camera_rgb_optical_frame)'
-    )
-
-    kobuki_sim_arg = DeclareLaunchArgument(
-        'kobuki_sim',
-        default_value='false',
-        description=('If true, override frame_id with optical_frame in yolo_to_standard. '
-                     '(default: false)')
-    )
-
-    yolo_cmd = Node(package='camera',
-                    executable='yolo_to_standard_node_3d',
-                    output='screen',
-                    parameters=[{
-                        'kobuki_sim': LaunchConfiguration('kobuki_sim'),
-                        'optical_frame': LaunchConfiguration('optical_frame')
-                    }],
-                    remappings=[
-                        ('input_detection', '/yolo/detections_3d'),
-                        ('output_detection_3d', '/detections_3d')
-                    ])
-
-    ld = LaunchDescription()
-    ld.add_action(optical_frame_arg)
-    ld.add_action(kobuki_sim_arg)
-    ld.add_action(yolo_cmd)
-
-    return ld
+    return LaunchDescription(robot_arguments() + [
+        OpaqueFunction(function=launch_setup),
+    ])

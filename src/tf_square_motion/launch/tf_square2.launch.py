@@ -13,38 +13,29 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
+
+
+def launch_setup(context):
+    robot = get_robot(context)
+
+    return [
+        Node(
+            package='tf_square_motion',
+            executable='tf_square2',
+            name='tf_square_mover',
+            output='screen',
+            parameters=[{
+                'use_sim_time': robot['use_sim_time'],
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
+            }],
+        ),
+    ]
 
 
 def generate_launch_description():
-    use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time',
-        default_value='false',
-        description='Set to true when running in simulation (Gazebo clock)'
-    )
-
-    stamped_arg = DeclareLaunchArgument(
-        'enable_stamped_cmd_vel',
-        default_value='false',
-        description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
-    )
-
-    tf_square2_cmd = Node(
-        package='tf_square_motion',
-        executable='tf_square2',
-        name='tf_square_mover',
-        output='screen',
-        parameters=[{
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-            'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
-        }],
-    )
-
-    ld = LaunchDescription()
-    ld.add_action(use_sim_time_arg)
-    ld.add_action(stamped_arg)
-    ld.add_action(tf_square2_cmd)
-
-    return ld
+    return LaunchDescription(robot_arguments() + [
+        OpaqueFunction(function=launch_setup),
+    ])

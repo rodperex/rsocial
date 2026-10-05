@@ -1,21 +1,14 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>tf_seeker</name>
+  <name>rsocial_robots</name>
   <version>0.0.1</version>
-  <description>TF example for ROS 2: follow a target frame with PID controllers</description>
+  <description>Topics, frames and messages of each robot, shared by the example launchers</description>
   <maintainer email="rodrigo.perez@urjc.es">Rodrigo Pérez-Rodríguez</maintainer>
   <license>Apache-2.0</license>
 
-  <!-- Dependencies -->
-  <depend>launch_ros</depend>
-  <depend>rclpy</depend>
-  <depend>std_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>tf2_ros</depend>
-  <depend>tf2_geometry_msgs</depend>
-  <depend>tf_transformations</depend>
-  <depend>launch</depend>
-  <exec_depend>rsocial_robots</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -16,22 +16,17 @@ import os
 
 from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
 
-    return LaunchDescription([
-
-        DeclareLaunchArgument(
-            'enable_stamped_cmd_vel',
-            default_value='false',
-            description='Set to true if the robot expects geometry_msgs/TwistStamped on cmd_vel'
-        ),
-
+    return [
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
             package='vff_control',
@@ -39,11 +34,12 @@ def generate_launch_description():
             name='obstacle_detector_node',
             output='screen',
             parameters=[{
+                'use_sim_time': robot['use_sim_time'],
                 'min_distance': 0.5,
                 'base_frame': 'base_footprint'
             }],
             remappings=[
-                ('/input_laser', '/scan_raw')
+                ('/input_laser', robot['scan_topic'])
             ]
         ),
 
@@ -51,16 +47,14 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(
-                    get_package_share_directory('yolo_bringup'),
+                    get_package_share_directory('camera'),
                     'launch',
                     'yolo.launch.py'
                 )
             ),
             launch_arguments={
-                'input_image_topic': '/rgbd_camera/image',
-                'input_depth_topic': '/rgbd_camera/depth_image',
-                'input_depth_info_topic': '/rgbd_camera/camera_info',
-                'target_frame': 'camera_link'
+                'robot': LaunchConfiguration('robot'),
+                'device': LaunchConfiguration('device'),
             }.items()
         ),
 
@@ -72,7 +66,7 @@ def generate_launch_description():
                     'launch',
                     'yolo_to_standard2d.launch.py'
                 )
-            )
+            ),
         ),
 
         # YOLO class detector node (publishes attractive vectors). Needs YOLO to be running
@@ -82,14 +76,15 @@ def generate_launch_description():
             name='yolo_class_detector_node_2d',
             output='screen',
             parameters=[{
-                'target_class': 'cup',
+                'use_sim_time': robot['use_sim_time'],
+                'target_class': LaunchConfiguration('target_class'),
                 'base_frame': 'base_footprint',
-                'optical_frame': 'camera_rgb_optical_frame'
+                'optical_frame': robot['optical_frame']
             }],
             remappings=[
                 ('/input_detection_2d', '/detections_2d'),
-                ('/input_image', '/rgbd_camera/image'),
-                ('/camera_info', '/rgbd_camera/camera_info')
+                ('/input_image', robot['image_topic']),
+                ('/camera_info', robot['camera_info_topic'])
             ]
         ),
 
@@ -100,15 +95,34 @@ def generate_launch_description():
             name='vff_controller_node',
             output='screen',
             parameters=[{
-                'max_linear_speed': 0.1,
-                'max_angular_speed': 1.0,
-                'repulsive_gain_factor': 1.0,
-                'repulsive_influence_distance': 0.2,
+                'use_sim_time': robot['use_sim_time'],
+                'max_linear_speed': 0.3,
+                'max_angular_speed': 0.5,
+                'repulsive_gain_factor': 0.5,
+                'repulsive_influence_distance': 0.5,
+                'search_angular_speed': 0.4,  # 0.0 disables the target search
+                'search_timeout': 2.0,
                 'stay_distance': -1.0,  # No stay distance in 2D
-                'enable_stamped_cmd_vel': LaunchConfiguration('enable_stamped_cmd_vel')
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
             }],
             remappings=[
                 ('/vel', '/cmd_vel')
             ]
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        DeclareLaunchArgument(
+            'target_class',
+            default_value='cup',
+            description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        DeclareLaunchArgument(
+            'device',
+            default_value='cuda:0',
+            description='Device YOLO runs on: cuda:0 (GPU) or cpu'
+        ),
+        OpaqueFunction(function=launch_setup),
     ])

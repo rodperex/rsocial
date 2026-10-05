@@ -13,13 +13,16 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
 
-    return LaunchDescription([
-
+    return [
         # YOLO class detector node (publishes attractive vectors). Needs YOLO to be running
         Node(
             package='vff_control',
@@ -27,14 +30,26 @@ def generate_launch_description():
             name='yolo_class_detector_node_2d',
             output='screen',
             parameters=[{
-                'target_class': 'cup',
+                'use_sim_time': robot['use_sim_time'],
+                'target_class': LaunchConfiguration('target_class'),
                 'base_frame': 'base_footprint',
-                'optical_frame': 'camera_rgb_optical_frame'
+                'optical_frame': robot['optical_frame']
             }],
             remappings=[
                 ('/input_detection_2d', '/detections_2d'),
-                ('/input_image', '/rgbd_camera/image'),
-                ('/camera_info', '/rgbd_camera/camera_info'),
+                ('/input_image', robot['image_topic']),
+                ('/camera_info', robot['camera_info_topic'])
             ]
         ),
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        DeclareLaunchArgument(
+            'target_class',
+            default_value='cup',
+            description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        OpaqueFunction(function=launch_setup),
     ])
