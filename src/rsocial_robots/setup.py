@@ -24,6 +24,8 @@ setup(
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/config', ['config/robots.yaml']),
+        ('share/' + package_name + '/launch', ['launch/rviz.launch.py']),
+        ('share/' + package_name + '/rviz', ['rviz/tb4.rviz']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
