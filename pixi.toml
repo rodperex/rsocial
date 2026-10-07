@@ -122,6 +122,10 @@ ros-jazzy-navigation2 = "*"
 ros-jazzy-nav2-bringup = "*"
 ros-jazzy-laser-filters = "*"
 
+[feature.kobuki.activation.env]
+# Robot of the examples (`robot:=$ROBOT`): the Kobuki simulator
+ROBOT = "kobuki_sim"
+
 [environments]
 # Mismo solve-group: las dependencias comunes tienen las mismas versiones en ambos
 default = { solve-group = "default" }
@@ -135,6 +139,9 @@ PYTHONNOUSERSITE = "1"
 # Gazebo looks for system plugins (e.g. gz_ros2_control, used by the TurtleBot 4 simulator)
 # only in this path; the ones installed by pixi live in the environment lib directory
 GZ_SIM_SYSTEM_PLUGIN_PATH = "$CONDA_PREFIX/lib"
+# Robot of the examples (`robot:=$ROBOT`): the TurtleBot 4 simulator. The kobuki
+# environment overrides it; the tb4/tb4sim shell functions also set it
+ROBOT = "tb4_sim"
 
 [activation]
 # Keep the fontconfig cache of this environment separate from the host one:
@@ -164,5 +171,28 @@ sim-house = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_w
 sim-house-nvidia = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_worlds small_house.launch.py \"$@\"' sim-house", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", __NV_PRIME_RENDER_OFFLOAD = "1", __GLX_VENDOR_LIBRARY_NAME = "nvidia", __EGL_VENDOR_LIBRARY_FILENAMES = "/usr/share/glvnd/egl_vendor.d/10_nvidia.json"}, description = "TurtleBot 4 simulator in a house on the NVIDIA GPU"}
 sim-house-generic = {cmd = "bash -c 'source install/setup.bash && exec ros2 launch tb4_worlds small_house.launch.py \"$@\"' sim-house", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", LIBGL_ALWAYS_SOFTWARE = "1"}, description = "TurtleBot 4 simulator in a house with software rendering"}
 
+# TurtleBot 4 dock actions (served by the Create 3 base, also in the simulator).
+# They take ROS_DOMAIN_ID and RMW_IMPLEMENTATION from the calling shell: run them
+# in a terminal prepared with tb4 or tb4-sim, or they will wait for a server
+# that is in another domain.
+undock = {cmd = "ros2 action send_goal /undock irobot_create_msgs/action/Undock '{}'", description = "Undock the TurtleBot 4 (real or simulated)"}
+dock = {cmd = "ros2 action send_goal --feedback /dock irobot_create_msgs/action/Dock '{}'", description = "Dock the TurtleBot 4 (real or simulated)"}
+
+# Prepare a terminal for a robot: open a new shell with the workspace sourced and
+# the variables of that robot (ROBOT for the examples, and for the TurtleBot 4 its
+# DDS domain, as the tb4/tb4sim functions). `exit` goes back to the previous shell.
+# pixi/robot-shell.sh sets them again after ~/.bashrc, which could override them.
+# tb4-sim uses domain 1; with several computers on the same network, choose another
+# one with TB4_SIM_DOMAIN_ID, e.g. `TB4_SIM_DOMAIN_ID=7 pixi run tb4-sim`.
+# tb4 also loads pixi/fastdds-tb4.xml (bigger socket buffers, so the camera
+# images of the real robot arrive over the WiFi).
+tb4 = {cmd = "bash -c 'export FASTRTPS_DEFAULT_PROFILES_FILE=\"$PIXI_PROJECT_ROOT/pixi/fastdds-tb4.xml\"; exec bash pixi/robot-shell.sh \"TurtleBot 4\" ROS_DOMAIN_ID RMW_IMPLEMENTATION ROBOT FASTRTPS_DEFAULT_PROFILES_FILE'", env = {ROS_DOMAIN_ID = "0", RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", ROBOT = "tb4"}, description = "Shell for the real TurtleBot 4"}
+tb4-sim = {cmd = "bash -c 'export ROS_DOMAIN_ID=${TB4_SIM_DOMAIN_ID:-1}; exec bash pixi/robot-shell.sh \"TurtleBot 4 (simulador)\" ROS_DOMAIN_ID RMW_IMPLEMENTATION ROBOT'", env = {RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", ROBOT = "tb4_sim"}, description = "Shell for the TurtleBot 4 simulator"}
+
 # `install/setup.bash` is created only after the first build. Source it
 # explicitly with `pixi run source-local` after building the workspace.
+
+[feature.kobuki.tasks]
+# Same as tb4/tb4-sim for the Kobuki (only in the kobuki environment)
+kobuki = {cmd = "bash pixi/robot-shell.sh Kobuki ROBOT", env = {ROBOT = "kobuki"}, description = "Shell for the real Kobuki"}
+kobuki-sim = {cmd = "bash pixi/robot-shell.sh 'Kobuki (simulador)' ROBOT", env = {ROBOT = "kobuki_sim"}, description = "Shell for the Kobuki simulator"}

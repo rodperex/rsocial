@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 Rodrigo Pérez-Rodríguez
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!--
+  Fast DDS profile for the terminals that talk to the real TurtleBot 4
+  (loaded by `pixi run tb4` through FASTRTPS_DEFAULT_PROFILES_FILE).
+
+  Why: Fast DDS opens its UDP sockets with the default Linux receive buffer
+  (net.core.rmem_default, 208 KB). A camera image (460-690 KB at 640x360)
+  arrives over the WiFi in a burst, overflows that buffer and the kernel drops
+  some of its fragments; losing one fragment loses the whole image. With these
+  4 MB buffers all images arrive.
+
+  The kernel caps the size at net.core.rmem_max, which is 208 KB on a stock
+  Ubuntu: raise it once as explained in README-tb4-real.md.
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <profiles>
+        <participant profile_name="tb4_big_socket_buffers" is_default_profile="true">
+            <rtps>
+                <sendSocketBufferSize>4194304</sendSocketBufferSize>
+                <listenSocketBufferSize>4194304</listenSocketBufferSize>
+            </rtps>
+        </participant>
+    </profiles>
+</dds>

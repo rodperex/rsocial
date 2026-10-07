@@ -97,6 +97,9 @@ Si has instalado un entorno adicional de `pixi.toml` (por ejemplo, el del
 [Kobuki](README-kobuki-pixi.md)), compila y abre la shell con ese entorno:
 `pixi run -e <entorno> build` y `pixi shell -e <entorno>`.
 
+Todas las tareas de Pixi (compilar, preparar la terminal, lanzar el
+simulador...) están resumidas en [README-pixi-tasks.md](README-pixi-tasks.md).
+
 No uses `rosdep` con Pixi. Las dependencias están declaradas en `pixi.toml` y
 se instalan con `pixi install`.
 
@@ -135,16 +138,18 @@ Para no escribirlas cada vez, añade estas dos funciones al final de tu
 function tb4() {
     export ROS_DOMAIN_ID=0
     export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    export ROBOT=tb4   # robot de los ejemplos (robot:=$ROBOT)
     ros2 daemon stop > /dev/null 2>&1
-    echo "TurtleBot 4: ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION"
+    echo "TurtleBot 4: ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION ROBOT=$ROBOT"
 }
 
 # TurtleBot 4 simulado: fuera del dominio del robot real
 function tb4sim() {
     export ROS_DOMAIN_ID=1
     export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    export ROBOT=tb4_sim   # robot de los ejemplos (robot:=$ROBOT)
     ros2 daemon stop > /dev/null 2>&1
-    echo "TurtleBot 4 (simulador): ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION"
+    echo "TurtleBot 4 (simulador): ROS_DOMAIN_ID=$ROS_DOMAIN_ID RMW_IMPLEMENTATION=$RMW_IMPLEMENTATION ROBOT=$ROBOT"
 }
 ```
 
@@ -163,6 +168,19 @@ tb4sim     # con el simulador; con el robot real, tb4
 ```
 
 No mezcles: en todas las terminales de una misma sesión, la misma función.
+
+También puedes preparar la terminal con una tarea de Pixi, sin añadir nada al
+`~/.bashrc`. Abre una shell nueva con el entorno, el workspace cargado y las
+mismas variables que las funciones (`exit` vuelve a la anterior):
+
+```bash
+cd ~/rsocial
+pixi run tb4-sim   # con el simulador (equivale a pixi shell + source + tb4sim)
+pixi run tb4       # con el robot real (equivale a pixi shell + source + tb4)
+```
+
+`tb4-sim` usa el dominio 1. Si estáis varios en la misma red, elige otro con
+`TB4_SIM_DOMAIN_ID=<número> pixi run tb4-sim`.
 
 ### 1. Lanzar el simulador (terminal 1)
 
@@ -449,8 +467,10 @@ timeout 3 ros2 topic pub -r 10 /cmd_vel_unstamped geometry_msgs/msg/Twist "{line
 Los ejemplos de [README-examples.md](README-examples.md) se lanzan con el
 simulador del TurtleBot 4 añadiendo `robot:=tb4_sim` (ver
 [Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos)).
-Lanza el simulador en la casa (`pixi run sim-house`): es el mundo para el que
-están preparados.
+Valen los mundos del simulador (`pixi run sim`, con `world:=` si quieres
+otro); para los de cámara, VFF y Nav2 viene mejor la casa (`pixi run
+sim-house`, ver
+[Mundos del TurtleBot 4](README-examples.md#mundos-del-turtlebot-4)).
 
 ### Robot real
 
@@ -463,13 +483,16 @@ ros2 topic list     # deben salir /scan, /odom, /hazard_detection...
 ```
 
 En Jazzy, el robot real también espera `TwistStamped` en `/cmd_vel`. Los
-ejemplos se lanzan con `robot:=tb4` en lugar de `robot:=tb4_sim` (ver
+ejemplos se lanzan con `robot:=tb4` en lugar de `robot:=tb4_sim`, que `tb4` ya
+deja en `ROBOT` (ver
 [README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)). Su
 cámara no publica profundidad de fábrica: para los ejemplos 3D hay que
 activarla (ver
 [README-examples.md](README-examples.md#turtlebot-4-real-activar-la-profundidad)). Los
 ajustes que necesitan los bump and go (topic del bumper, límites de la base
 Create 3) están en [README-examples.md](README-examples.md#turtlebot-4-real).
+Todo lo particular del robot físico está resumido en
+[README-tb4-real.md](README-tb4-real.md).
 
 ## Kobuki (alternativa)
 
