@@ -57,9 +57,10 @@ tb4:
   depth_image_units_divisor: 1000  # depth in mm (16UC1)
   stamped_cmd_vel: true
 # TurtleBot 4 with the stereo pipeline of its OAK-D enabled on the robot
-# (i_pipeline_type: RGBD and rgb.i_publish_topic: true, see README-examples.md).
-# YOLO 3D needs the color and depth images to have the same size, so it uses
-# the full color image instead of the preview; the depth is aligned to it.
+# (i_pipeline_type: RGBD and rgb.i_publish_topic: true, at 640x360 so that the
+# images get through the WiFi; see README-tb4-real.md). YOLO 3D needs the color
+# and depth images to have the same size, so it uses the color image instead of
+# the preview; the depth is aligned to it.
 tb4_rgbd:
   use_sim_time: false
   scan_topic: /scan

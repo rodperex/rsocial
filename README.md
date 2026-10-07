@@ -16,6 +16,13 @@ mismo directorio:
 | Pixi | Cualquier distribución Linux de 64 bits (x86_64), sin instalar ROS 2 en el sistema: todo queda aislado en el directorio del workspace. Incluye el simulador y la navegación del TurtleBot 4. | [README-pixi-install.md](README-pixi-install.md) |
 | Docker | Entorno ya preparado en un contenedor, con escritorio en el navegador. | [README-docker-install.md](README-docker-install.md) |
 
+Con Pixi, todas las tareas (`pixi run ...`) están resumidas en
+[README-pixi-tasks.md](README-pixi-tasks.md), como referencia rápida.
+
+Lo que cambia con el TurtleBot 4 físico respecto al simulador (red, acceso al
+robot, base de carga, seguridad de la base, cámara, reloj) está resumido en
+[README-tb4-real.md](README-tb4-real.md).
+
 Los comandos usan `~/rsocial` como directorio del workspace; puedes usar otra
 sustituyendo esa ruta.
 

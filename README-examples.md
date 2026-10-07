@@ -25,9 +25,41 @@ necesita varios procesos, cada comando va en una terminal distinta.
 Los bloques 3 a 9 y el 12 necesitan un robot, real o simulado. Todos funcionan
 con los dos robots del curso: el **Kobuki** y el **TurtleBot 4**.
 
+Con el TurtleBot 4 físico hay que hacer algunas cosas más (sacarlo de la base,
+desactivar la seguridad de la base para los bump and go, activar la
+profundidad de la cámara…). Están resumidas en
+[README-tb4-real.md](README-tb4-real.md).
+
 Además, el bloque 10 tiene un ejemplo para el robot **NAO**. Es el único: el
 NAO no es uno de los robots del curso y el resto de ejemplos no funciona con
 él.
+
+### TurtleBot 4: preparar cada terminal con `tb4sim` o `tb4`
+
+> **Importante:** con el TurtleBot 4, ejecuta `tb4sim` (simulador) o `tb4` (robot real) **en
+> cada terminal nueva**, antes de lanzar nada: la del simulador y todas las de
+> los ejemplos. Sin ellas, las terminales no se ven entre sí o, peor, una
+> terminal del simulador acaba en el dominio del robot real y lo mueve.
+
+```bash
+tb4sim     # con el simulador (ROS_DOMAIN_ID=1)
+tb4        # con el robot real (ROS_DOMAIN_ID=0)
+```
+
+O, desde `~/rsocial` y sin `pixi shell` previo, con las tareas de Pixi que
+abren una shell ya preparada (entorno, workspace y variables):
+
+```bash
+pixi run tb4-sim   # simulador
+pixi run tb4       # robot real
+```
+
+Usa la misma en todas las terminales de una sesión. Si aún no tienes estas
+funciones en tu `~/.bashrc`, añádelas como se explica en
+[Preparar cada terminal](README-pixi-install.md#preparar-cada-terminal-simulador-o-robot-real).
+Con el Kobuki no hacen falta (aunque también tiene sus tareas, `pixi run
+kobuki-sim` y `pixi run kobuki`, que ponen `ROBOT`; ver
+[Elegir el robot en los ejemplos](#elegir-el-robot-en-los-ejemplos)).
 
 ### Lanzar el robot
 
@@ -36,21 +68,72 @@ déjalo abierto.
 
 | | Kobuki | TurtleBot 4 |
 | --- | --- | --- |
-| Simulador | `ros2 launch kobuki simulation.launch.py` | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`) |
+| Simulador en la casa de AWS RoboMaker | `ros2 launch kobuki simulation.launch.py` | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio |
+| Simulador en los mundos propios del TurtleBot 4 | — | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) |
 | Robot real | `ros2 launch kobuki kobuki.launch.py` | Ya ejecuta sus drivers: no se lanza nada |
 | Instalación y detalles | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) |
 
-Los dos simuladores usan la misma casa (la de AWS RoboMaker), con los mismos
-muebles y objetos para los ejemplos de cámara. El TurtleBot 4 necesita además
-preparar cada terminal con `tb4sim` (o `tb4` con el robot real) y empieza en su
-base de carga: desacóplalo antes de moverlo (ver
+Recuerda `tb4sim` o `tb4` en cada terminal (ver
+[arriba](#turtlebot-4-preparar-cada-terminal-con-tb4sim-o-tb4)). El TurtleBot 4
+empieza en su base de carga: desacóplalo antes de moverlo (ver
 [README-pixi-install.md](README-pixi-install.md#2-desacoplar-el-robot-terminal-2)).
+
+#### Ver el robot en RViz
+
+Para ver el robot, sus TF y el láser en 3D, lanza RViz con la configuración de
+este repositorio (por ahora, solo para el TurtleBot 4):
+
+```bash
+ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT
+ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map  # con localización o Nav2
+```
+
+Abre la vista 3D (Orbit) con las TF visibles. El ratón: botón izquierdo para
+girar, central (o Mayús + izquierdo) para desplazar y rueda para acercar. El
+frame fijo es `odom`; con localización o Nav2 usa `fixed_frame:=map`, que es el
+que necesitan las herramientas *2D Pose Estimate* y *Nav2 Goal*. Úsalo en
+lugar de `rviz:=true` del simulador, que abre una vista 2D desde arriba.
+
+#### Mundos del TurtleBot 4
+
+El simulador del TurtleBot 4 trae sus propios mundos, que se eligen añadiendo
+`world:=<mundo>` (por defecto, `warehouse`):
+
+```bash
+pixi run sim                    # almacén con estanterías (warehouse)
+pixi run sim world:=maze        # recinto cerrado con paredes y obstáculos
+pixi run sim world:=empty       # suelo plano, sin obstáculos
+pixi run sim world:=depot       # nave industrial (se descarga la primera vez)
+
+# Sin Pixi, el mismo lanzamiento:
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze
+```
+
+Si el láser no funciona bien con tu gráfica, usa `sim-nvidia` o `sim-generic`
+en lugar de `sim` (ver
+[README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación)).
+
+Los bloques 3 a 6 y el 12 funcionan en cualquiera de ellos: `empty` es el más
+cómodo para los de movimiento y `maze` o `warehouse` para los que usan el láser
+(bump and go, obstáculos).
+
+Para los bloques 7 a 9 (cámara, VFF y Nav2) viene mejor una casa con muebles,
+como la del simulador del Kobuki. Este repositorio incluye el paquete
+`tb4_worlds`, que lanza el TurtleBot 4 en esa misma casa de AWS RoboMaker
+(necesita el workspace compilado; ver
+[Simular en una casa](README-pixi-install.md#simular-en-una-casa)):
+
+```bash
+pixi run sim-house                              # o sim-house-nvidia, sim-house-generic
+ros2 launch tb4_worlds small_house.launch.py    # sin Pixi
+```
+
 Para los ejemplos de cámara conviene además preparar la escena (ver el
 [bloque 8](#8-navegación-reactiva-con-vff)).
 
 ### Elegir el robot en los ejemplos
 
-Casi todos los ejemplos usan el mismo código con los dos robots. Sus
+Casi todos los ejemplos usan el mismo código con dos robots. Sus
 launchers tienen un argumento obligatorio, `robot`, que indica el robot y si
 es el simulado o el real:
 
@@ -64,11 +147,28 @@ velocidad y si los nodos usan el reloj del simulador (`use_sim_time`), que es
 necesario en simulación.
 
 Para no escribir el robot en cada comando, los comandos de esta guía usan la
-variable `ROBOT`. Defínela en cada terminal en la que lances ejemplos:
+variable `ROBOT`. Con Pixi ya viene puesta según el entorno y la función de
+preparación de la terminal:
+
+| Terminal preparada con | `ROBOT` |
+| --- | --- |
+| `pixi run tb4-sim`, o `pixi shell` y `tb4sim` | `tb4_sim` |
+| `pixi run tb4`, o `pixi shell` y `tb4` | `tb4` |
+| `pixi run kobuki-sim`, o `pixi shell -e kobuki` | `kobuki_sim` |
+| `pixi run kobuki` | `kobuki` |
+
+Las tareas `kobuki` y `kobuki-sim` abren una shell del entorno `kobuki` con el
+workspace cargado, igual que `tb4` y `tb4-sim`.
+
+Para el resto de casos (TurtleBot 4 real con profundidad o instalación nativa
+sin Pixi), defínela a mano en cada terminal en la que lances ejemplos, después
+de preparar la terminal:
 
 ```bash
-export ROBOT=kobuki_sim   # o kobuki, tb4_sim, tb4, tb4_rgbd
+export ROBOT=kobuki     # o kobuki_sim, tb4_sim, tb4, tb4_rgbd
 ```
+
+Compruébala con `echo $ROBOT` antes de lanzar un ejemplo.
 
 Así, `ros2 launch square_motion square_move.launch.py robot:=$ROBOT` vale para
 todos los casos.
@@ -277,10 +377,33 @@ indica 0 publicadores, descoméntalo en el robot y reinicia el servicio
 (`sudo apt upgrade`), puede volver a escribirse el original y habrá que
 descomentar la línea de nuevo.
 
-La Create 3 reacciona por su cuenta a los golpes (reflejos) y limita la marcha
-atrás (hazard `BACKUP_LIMIT`), así que el retroceso va a trompicones. Para
-desactivar ambos hasta que se reinicie la base, ejecuta desde un equipo
-preparado con `tb4`:
+#### Mecanismos de seguridad de la Create 3
+
+La Create 3 tiene dos mecanismos de seguridad que interfieren con el bump and
+go:
+
+- **Reflejos** (`reflexes_enabled`): al chocar, la base retrocede y gira un
+  poco por su cuenta, ignorando `/cmd_vel` durante un instante. Después la FSM
+  o el árbol recuperan el control.
+- **Límite de marcha atrás** (`safety_override`): sin sensores traseros, la
+  base solo deja retroceder unos centímetros. Al pasar de ahí, publica el
+  hazard `BACKUP_LIMIT` y se para.
+
+El resultado es que el robot se mueve a saltos al retroceder y al girar
+después del choque. El giro en sí no es el problema: sin choques, la base gira
+de forma uniforme.
+
+Sus parámetros solo son accesibles **desde el Raspberry Pi del robot**. La
+Create 3 está en una red USB privada con él, y `create3_repub` no republica el
+servicio de parámetros. Desde el portátil, la llamada se queda en
+`waiting for service to become available...`. Entra por SSH (con la IP del
+display, o `turtlebot4.local` si tu red resuelve mDNS) y ejecútalo allí:
+
+```bash
+ssh ubuntu@turtlebot4.local
+```
+
+Para **desactivarlos**:
 
 ```bash
 ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/SetParameters \
@@ -288,15 +411,45 @@ ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/
                  {name: reflexes_enabled, value: {type: 1, bool_value: false}}]}"
 ```
 
-Para que el cambio sea permanente, guárdalo en la configuración de la Create 3:
+Para **volver a activarlos** (valores de fábrica):
 
-1. Abre en el navegador su servidor web: `http://<IP del robot>:8080`.
-2. En **Application → Configuration**, añade al cuadro **ROS 2 Parameters
-   File**:
+```bash
+ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/SetParameters \
+  "{parameters: [{name: safety_override, value: {type: 4, string_value: none}},
+                 {name: reflexes_enabled, value: {type: 1, bool_value: true}}]}"
+```
+
+Las dos llamadas responden con `successful=True` por cada parámetro. Para ver
+cómo están:
+
+```bash
+ros2 service call /_do_not_use/motion_control/get_parameters rcl_interfaces/srv/GetParameters \
+  "{names: [safety_override, reflexes_enabled]}"
+```
+
+En la respuesta, el primer valor es `safety_override` (`string_value`) y el
+segundo, `reflexes_enabled` (`bool_value`). Con la seguridad activa salen
+`string_value='none'` y `bool_value=True`.
+
+El cambio dura **hasta que se reinicie la base**. Al apagar el robot o al
+reiniciar la aplicación de la Create 3, vuelven los valores de fábrica, y el
+bump and go vuelve a ir a saltos. Compruébalo al empezar cada sesión.
+
+Para que el cambio sea **permanente**, guárdalo en el fichero de parámetros de
+la Create 3. Ese fichero está dentro de la base, no en el Raspberry Pi, y se
+edita desde su servidor web:
+
+1. Abre en el navegador `http://<IP del robot>:8080` (la IP del display; el
+   Raspberry Pi redirige ese puerto a la base).
+2. Entra en **Application → Configuration**. El cuadro **ROS 2 Parameters
+   File** ya trae un bloque `motion_control` con `safety_override: "none"`.
+   Cambia ese valor y añade `reflexes_enabled` debajo, dentro del mismo
+   bloque. No añadas un segundo bloque `motion_control`: quedaría duplicado.
 
    ```yaml
-   /**/motion_control:
+   motion_control:
      ros__parameters:
+       # (comentarios del fichero original)
        safety_override: "backup_only"
        reflexes_enabled: false
    ```
@@ -304,15 +457,14 @@ Para que el cambio sea permanente, guárdalo en la configuración de la Create 3
 3. Pulsa **Save** y reinicia la aplicación (**Application → Restart
    Application**).
 
-Tras el reinicio, compruébalo:
+Tras el reinicio, compruébalo en el Raspberry Pi con `get_parameters`, como
+arriba. Para volver a la configuración de fábrica, deja
+`safety_override: "none"`, borra la línea de `reflexes_enabled`, guarda y
+reinicia la aplicación.
 
-```bash
-ros2 service call /_do_not_use/motion_control/get_parameters rcl_interfaces/srv/GetParameters \
-  "{names: [safety_override, reflexes_enabled]}"
-```
-
-Con `backup_only` el robot puede caer marcha atrás por un escalón: úsalo en
-suelo plano.
+Con la seguridad desactivada, el robot puede caer marcha atrás por un escalón
+y no se aparta solo al chocar: úsalo en suelo plano y despejado, y vuelve a
+activarla al terminar si el robot lo van a usar otros.
 
 ## 7. Sensores: cámara y YOLO
 
@@ -374,42 +526,20 @@ configuración (`robot:=tb4`) funcionan los ejemplos 2D, pero no los 3D (YOLO
 3D, `yolo_class_3d`, `yolo_class_3d_alt`, `vff_3d` y `full_vff_3d`), porque no
 hay imagen de profundidad.
 
-Para activarla, en el robot (por `ssh`):
+Para los ejemplos 3D hay que cambiar la configuración de la cámara en el
+robot: activar la profundidad y publicar la imagen en color, ambas a 640x360 y
+5 imágenes por segundo. A 1280x720 casi no llegan por la WiFi. Los pasos, el
+fichero completo y lo que se ha medido están en
+[README-tb4-real.md](README-tb4-real.md#cámara-imagen-completa-y-profundidad).
 
-1. Edita la configuración de la cámara:
-   `/opt/ros/jazzy/share/turtlebot4_bringup/config/oakd_pro.yaml` (en el
-   TurtleBot 4 Lite, `oakd_lite.yaml`). Cambia o añade estos parámetros:
+Después lanza los ejemplos con `robot:=tb4_rgbd`. Esta entrada usa
+`/oakd/rgb/image_raw` en lugar de la imagen pequeña, porque YOLO 3D necesita
+que la imagen en color y la de profundidad tengan el mismo tamaño, y el robot
+alinea la profundidad con esa imagen. La imagen pequeña se sigue publicando,
+así que `robot:=tb4` sigue funcionando para los ejemplos 2D.
 
-   ```yaml
-   /oakd:
-     ros__parameters:
-       camera:
-         i_pipeline_type: RGBD   # antes RGB: activa la profundidad
-       rgb:
-         i_publish_topic: true   # publica la imagen en color completa
-         i_fps: 10.0             # opcional: menos imágenes por segundo, menos carga en la WiFi
-   ```
-
-2. Reinicia el servicio del robot: `turtlebot4-service-restart`.
-3. Desde tu equipo (preparado con `tb4`), comprueba que aparecen
-   `/oakd/rgb/image_raw` y `/oakd/stereo/image_raw` en `ros2 topic list`.
-
-Después lanza los ejemplos con `robot:=tb4_rgbd`. Esta entrada usa la imagen en
-color completa en lugar de la pequeña, porque YOLO 3D necesita que la imagen en
-color y la de profundidad tengan el mismo tamaño, y el robot alinea la
-profundidad con la imagen completa.
-
-Ten en cuenta que:
-
-- Las imágenes completas pesan mucho. Por la WiFi pueden llegar con retraso o
-  perderse; si pasa, baja `i_fps`.
-- `oakd_pro.yaml` no es un fichero tuyo: lo instala el paquete
-  `ros-jazzy-turtlebot4-bringup` del robot. Si se actualiza el software del
-  robot (`sudo apt upgrade`), ese paquete puede volver a escribir el fichero
-  original y la profundidad deja de publicarse. Si pasa, repite el paso 1. Lo
-  mismo ocurre con `republisher.yaml` del [bloque 6](#turtlebot-4-real).
-- La imagen pequeña se sigue publicando, así que `robot:=tb4` sigue
-  funcionando para los ejemplos 2D.
+Con el robot en la base, la cámara está apagada para ahorrar batería. Ver
+[Arrancar y parar la cámara y el láser](README-tb4-real.md#arrancar-y-parar-la-cámara-y-el-láser).
 
 ### Con la cámara OAK-D
 
@@ -534,9 +664,12 @@ y las ganancias se cambian en los launchers de `src/vff_control/launch/`.
 Necesita Nav2 con el mapa de la casa y el robot localizado en él:
 
 - **Kobuki** (simulador): `ros2 launch kobuki navigation_sim.launch.py`.
-- **TurtleBot 4**: lanza la localización con el mapa de la casa y después Nav2,
-  como en los pasos 3 a 5 de
-  [README-pixi-install.md](README-pixi-install.md#simular-en-una-casa).
+- **TurtleBot 4**: lanza la localización con el mapa del mundo que estés
+  usando y después Nav2, como en los pasos 3 a 5 de
+  [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación).
+  Los mundos del simulador traen su mapa (ver
+  [Elegir el mundo](README-pixi-install.md#elegir-el-mundo)); el de la casa
+  está en [Simular en una casa](README-pixi-install.md#simular-en-una-casa).
 
 Con Nav2 en marcha, en otra terminal:
 
@@ -552,8 +685,8 @@ se configuran en `src/fsm_nav/config/waypoints.yaml`; si un objetivo falla, la
 FSM se detiene. Estos ejemplos solo hablan con Nav2, así que no necesitan
 `robot`.
 
-Las posiciones están pensadas para el mapa del Kobuki. El TurtleBot 4 usa otro
-mapa de la misma casa, con otro origen, así que con él comprueba en RViz que los
+Las posiciones están pensadas para el mapa del Kobuki. Con el TurtleBot 4 (en
+la casa, cuyo mapa tiene otro origen, o en otro mundo) comprueba en RViz que los
 puntos caen en zonas libres y, si no, cámbialos.
 
 ## 10. Interacción humano-robot
@@ -642,6 +775,10 @@ Con el robot en marcha. El mismo comportamiento que el bloque 6, con un
 Como en el bloque 6, cada robot tiene su propio nodo y launcher. Entre las dos
 versiones solo cambia `CheckBump` (y `Turn` en la versión side); el resto de
 comportamientos se reutilizan.
+
+En el TurtleBot 4 real, desactiva antes los reflejos y el límite de marcha
+atrás de la base, o se moverá a saltos tras cada choque. Ver
+[Mecanismos de seguridad de la Create 3](#mecanismos-de-seguridad-de-la-create-3).
 
 `groot_bumpgo.launch.py` carga el árbol desde `src/bt_bumpgo/bt_xml/bumpgo.xml`
 (formato BehaviorTree.CPP v4, editable con Groot). El parser está en
