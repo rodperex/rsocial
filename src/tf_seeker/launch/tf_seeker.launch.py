@@ -21,6 +21,7 @@ from rsocial_robots import get_robot, robot_arguments
 
 def launch_setup(context):
     robot = get_robot(context)
+    tf_update_time = float(LaunchConfiguration('tf_update_time').perform(context))
 
     # Node for publishing TF
     publisher_cmd = Node(
@@ -29,7 +30,7 @@ def launch_setup(context):
         name='tf_publisher_node',
         output='screen',
         parameters=[{'use_sim_time': robot['use_sim_time'],
-                     'tf_update_time': 60.0}],
+                     'tf_update_time': tf_update_time}],
     )
 
     # Node for seeking TF
@@ -55,6 +56,12 @@ def generate_launch_description():
             'erratic',
             default_value='False',
             description='Set to True to use erratic PID constants that cause oscillation'
+        ),
+        # Seconds between targets (simulated time in the simulators, slower than real time)
+        DeclareLaunchArgument(
+            'tf_update_time',
+            default_value='20.0',
+            description='Seconds between new random targets'
         ),
         OpaqueFunction(function=launch_setup),
     ])

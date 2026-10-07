@@ -48,10 +48,15 @@ class TFSeekerNode(Node):
             self.vlin_pid = PIDController(-0.5, 0.5, kp=0.3, ki=0.0, kd=0.15)
             self.vrot_pid = PIDController(-0.5, 0.5, kp=0.6, ki=0.0, kd=0.25)
         else:
-            # PID gains badly tuned on purpose so the robot oscillates instead of settling:
-            # very high kp overreacts, ki accumulates and overshoots, low kd does not stabilize
-            self.vlin_pid = PIDController(-0.5, 0.5, kp=5.0, ki=1.5, kd=0.0)
-            self.vrot_pid = PIDController(-0.5, 0.5, kp=8.0, ki=1.0, kd=0.0)
+            # Angular PID badly tuned on purpose so the robot weaves towards the target:
+            # a high ki keeps accumulating the angle error and overshoots it on every
+            # swing, and without kd nothing damps it (raise ki for wider swings). The
+            # faster turn limit makes the swings wide enough to see. With a high kp
+            # instead, the speed limit would hide it: the robot would only shake
+            # slightly. The linear PID is the normal one, so that the robot still
+            # stops 1 m from the target.
+            self.vlin_pid = PIDController(-0.5, 0.5, kp=0.3, ki=0.0, kd=0.15)
+            self.vrot_pid = PIDController(-0.8, 0.8, kp=0.8, ki=2.0, kd=0.0)
 
         self.timer_period = 0.05  # 20 Hz
         self.last_cycle_time = None

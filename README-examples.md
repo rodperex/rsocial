@@ -305,8 +305,16 @@ posición aleatoria de `odom`, y `tf_seeker_node` lleva al robot hasta 1 m de
 
 ```bash
 ros2 launch tf_seeker tf_seeker.launch.py robot:=$ROBOT
-ros2 launch tf_seeker tf_seeker.launch.py robot:=$ROBOT erratic:=True  # PID mal ajustado: oscila
+ros2 launch tf_seeker tf_seeker.launch.py robot:=$ROBOT erratic:=True  # PID angular mal ajustado: avanza haciendo eses
+ros2 launch tf_seeker tf_seeker.launch.py robot:=$ROBOT tf_update_time:=10.0  # objetivo nuevo cada 10 s
 ```
+
+El objetivo `target` se publica en `odom` 20 veces por segundo y cambia a una
+posición aleatoria cada `tf_update_time` segundos (20 por defecto). En
+simulación son segundos del simulador: si va más lento que el tiempo real (lo
+muestra Gazebo abajo a la derecha, *RTF*), el objetivo tarda más en cambiar.
+Si el robot no se mueve y el nodo repite `Waiting for transform`, comprueba que
+llega el reloj del simulador (`ros2 topic hz /clock`).
 
 ## 5. Sensores: láser
 
