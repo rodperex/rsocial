@@ -74,7 +74,9 @@ Las opciones se añaden detrás de la tarea:
 | `model:=lite` | TurtleBot 4 Lite | `standard` |
 | `x:=`, `y:=`, `yaw:=` | Posición inicial del robot (m y rad) | `0.0` (en la casa, `x:=0.0 y:=1.5`) |
 
-Por ejemplo: `pixi run sim-nvidia world:=maze rviz:=true`. Ver
+Por ejemplo: `pixi run sim-nvidia world:=maze rviz:=true`. Con
+`--show-args` (`pixi run sim --show-args`) se ven todas sin lanzar nada. Ver
+[Opciones del simulador](README-pixi-install.md#opciones-del-simulador),
 [Elegir el mundo](README-pixi-install.md#elegir-el-mundo) y
 [Simular en una casa](README-pixi-install.md#simular-en-una-casa).
 

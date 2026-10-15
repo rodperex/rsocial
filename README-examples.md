@@ -69,7 +69,7 @@ déjalo abierto.
 | | Kobuki | TurtleBot 4 |
 | --- | --- | --- |
 | Simulador en la casa de AWS RoboMaker | `ros2 launch kobuki simulation.launch.py` | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio |
-| Simulador en los mundos propios del TurtleBot 4 | — | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) |
+| Simulador en otros mundos | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) |
 | Robot real | `ros2 launch kobuki kobuki.launch.py` | Ya ejecuta sus drivers: no se lanza nada |
 | Instalación y detalles | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) |
 
@@ -109,6 +109,11 @@ pixi run sim world:=depot       # nave industrial (se descarga la primera vez)
 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze
 ```
 
+Además del mundo, el simulador admite otras opciones, como el modelo del robot
+o su posición inicial (`x:=`, `y:=`, `yaw:=`). Se añaden igual detrás de la
+tarea de Pixi que detrás de `ros2 launch`: ver
+[Opciones del simulador](README-pixi-install.md#opciones-del-simulador).
+
 Si el láser no funciona bien con tu gráfica, usa `sim-nvidia` o `sim-generic`
 en lugar de `sim` (ver
 [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación)).
@@ -130,6 +135,47 @@ ros2 launch tb4_worlds small_house.launch.py    # sin Pixi
 
 Para los ejemplos de cámara conviene además preparar la escena (ver el
 [bloque 8](#8-navegación-reactiva-con-vff)).
+
+#### Mundos del Kobuki
+
+El simulador del Kobuki no tiene tareas de Pixi: se lanza siempre con
+`ros2 launch`, en una terminal del entorno `kobuki` (`pixi run kobuki-sim`, o
+`pixi shell -e kobuki` y `source install/setup.bash`). Por defecto carga la
+casa de AWS RoboMaker. Para cambiar de mundo, `world:=` recibe la **ruta
+completa** del fichero `.world`, no un nombre como en el TurtleBot 4:
+
+```bash
+# Casa (por defecto)
+ros2 launch kobuki simulation.launch.py
+
+# Almacén pequeño
+ros2 launch kobuki simulation.launch.py \
+  world:=$(ros2 pkg prefix aws_robomaker_small_warehouse_world)/share/aws_robomaker_small_warehouse_world/worlds/small_warehouse/small_warehouse.world
+
+# Librería
+ros2 launch kobuki simulation.launch.py \
+  world:=$(ros2 pkg prefix aws_robomaker_bookstore_world)/share/aws_robomaker_bookstore_world/worlds/bookstore.world
+
+# Suelo plano, sin obstáculos
+ros2 launch kobuki simulation.launch.py \
+  world:=$(ros2 pkg prefix kobuki)/share/kobuki/worlds/empty.world
+```
+
+`$(ros2 pkg prefix <paquete>)` escribe la ruta donde está instalado el
+paquete, así que estos comandos valen en cualquier ordenador. Con
+`gui:=false` se lanza sin la ventana de Gazebo (el robot se simula igual).
+`ros2 launch kobuki simulation.launch.py --show-args` muestra todas las
+opciones.
+
+Los mapas de estos mundos, para la navegación, están en el paquete `kobuki`
+(ver el [bloque 9](#9-navegación-con-nav2)):
+
+| Mundo | Mapa (`map:=`) |
+| --- | --- |
+| Casa | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_house.yaml` (el de por defecto) |
+| Almacén pequeño | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_warehouse.yaml` |
+| Librería | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml` |
+| Suelo plano | No tiene: sirve para mover el robot, no para navegar con Nav2 |
 
 ### Elegir el robot en los ejemplos
 
@@ -669,15 +715,125 @@ y las ganancias se cambian en los launchers de `src/vff_control/launch/`.
 
 ## 9. Navegación con Nav2
 
-Necesita Nav2 con el mapa de la casa y el robot localizado en él:
+Nav2 necesita dos cosas: un mapa del sitio y saber dónde está el robot en
+él (localización con AMCL). El mapa se indica con `map:=` y la **ruta
+completa** de su fichero `.yaml` (el `.pgm` tiene que estar al lado). Escribe
+la ruta con `$HOME` o `$(ros2 pkg prefix ...)`: en `map:=~/...` la terminal no
+cambia `~` por tu directorio personal.
 
-- **Kobuki** (simulador): `ros2 launch kobuki navigation_sim.launch.py`.
-- **TurtleBot 4**: lanza la localización con el mapa del mundo que estés
-  usando y después Nav2, como en los pasos 3 a 5 de
-  [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación).
-  Los mundos del simulador traen su mapa (ver
-  [Elegir el mundo](README-pixi-install.md#elegir-el-mundo)); el de la casa
-  está en [Simular en una casa](README-pixi-install.md#simular-en-una-casa).
+La navegación no se lanza con el simulador ni con los drivers: va **aparte**,
+en otras terminales y con el robot ya en marcha. Lo que cambia entre robots es
+cuántos lanzamientos son:
+
+| | Kobuki | TurtleBot 4 |
+| --- | --- | --- |
+| Lanzamientos | Uno: localización, Nav2 y RViz juntos | Dos: localización y, después de dar la posición inicial, Nav2 |
+| Simulador | `ros2 launch kobuki navigation_sim.launch.py` | `localization.launch.py` y `nav2.launch.py` (paquete `turtlebot4_navigation`), con `use_sim_time:=true` |
+| Robot real | `ros2 launch kobuki navigation.launch.py map:=...` | Los mismos, sin `use_sim_time` |
+| Mapa por defecto | Simulador: la casa. Robot real: ninguno, `map:=` es obligatorio | `warehouse` |
+
+En todos los casos, al arrancar hay que dar en RViz la posición inicial del
+robot con **2D Pose Estimate**: clic donde está el robot y arrastrar hacia
+donde mira. Las lecturas del láser tienen que quedar encima de las paredes
+del mapa.
+
+### Kobuki en el simulador
+
+Con el simulador ya lanzado (ver [Mundos del Kobuki](#mundos-del-kobuki)), en
+otra terminal:
+
+```bash
+# Casa: usa su mapa por defecto
+ros2 launch kobuki navigation_sim.launch.py
+
+# Otro mundo: su mapa, por ejemplo el de la librería
+ros2 launch kobuki navigation_sim.launch.py \
+  map:=$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml
+```
+
+Abre su propio RViz (`rviz:=False` para no abrirlo). Da la posición inicial y
+espera a que Nav2 termine de arrancar.
+
+### Kobuki real
+
+En una terminal, los drivers con el láser (ver
+[Lanzar el robot](#lanzar-el-robot)); en otra, la navegación con el mapa del
+sitio donde esté el robot:
+
+```bash
+ros2 launch kobuki kobuki.launch.py lidar_s2:=true                  # terminal 1
+ros2 launch kobuki navigation.launch.py map:=$HOME/mapas/lab.yaml   # terminal 2
+```
+
+`$HOME/mapas/lab.yaml` es un ejemplo: pon la ruta de tu mapa. Los mapas del
+paquete `kobuki` son de los mundos simulados y no valen para un sitio real.
+
+### TurtleBot 4 en el simulador
+
+Son los pasos 3 a 5 de
+[README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3).
+Con el simulador ya lanzado, cada comando en su terminal (preparadas con
+`tb4sim` o `pixi run tb4-sim`), y el robot fuera de la base (`pixi run
+undock`):
+
+```bash
+# 1. Localización, con el mapa del mundo que estés usando (aquí, maze)
+ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
+  map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/maze.yaml
+
+# 2. RViz, para dar la posición inicial y objetivos
+ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
+
+# 3. Nav2, después de dar la posición inicial
+ros2 launch turtlebot4_navigation nav2.launch.py use_sim_time:=true
+```
+
+Los mapas de cada mundo:
+
+| Mundo | Mapa (`map:=`) |
+| --- | --- |
+| `warehouse`, `maze`, `depot` | `$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/<mundo>.yaml` |
+| Casa (`sim-house`) | `$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml` |
+| `empty` | No tiene |
+
+Sin `use_sim_time:=true`, la localización y Nav2 descartan los datos del
+simulador y no funcionan. El simulador también admite `localization:=true`,
+`map:=...` y `nav2:=true` para lanzarlo todo junto, pero Nav2 arrancaría antes
+de dar la posición inicial y fallaría (ver
+[Opciones del simulador](README-pixi-install.md#opciones-del-simulador)).
+
+### TurtleBot 4 real: mapa y navegación
+
+Los mismos lanzamientos, sin `use_sim_time` (el robot real usa el reloj del
+sistema), en terminales preparadas con `tb4` o `pixi run tb4`. Antes:
+
+- El robot tiene que estar fuera de la base: acoplado, el láser está apagado
+  (ver [README-tb4-real.md](README-tb4-real.md#arrancar-y-parar-la-cámara-y-el-láser)).
+- El reloj del robot tiene que coincidir con el del portátil; si no, fallan
+  TF y la navegación (ver
+  [Reloj del robot](README-tb4-real.md#reloj-del-robot)).
+- Hace falta un mapa del sitio. Se hace una vez con SLAM, moviendo el robot
+  por todo el sitio (ver [Moverlo](README-tb4-real.md#moverlo)) mientras se
+  construye el mapa, y después se guarda:
+
+  ```bash
+  ros2 launch turtlebot4_navigation slam.launch.py                  # mientras mueves el robot
+  ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map   # para ver el mapa
+  mkdir -p $HOME/mapas
+  ros2 run nav2_map_server map_saver_cli -f $HOME/mapas/lab         # crea lab.yaml y lab.pgm
+  ```
+
+  Cierra el SLAM (Ctrl+C) antes de lanzar la localización.
+
+Después, cada comando en su terminal:
+
+```bash
+ros2 launch turtlebot4_navigation localization.launch.py map:=$HOME/mapas/lab.yaml
+ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
+ros2 launch turtlebot4_navigation nav2.launch.py    # después de dar la posición inicial
+```
+
+### Ejemplos
 
 Con Nav2 en marcha, en otra terminal:
 
@@ -701,18 +857,36 @@ puntos caen en zonas libres y, si no, cámbialos.
 
 Los ejemplos usan los servicios de `simple_hri`: STT (voz a texto), TTS (texto
 a voz), Extract (extraer información de una frase con un LLM) y YesNo
-(detectar si una respuesta es sí o no). Lanza uno de sus launchers y déjalo en
-marcha:
+(detectar si una respuesta es sí o no). Lánzalo y déjalo en marcha. El
+argumento `backend` elige qué hay por debajo:
 
-- `local_simple_hri.launch.py`: servicios locales; descarga los modelos la
-  primera vez y necesita Internet para ello.
-- `simple_hri.launch.py`: servicios en la nube; requiere `OPENAI_API_KEY` y
-  `GOOGLE_APPLICATION_CREDENTIALS`.
-- `free_simple_hri.launch.py`: servicios locales y API gratuita de Hugging Face;
-  requiere `HF_TOKEN`.
+- `local` (por defecto): todo en tu ordenador y gratuito; descarga los modelos
+  la primera vez y necesita Internet para ello. Extract y YesNo son sencillos
+  y fallan con frases complicadas.
+- `ollama`: STT y TTS locales, y Extract y YesNo con un LLM servido por
+  [Ollama](https://ollama.com), en tu GPU o en un servidor. Gratuito y mucho
+  mejor que el local; requiere tener Ollama instalado con el modelo
+  descargado.
+- `hf`: STT y TTS locales, y Extract y YesNo con la API de Hugging Face;
+  requiere `HF_TOKEN` y créditos de pago en Hugging Face.
+- `cloud`: servicios en la nube; requiere `OPENAI_API_KEY` con créditos y
+  `GOOGLE_APPLICATION_CREDENTIALS` (proyecto de Google Cloud con
+  facturación).
+
+El idioma por defecto es el español; `language:=en` cambia a inglés el STT, la
+voz del TTS y los prompts. El [README de `simple_hri`](src/thirdparty/simple_hri/README.md)
+explica qué necesita cada uno, todos los argumentos, cómo combinarlos, cómo
+montar Ollama y cómo probar los servicios.
 
 ```bash
-ros2 launch simple_hri local_simple_hri.launch.py
+ros2 launch simple_hri simple_hri.launch.py
+```
+
+o, con Ollama en tu ordenador (`ollama pull qwen2.5:3b` la primera vez) o en
+un servidor (`ollama_host:=servidor`):
+
+```bash
+ros2 launch simple_hri simple_hri.launch.py backend:=ollama
 ```
 
 o, con servicios en la nube:
@@ -720,7 +894,7 @@ o, con servicios en la nube:
 ```bash
 export OPENAI_API_KEY="..."
 export GOOGLE_APPLICATION_CREDENTIALS="/ruta/a/las-credenciales.json"
-ros2 launch simple_hri simple_hri.launch.py
+ros2 launch simple_hri simple_hri.launch.py backend:=cloud
 ```
 
 Con `simple_hri` en marcha, en otra terminal. Los ejemplos `*_client` hacen lo

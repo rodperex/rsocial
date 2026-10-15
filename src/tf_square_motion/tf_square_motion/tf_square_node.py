@@ -107,7 +107,10 @@ class TFSquareMover(Node):
                 self.pause(0.5)
 
         elif self.state == 'turn':
-            # Compute angle turned
+            # Compute angle turned. The yaw from TF lies in [-pi, pi], so the raw
+            # difference jumps by 2*pi when the robot crosses +-pi (e.g. from
+            # 170 deg to -170 deg gives -340 deg instead of +20 deg). Normalizing
+            # it back to [-pi, pi] gives the real angle turned since start_yaw.
             yaw_diff = self.normalize_angle(yaw - self.start_yaw)
             self.get_logger().info(
                 f'Turning at side {self.side_count + 1}. angle: {math.degrees(yaw_diff):.2f} deg')
@@ -130,6 +133,7 @@ class TFSquareMover(Node):
             self.publish_vel(Twist())
 
     def normalize_angle(self, angle):
+        """Wrap an angle to [-pi, pi] by adding or subtracting full turns (2*pi)."""
         while angle > math.pi:
             angle -= 2 * math.pi
         while angle < -math.pi:

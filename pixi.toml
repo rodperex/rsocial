@@ -147,7 +147,10 @@ ROBOT = "tb4_sim"
 # Keep the fontconfig cache of this environment separate from the host one:
 # sharing ~/.cache/fontconfig between different fontconfig versions makes Qt
 # apps (Gazebo GUI, rviz2, rqt) segfault at startup. See the script for details.
-scripts = ["pixi/activate-fontconfig.sh"]
+# Send the audio of the environment through the PipeWire/PulseAudio server of the
+# host: without it the microphone cannot be opened at 16 kHz (STT of simple_hri)
+# and the desktop audio settings are ignored. See the script for details.
+scripts = ["pixi/activate-fontconfig.sh", "pixi/activate-alsa.sh"]
 
 [tasks]
 prepare-colcon = "mkdir -p src/thirdparty/nao_lola/nao_lola && touch src/thirdparty/nao_lola/nao_lola/COLCON_IGNORE"

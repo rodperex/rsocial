@@ -202,9 +202,10 @@ dibuja Gazebo la escena, que es también cómo calcula el láser:
 | `pixi run sim-nvidia` | Portátiles con dos tarjetas gráficas (integrada + NVIDIA): fuerza la NVIDIA. Es la más rápida |
 | `pixi run sim-generic` | Si las otras fallan: dibuja con la CPU. Funciona en cualquier ordenador, pero va varias veces más lento |
 
-A cualquiera de ellas se le pueden añadir opciones detrás (ver
-[Elegir el mundo](#elegir-el-mundo)). Para navegar hace falta `rviz:=true`,
-que abre RViz con el mapa. Por ejemplo:
+A cualquiera de ellas se le pueden añadir opciones detrás: el mundo, RViz, el
+modelo o la posición del robot (ver
+[Opciones del simulador](#opciones-del-simulador)). Para navegar hace falta
+`rviz:=true`, que abre RViz con el mapa. Por ejemplo:
 
 ```bash
 pixi run sim rviz:=true
@@ -317,6 +318,62 @@ ros2 action send_goal /navigate_to_pose nav2_msgs/action/NavigateToPose \
 | Todo va muy lento | Es normal con `sim-generic`: el simulador usa la CPU. |
 | Gazebo se cierra nada más arrancar (`[gazebo-1]: process has died ... exit code 255`) y el resto se queda en `Requesting list of world names` | La terminal tiene cargado un ROS 2 del sistema (`source /opt/ros/...`), cuyas librerías de Gazebo se mezclan con las de Pixi. Abre una terminal nueva sin cargarlo; `echo $LD_LIBRARY_PATH` no debe contener `/opt/ros`. |
 
+### Opciones del simulador
+
+Las opciones son argumentos del lanzamiento, con la forma `nombre:=valor`. Se
+escriben igual con una tarea de Pixi que con `ros2 launch`: detrás del
+comando, separadas por espacios y en cualquier orden. La tarea las añade al
+final de su `ros2 launch`.
+
+| Opción | Para qué sirve | Valores | Por defecto |
+| --- | --- | --- | --- |
+| `world:=` | Mundo (ver [Elegir el mundo](#elegir-el-mundo)). No vale en `sim-house*` | `warehouse`, `maze`, `depot`, `empty` | `warehouse` |
+| `rviz:=` | Abre RViz con el mapa, para dar la posición inicial y objetivos | `true`, `false` | `false` |
+| `model:=` | Modelo del robot. `lite` no tiene torre ni pantalla | `standard`, `lite` | `standard` |
+| `x:=`, `y:=` | Posición inicial del robot, en metros | un número, por ejemplo `-2.0` | `0.0` (en la casa, `x:=0.0 y:=1.5`) |
+| `yaw:=` | Orientación inicial del robot, en radianes (`1.57` son 90°) | un número | `0.0` |
+
+Con las tareas de Pixi, en una terminal preparada con `tb4sim` o
+`pixi run tb4-sim`:
+
+```bash
+pixi run sim world:=maze rviz:=true
+pixi run sim-nvidia world:=depot model:=lite
+pixi run sim-generic world:=empty x:=1.0 y:=-0.5 yaw:=1.57
+pixi run sim-house rviz:=true
+```
+
+Lo mismo con `ros2 launch`, en una terminal preparada igual (ver los comandos
+equivalentes a cada tarea en el [paso 1](#1-lanzar-el-simulador-terminal-1)):
+
+```bash
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze rviz:=true
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+  __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+  ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=depot model:=lite
+LIBGL_ALWAYS_SOFTWARE=1 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py \
+  world:=empty x:=1.0 y:=-0.5 yaw:=1.57
+ros2 launch tb4_worlds small_house.launch.py rviz:=true
+```
+
+Ten en cuenta que:
+
+- Las variables de entorno (`TB4_SIM_DOMAIN_ID=...`, `LIBGL_ALWAYS_SOFTWARE=1`...)
+  van **delante** del comando, y las opciones `nombre:=valor`, **detrás**.
+- Las tareas `sim*` no fijan `ROS_DOMAIN_ID`: usan el de la terminal. En una
+  terminal sin preparar es el 0, el del robot real, y el simulador se mezcla
+  con él.
+- Para ver todas las opciones, añade `--show-args` (no lanza nada):
+  `pixi run sim --show-args` o
+  `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py --show-args`.
+  Salen muchas más que las de la tabla, casi todas internas. Entre ellas,
+  `localization:=true`, `slam:=true` y `nav2:=true` lanzan también la
+  localización, SLAM o Nav2 junto con el simulador. En esta guía se lanzan
+  aparte (pasos 3 y 5), porque Nav2 tiene que arrancar después de dar la
+  posición inicial y porque así cada uno muestra sus mensajes en su terminal.
+  No cambies `namespace:=`: los comandos de esta guía y los ejemplos
+  suponen que el robot no tiene namespace.
+
 ### Elegir el mundo
 
 Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim world:=maze`.
@@ -336,14 +393,6 @@ ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
   map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/maze.yaml   # paso 3
 ```
 
-Otras opciones de la tarea:
-
-| Opción | Para qué sirve | Por defecto |
-| --- | --- | --- |
-| `model:=lite` | TurtleBot 4 Lite (sin torre ni pantalla) | `standard` |
-| `x:=`, `y:=`, `yaw:=` | Posición inicial del robot (metros y radianes) | `0.0` |
-| `rviz:=true` | RViz con el mapa, para dar la posición inicial y objetivos | `false` |
-
 ### Simular en una casa
 
 Para robótica social viene mejor una vivienda que un almacén. El paquete
@@ -361,8 +410,8 @@ tres variantes que el simulador normal:
 | `pixi run sim-house-nvidia` | Como `sim-nvidia` |
 | `pixi run sim-house-generic` | Como `sim-generic` |
 
-Admiten las mismas opciones que el simulador normal (`rviz:=true`,
-`model:=lite`, `x:=`, `y:=`, `yaw:=`), salvo `world:=`. El robot aparece con
+Admiten las mismas [opciones](#opciones-del-simulador) que el simulador
+normal (`rviz:=true`, `model:=lite`, `x:=`, `y:=`, `yaw:=`), salvo `world:=`. El robot aparece con
 su base de carga en el centro de la casa (`x:=0.0 y:=1.5`). Si lo pones en
 otro sitio, deja al menos un metro libre alrededor para la base.
 

@@ -148,6 +148,7 @@ class TFSquareMover(Node):
 
         elif self.state == 'forward':
             # Where the robot is NOW with respect to where the movement STARTED
+            # We need blref2bl, and we have odom2blref and odom2bl, so we need to invert odom2blref and chain the transforms. The math is easier to see with matrices than with quaternions.
             # 1. Invert the reference pose: inv(odom2blref) = blref2odom
             T_blref2odom = np.linalg.inv(self.T_odom2blref)
             # 2. Chain transforms: blref2odom @ odom2bl = blref2bl  ('odom' cancels out)
