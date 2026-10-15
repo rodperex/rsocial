@@ -60,17 +60,18 @@ descargan con `vcs` a partir de los manifiestos `.repos` de `src/`:
 git clone https://github.com/rodperex/rsocial.git ~/rsocial
 cd ~/rsocial/src
 vcs import < thirdparty-native.repos
-vcs import < kobuki-native.repos
+vcs import < kobuki-native.repos  # solo si vas a usar el Kobuki
 ```
 
-Si algún `vcs import` falla por la red, vuelve a ejecutarlo.
+Con `thirdparty-native.repos` basta para el TurtleBot 4. Si algún
+`vcs import` falla por la red, vuelve a ejecutarlo.
 
 | Manifiesto | Contenido | Instalación |
 | --- | --- | --- |
-| `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO... | Nativa |
-| `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara | Nativa |
+| `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO..., y la casa para el simulador del TurtleBot 4 | Nativa |
+| `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara. Opcional | Nativa |
 | `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi, más la casa para el simulador del TurtleBot 4 | Pixi |
-| `kobuki-pixi.repos` | Kobuki (simulador y robot real con láser RPLIDAR), adaptado a Pixi | Pixi |
+| `kobuki-pixi.repos` | Kobuki (simulador y robot real con láser RPLIDAR), adaptado a Pixi. Opcional | Pixi |
 
 Todos descargan en `src/kobuki` y `src/thirdparty`, que Git ignora. No mezcles
 los manifiestos de las dos instalaciones en el mismo workspace.
@@ -152,12 +153,13 @@ source ~/rsocial/install/setup.bash
 ```
 
 Para no repetirlo, puedes añadir esas tres líneas al final de `~/.bashrc`.
-Comprueba que todo funciona con el simulador del Kobuki o con el del
-TurtleBot 4 (cierra cada uno con Ctrl+C):
+Comprueba que todo funciona con el simulador del TurtleBot 4 o, si
+importaste `kobuki-native.repos`, con el del Kobuki (cierra cada uno con
+Ctrl+C):
 
 ```bash
-ros2 launch kobuki simulation.launch.py
 RMW_IMPLEMENTATION=rmw_fastrtps_cpp ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py
+ros2 launch kobuki simulation.launch.py
 ```
 
 ### Kobuki real
