@@ -367,24 +367,24 @@ llega el reloj del simulador (`ros2 topic hz /clock`).
 Con el robot en marcha. Detectan el obstáculo más cercano del `LaserScan`
 (ignorando lecturas no válidas) y publican `true`/`false` en `/obstacle`.
 
-Versión sin TF: da el ángulo en el frame del láser. Se lanza con `ros2 run`,
-así que hay que indicar el topic del láser (ver
-[Topics de cada robot](#topics-de-cada-robot)) y, en simulación,
-`use_sim_time`. Por ejemplo, en los simuladores:
+Versión sin TF: da el ángulo en el frame del láser. En el Kobuki real el
+láser está montado al revés y hacia atrás; esta versión lo corrige a mano
+(parámetro `real_robot`, que el launcher activa con `robot:=kobuki`).
 
 ```bash
-ros2 run laser obstacle_detector_node_no_tf --ros-args -r input_laser:=/scan_raw -p use_sim_time:=true  # Kobuki
-ros2 run laser obstacle_detector_node_no_tf --ros-args -r input_laser:=/scan -p use_sim_time:=true      # TurtleBot 4
+ros2 launch laser laser_no_tf.launch.py robot:=$ROBOT
 ```
-
-En el Kobuki real el láser está montado al revés y hacia atrás; esta versión lo
-corrige a mano con `-p real_robot:=true`.
 
 Versión con TF: transforma el obstáculo a `base_footprint`, lo que funciona
 con cualquier montaje del láser.
 
 ```bash
 ros2 launch laser laser.launch.py robot:=$ROBOT
+```
+
+Lanza solo una de las dos y, en otra terminal, mira el resultado:
+
+```bash
 ros2 topic echo /obstacle
 ```
 
@@ -634,15 +634,18 @@ Conviene probar las piezas por separado antes de juntarlas.
 
 ```bash
 ros2 launch vff_control obstacle_detector.launch.py robot:=$ROBOT
-ros2 topic echo /repulsive_vector
 ```
 
-Como en el bloque 5, también hay una versión sin TF (`-p real_robot:=true` en
-el Kobuki real). En los simuladores:
+Como en el bloque 5, también hay una versión sin TF:
 
 ```bash
-ros2 run vff_control obstacle_detector_node_no_tf --ros-args -r input_laser:=/scan_raw -p use_sim_time:=true  # Kobuki
-ros2 run vff_control obstacle_detector_node_no_tf --ros-args -r input_laser:=/scan -p use_sim_time:=true      # TurtleBot 4
+ros2 launch vff_control obstacle_detector_no_tf.launch.py robot:=$ROBOT
+```
+
+Lanza solo una de las dos y, en otra terminal, mira el resultado:
+
+```bash
+ros2 topic echo /repulsive_vector
 ```
 
 **Atracción.** Vector hacia la clase objetivo, en `/attractive_vector`. Hace
