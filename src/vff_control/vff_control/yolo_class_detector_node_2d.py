@@ -31,10 +31,13 @@ class TwoDYOLOClassDetectorNode(Node):
         self.declare_parameter('target_class', 'person')
         self.declare_parameter('base_frame', 'base_footprint')
         self.declare_parameter('optical_frame', 'camera_rgb_optical_frame')
+        # Detections of the target class with a lower YOLO score are ignored (false positives)
+        self.declare_parameter('min_confidence', 0.6)
 
         self.target_class = self.get_parameter('target_class').value
         self.base_frame = self.get_parameter('base_frame').value
         self.optical_frame = self.get_parameter('optical_frame').value
+        self.min_confidence = self.get_parameter('min_confidence').value
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -97,11 +100,20 @@ class TwoDYOLOClassDetectorNode(Node):
 
         self.get_logger().debug(f'Received {len(msg.detections)} detections')
 
-        # Find first detection of the target class
-        for detection in msg.detections:
-            if detection.results and detection.results[0].hypothesis.class_id == self.target_class:
-                self.publish_attractive_vector(detection)
-                break
+        # Keep only confident detections of the target class and pick the biggest bounding
+        # box: in 2D it is the best clue of the closest one, and it avoids jumping between
+        # several people
+        candidates = [
+            d for d in msg.detections
+            if d.results
+            and d.results[0].hypothesis.class_id == self.target_class
+            and d.results[0].hypothesis.score >= self.min_confidence
+        ]
+        if not candidates:
+            return
+
+        best = max(candidates, key=lambda d: d.bbox.size_x * d.bbox.size_y)
+        self.publish_attractive_vector(best)
 
     def publish_attractive_vector(self, detection):
 

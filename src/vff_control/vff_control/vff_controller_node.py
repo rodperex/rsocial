@@ -32,8 +32,15 @@ class VFFControllerNode(Node):
         self.declare_parameter('repulsive_gain_factor', 0.5)
         self.declare_parameter('repulsive_influence_distance', 0.5)
         self.declare_parameter('stay_distance', -1.0)  # -1.0 means no stay distance (2D case)
+        # Bumper: when the robot touches something (e.g. it reached the person) it stops and
+        # stays still for bump_pause seconds, then it carries on. bumper_type is the kind of
+        # message of bumper_topic: 'kobuki' (BumperEvent) or 'create3' (HazardDetectionVector,
+        # TurtleBot 4). An empty bumper_type disables it
+        self.declare_parameter('bumper_type', '')
+        self.declare_parameter('bumper_topic', '')
+        self.declare_parameter('bump_pause', 5.0)
         # seconds a received vector is considered valid
-        self.declare_parameter('vector_timeout', 0.5)
+        self.declare_parameter('vector_timeout', 1.0)
         # Target search: if the target has not been seen for search_timeout seconds, the
         # robot turns in place at search_angular_speed until it sees it again (0 disables it)
         self.declare_parameter('search_angular_speed', 0.4)
@@ -49,6 +56,7 @@ class VFFControllerNode(Node):
         self.vector_timeout = Duration(seconds=self.get_parameter('vector_timeout').value)
         self.search_angular_speed = self.get_parameter('search_angular_speed').value
         self.search_timeout = Duration(seconds=self.get_parameter('search_timeout').value)
+        self.bump_pause = Duration(seconds=self.get_parameter('bump_pause').value)
 
         # Subscribers
         self.attractive_sub = self.create_subscription(
@@ -64,6 +72,8 @@ class VFFControllerNode(Node):
             self.repulsive_callback,
             10
         )
+
+        self.create_bumper_subscription()
 
         # Publisher
         # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
@@ -81,11 +91,45 @@ class VFFControllerNode(Node):
         self.repulsive_ts = None
         self.moving = False
         self.searching = False
+        # Time until which the robot stays still after a bump (None: no bump pending)
+        self.bump_until = None
         # Side where the target was last seen (1 left, -1 right): the search turns that way
         self.search_direction = 1.0
         self.start_time = self.get_clock().now()
 
         self.timer = self.create_timer(0.05, self.control_cycle)  # 20 Hz
+
+    def create_bumper_subscription(self):
+        bumper_type = self.get_parameter('bumper_type').value
+        topic = self.get_parameter('bumper_topic').value
+        if not bumper_type or not topic:
+            return
+
+        # Imported here so that only the messages of the robot in use are needed
+        if bumper_type == 'kobuki':
+            from kobuki_ros_interfaces.msg import BumperEvent
+            self.create_subscription(BumperEvent, topic, self.kobuki_bumper_callback, 10)
+        elif bumper_type == 'create3':
+            from irobot_create_msgs.msg import HazardDetectionVector
+            self.create_subscription(
+                HazardDetectionVector, topic, self.create3_bumper_callback,
+                rclpy.qos.qos_profile_sensor_data)
+        else:
+            self.get_logger().error(f"Unknown bumper_type '{bumper_type}': bumper disabled")
+
+    def kobuki_bumper_callback(self, msg):
+        if msg.state == msg.PRESSED:
+            self.on_bump()
+
+    def create3_bumper_callback(self, msg):
+        # The Create 3 has no bumper topic: a bump is a detection of type BUMP
+        if any(d.type == d.BUMP for d in msg.detections):
+            self.on_bump()
+
+    def on_bump(self):
+        if self.bump_until is None:
+            self.get_logger().info(f'Bump: stopping for {self.bump_pause.nanoseconds / 1e9:.1f} s')
+        self.bump_until = self.get_clock().now() + self.bump_pause
 
     def publish_vel(self, twist):
         """Publish a Twist, wrapping it in a TwistStamped if the robot expects it."""
@@ -136,6 +180,15 @@ class VFFControllerNode(Node):
         self.moving = True
 
     def control_cycle(self):
+        if self.bump_until is not None:
+            if self.get_clock().now() < self.bump_until:
+                # Publish zero every cycle: the robot must not move while the pause lasts
+                self.publish_vel(Twist())
+                self.moving = False
+                return
+            self.get_logger().info('Bump pause finished')
+            self.bump_until = None
+
         if not self.is_fresh(self.attractive_ts):
             # Without a target the VFF has nowhere to go. After a short gap (a missed
             # detection) the robot searches for the target; until then, it stops
@@ -175,6 +228,7 @@ class VFFControllerNode(Node):
         repulsive_force_y = 0.0
         obstacle_distance = math.hypot(repulsive.x, repulsive.y)
         rho_0 = self.repulsive_influence_distance
+
         if 0.0 < obstacle_distance <= rho_0 and repulsive.x > 0.0:
             force = self.repulsive_gain_factor * (1.0 / obstacle_distance - 1.0 / rho_0)
             # The repulsive vector points towards the obstacle, so the force is opposite

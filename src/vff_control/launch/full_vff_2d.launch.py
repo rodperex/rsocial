@@ -20,6 +20,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from rsocial_robots import get_robot, robot_arguments
 
 
@@ -78,6 +79,8 @@ def launch_setup(context):
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
                 'target_class': LaunchConfiguration('target_class'),
+                'min_confidence': ParameterValue(
+                    LaunchConfiguration('min_confidence'), value_type=float),
                 'base_frame': 'base_footprint',
                 'optical_frame': robot['optical_frame']
             }],
@@ -103,7 +106,9 @@ def launch_setup(context):
                 'search_angular_speed': 0.4,  # 0.0 disables the target search
                 'search_timeout': 2.0,
                 'stay_distance': -1.0,  # No stay distance in 2D
-                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel'],
+                'bumper_type': robot['bumper_type'],
+                'bumper_topic': robot['bumper_topic']
             }],
             remappings=[
                 ('/vel', '/cmd_vel')
@@ -123,6 +128,11 @@ def generate_launch_description():
             'device',
             default_value='cuda:0',
             description='Device YOLO runs on: cuda:0 (GPU) or cpu'
+        ),
+        DeclareLaunchArgument(
+            'min_confidence',
+            default_value='0.6',
+            description='Minimum YOLO score for a detection of the target class to be used'
         ),
         OpaqueFunction(function=launch_setup),
     ])

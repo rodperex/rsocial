@@ -7,6 +7,9 @@
 kobuki_sim:
   use_sim_time: true
   scan_topic: /scan_raw
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 0.0
+  laser_flipped: false
   image_topic: /rgbd_camera/image
   depth_topic: /rgbd_camera/depth_image
   camera_info_topic: /rgbd_camera/camera_info
@@ -17,10 +20,16 @@ kobuki_sim:
   fix_image_frame: true
   depth_image_units_divisor: 1  # Gazebo depth is 32FC1 in meters
   stamped_cmd_vel: false
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /events/bumper
+  bumper_type: kobuki
 kobuki:
   use_sim_time: false
   # RPLIDAR with the footprint filter of kobuki.launch.py (lidar_a2 or lidar_s2)
   scan_topic: /scan_filtered
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 3.141592653589793
+  laser_flipped: true
   # Astra camera (kobuki.launch.py astra:=true)
   image_topic: /camera/color/image_raw
   depth_topic: /camera/depth/image_raw
@@ -30,9 +39,15 @@ kobuki:
   fix_image_frame: false
   depth_image_units_divisor: 1000  # depth in mm (16UC1)
   stamped_cmd_vel: false
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /events/bumper
+  bumper_type: kobuki
 tb4_sim:
   use_sim_time: true
   scan_topic: /scan
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 1.5707963267948966
+  laser_flipped: false
   image_topic: /oakd/rgb/preview/image_raw
   depth_topic: /oakd/rgb/preview/depth
   camera_info_topic: /oakd/rgb/preview/camera_info
@@ -42,12 +57,18 @@ tb4_sim:
   depth_image_units_divisor: 1  # Gazebo depth is 32FC1 in meters
   # The TurtleBot 4 (Jazzy) expects geometry_msgs/TwistStamped on cmd_vel
   stamped_cmd_vel: true
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /hazard_detection
+  bumper_type: create3
 # TurtleBot 4 with the default configuration of its OAK-D camera, which only
 # publishes a small color preview: the 2D camera examples work, the 3D ones do
 # not (there is no depth). For depth, see tb4_rgbd.
 tb4:
   use_sim_time: false
   scan_topic: /scan
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 1.5707963267948966
+  laser_flipped: false
   image_topic: /oakd/rgb/preview/image_raw
   depth_topic: /oakd/stereo/image_raw  # not published with the default configuration
   camera_info_topic: /oakd/rgb/preview/camera_info
@@ -56,6 +77,9 @@ tb4:
   fix_image_frame: false
   depth_image_units_divisor: 1000  # depth in mm (16UC1)
   stamped_cmd_vel: true
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /hazard_detection
+  bumper_type: create3
 # TurtleBot 4 with the stereo pipeline of its OAK-D enabled on the robot
 # (i_pipeline_type: RGBD and rgb.i_publish_topic: true, at 640x360 so that the
 # images get through the WiFi; see README-tb4-real.md). YOLO 3D needs the color
@@ -64,6 +88,9 @@ tb4:
 tb4_rgbd:
   use_sim_time: false
   scan_topic: /scan
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 1.5707963267948966
+  laser_flipped: false
   image_topic: /oakd/rgb/image_raw
   depth_topic: /oakd/stereo/image_raw
   camera_info_topic: /oakd/rgb/camera_info
@@ -72,3 +99,6 @@ tb4_rgbd:
   fix_image_frame: false
   depth_image_units_divisor: 1000  # depth in mm (16UC1)
   stamped_cmd_vel: true
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /hazard_detection
+  bumper_type: create3

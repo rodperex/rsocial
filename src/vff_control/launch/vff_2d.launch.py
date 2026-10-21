@@ -16,6 +16,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from rsocial_robots import get_robot, robot_arguments
 
 
@@ -48,6 +49,8 @@ def launch_setup(context):
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
                 'target_class': LaunchConfiguration('target_class'),
+                'min_confidence': ParameterValue(
+                    LaunchConfiguration('min_confidence'), value_type=float),
                 'base_frame': 'base_footprint',
                 'optical_frame': robot['optical_frame']
             }],
@@ -66,14 +69,16 @@ def launch_setup(context):
             output='screen',
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
-                'max_linear_speed': 0.3,
-                'max_angular_speed': 0.5,
+                'max_linear_speed': 0.5,
+                'max_angular_speed': 0.7,
                 'repulsive_gain_factor': 0.5,
                 'repulsive_influence_distance': 0.5,
                 'search_angular_speed': 0.4,  # 0.0 disables the target search
                 'search_timeout': 2.0,
                 'stay_distance': -1.0,  # No stay distance in 2D
-                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel'],
+                'bumper_type': robot['bumper_type'],
+                'bumper_topic': robot['bumper_topic']
             }],
             remappings=[
                 ('/vel', '/cmd_vel')
@@ -86,8 +91,13 @@ def generate_launch_description():
     return LaunchDescription(robot_arguments() + [
         DeclareLaunchArgument(
             'target_class',
-            default_value='cup',
+            default_value='sports ball',
             description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        DeclareLaunchArgument(
+            'min_confidence',
+            default_value='0.6',
+            description='Minimum YOLO score for a detection of the target class to be used'
         ),
         OpaqueFunction(function=launch_setup),
     ])

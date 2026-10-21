@@ -70,7 +70,9 @@ def launch_setup(context):
                 'search_angular_speed': 0.4,  # 0.0 disables the target search
                 'search_timeout': 2.0,
                 'stay_distance': 1.0,
-                'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
+                'enable_stamped_cmd_vel': robot['stamped_cmd_vel'],
+                'bumper_type': robot['bumper_type'],
+                'bumper_topic': robot['bumper_topic']
             }],
             remappings=[
                 ('/vel', '/cmd_vel')

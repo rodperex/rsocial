@@ -16,6 +16,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from rsocial_robots import get_robot, robot_arguments
 
 
@@ -32,6 +33,8 @@ def launch_setup(context):
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
                 'target_class': LaunchConfiguration('target_class'),
+                'min_confidence': ParameterValue(
+                    LaunchConfiguration('min_confidence'), value_type=float),
                 'base_frame': 'base_footprint',
                 'optical_frame': robot['optical_frame']
             }],
@@ -48,8 +51,13 @@ def generate_launch_description():
     return LaunchDescription(robot_arguments() + [
         DeclareLaunchArgument(
             'target_class',
-            default_value='cup',
+            default_value='sports ball',
             description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
+        ),
+        DeclareLaunchArgument(
+            'min_confidence',
+            default_value='0.6',
+            description='Minimum YOLO score for a detection of the target class to be used'
         ),
         OpaqueFunction(function=launch_setup),
     ])
