@@ -26,10 +26,15 @@ class ObstacleDetectorNode(Node):
         super().__init__('obstacle_detector_node')
 
         self.declare_parameter('min_distance', 0.5)
-        self.declare_parameter('real_robot', False)
+        self.declare_parameter('laser_yaw', 0.0)
+        self.declare_parameter('laser_flipped', False)
+        # Readings closer than this are the robot's own body, not obstacles
+        self.declare_parameter('self_filter_distance', 0.2)
 
         self.min_distance = self.get_parameter('min_distance').value
-        self.real_robot = self.get_parameter('real_robot').value
+        self.laser_yaw = self.get_parameter('laser_yaw').value
+        self.laser_flipped = self.get_parameter('laser_flipped').value
+        self.self_filter_distance = self.get_parameter('self_filter_distance').value
 
         self.get_logger().info(f'Obstacle_detector_node set to {self.min_distance:.2f} m')
 
@@ -47,7 +52,8 @@ class ObstacleDetectorNode(Node):
 
         # Invalid readings (NaN, inf, 0.0 or outside [range_min, range_max], typical
         # of real lasers) are replaced by inf so they are ignored by min()
-        ranges = [r if math.isfinite(r) and scan.range_min <= r <= scan.range_max else float('inf')
+        lower = max(scan.range_min, self.self_filter_distance)
+        ranges = [r if math.isfinite(r) and lower <= r <= scan.range_max else float('inf')
                   for r in scan.ranges]
 
         distance_min = min(ranges)
@@ -55,13 +61,12 @@ class ObstacleDetectorNode(Node):
 
         msg = Bool()
         if distance_min < self.min_distance:
-            if not self.real_robot:
-                # Kobuki simulator has forward-facing laser
-                angle = scan.angle_min + scan.angle_increment * min_idx
-            else:
-                # Laser faces backward: add pi (180°)
-                # Laser upside down: flip angle (multiply by -1)
-                angle = -(scan.angle_min + scan.angle_increment * min_idx) + math.pi
+            # Angle in the robot frame: 0 is in front, positive to the left
+            angle = scan.angle_min + scan.angle_increment * min_idx
+            if self.laser_flipped:
+                angle = -angle
+            angle = math.atan2(math.sin(angle + self.laser_yaw),
+                               math.cos(angle + self.laser_yaw))
 
             angle_deg = math.degrees(angle)
 

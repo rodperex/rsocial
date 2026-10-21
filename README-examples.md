@@ -367,9 +367,11 @@ llega el reloj del simulador (`ros2 topic hz /clock`).
 Con el robot en marcha. Detectan el obstáculo más cercano del `LaserScan`
 (ignorando lecturas no válidas) y publican `true`/`false` en `/obstacle`.
 
-Versión sin TF: da el ángulo en el frame del láser. En el Kobuki real el
-láser está montado al revés y hacia atrás; esta versión lo corrige a mano
-(parámetro `real_robot`, que el launcher activa con `robot:=kobuki`).
+Versión sin TF: corrige el ángulo a mano con la posición del láser en el
+robot (`laser_yaw` y `laser_flipped` en `src/rsocial_robots/config/robots.yaml`,
+que el launcher pasa según `robot:=`): 0° es el frente y los positivos la
+izquierda. El láser del TurtleBot 4 está girado 90° y el del Kobuki real
+está al revés y hacia atrás.
 
 ```bash
 ros2 launch laser laser_no_tf.launch.py robot:=$ROBOT

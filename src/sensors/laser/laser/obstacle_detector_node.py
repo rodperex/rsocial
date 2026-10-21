@@ -30,9 +30,12 @@ class ObstacleDetectorNode(Node):
 
         self.declare_parameter('min_distance', 0.5)
         self.declare_parameter('base_frame', 'base_footprint')
+        # Readings below this distance (robot body, lidar returning range_min) are ignored
+        self.declare_parameter('self_filter_distance', 0.2)
 
         self.min_distance = self.get_parameter('min_distance').value
         self.base_frame = self.get_parameter('base_frame').value
+        self.self_filter_distance = self.get_parameter('self_filter_distance').value
 
         self.get_logger().info(f'Obstacle_detector_node set to {self.min_distance:.2f} m')
 
@@ -53,7 +56,8 @@ class ObstacleDetectorNode(Node):
 
         # Invalid readings (NaN, inf, 0.0 or outside [range_min, range_max], typical
         # of real lasers) are replaced by inf so they are ignored by min()
-        ranges = [r if math.isfinite(r) and scan.range_min <= r <= scan.range_max else float('inf')
+        lower = max(scan.range_min, self.self_filter_distance)
+        ranges = [r if math.isfinite(r) and lower <= r <= scan.range_max else float('inf')
                   for r in scan.ranges]
         if all(math.isinf(r) for r in ranges):
             self.get_logger().debug('No valid laser measurements after filtering')

@@ -14,17 +14,15 @@
 
 from launch import LaunchDescription
 from launch.actions import OpaqueFunction
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from rsocial_robots import get_robot, robot_arguments
 
 
 def launch_setup(context):
     robot = get_robot(context)
-    robot_name = LaunchConfiguration('robot').perform(context)
 
     return [
-        # Without TF, the angle is in the laser frame
+        # Without TF, the angle is corrected with the pose of the laser on the robot
         Node(
             package='vff_control',
             executable='obstacle_detector_node_no_tf',
@@ -33,8 +31,8 @@ def launch_setup(context):
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
                 'min_distance': 0.5,
-                # The laser of the real Kobuki is mounted backward and upside down
-                'real_robot': robot_name == 'kobuki'
+                'laser_yaw': robot['laser_yaw'],
+                'laser_flipped': robot['laser_flipped']
             }],
             remappings=[
                 ('/input_laser', robot['scan_topic'])
