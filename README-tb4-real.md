@@ -133,7 +133,7 @@ la de profundidad, para no saturar la wifi. Con eso valen los ejemplos 2D
 `yolo_class_3d_alt`, `vff_3d` y `full_vff_3d`). El motivo está en
 [TurtleBot 4 real: activar la profundidad](README-examples.md#turtlebot-4-real-activar-la-profundidad),
 y lo que se ha medido con este robot, más abajo, en
-[Por qué 640x360 y 5 imágenes por segundo](#por-qué-640x360-y-5-imágenes-por-segundo).
+[Por qué 640x360 y pocas imágenes por segundo](#por-qué-640x360-y-pocas-imágenes-por-segundo).
 
 ### Arrancar y parar la cámara y el láser
 
@@ -196,7 +196,7 @@ En el robot, por SSH:
          i_usb_speed: SUPER_PLUS
        rgb:
          i_board_socket_id: 0
-         i_fps: 5.0                 # antes 30.0
+         i_fps: 3.0                 # antes 30.0
          i_height: 360              # antes 720
          i_interleaved: false
          i_max_q_size: 10
@@ -211,12 +211,12 @@ En el robot, por SSH:
          i_isp_den: 3               # nuevo: ...es decir, a 640x360
          i_width: 640               # antes 1280
        left:                        # nuevo: cámaras de la profundidad
-         i_fps: 5.0
+         i_fps: 3.0
          i_resolution: '400P'       # de fábrica 720P
          i_width: 640
          i_height: 400
        right:                       # nuevo
-         i_fps: 5.0
+         i_fps: 3.0
          i_resolution: '400P'
          i_width: 640
          i_height: 400
@@ -246,21 +246,34 @@ En el robot, por SSH:
    # /oakd/rgb/preview/image_raw la pequeña sigue publicándose
    ```
 
-5. Lanza los ejemplos con `robot:=tb4_rgbd` en lugar de `robot:=tb4`. Esa
+5. Abre la terminal con `pixi run tb4-rgbd` (deja `ROBOT=tb4_rgbd`) y lanza los
+   ejemplos con `robot:=$ROBOT`, en lugar de `robot:=tb4`. Esa
    entrada usa `/oakd/rgb/image_raw` en lugar de la imagen pequeña, porque
    YOLO 3D necesita que la imagen en color y la de profundidad tengan el
    mismo tamaño.
 
-### Por qué 640x360 y 5 imágenes por segundo
+### Por qué 640x360 y pocas imágenes por segundo
 
 Las imágenes viajan sin comprimir del Raspberry Pi al portátil por la wifi.
-Medido con este robot y un router en 5 GHz:
+Medido con este robot y un router en 5 GHz (la tabla usa 5 fps; para YOLO 3D
+baja a 3 fps, como se explica debajo de la tabla):
 
 | Configuración | En el robot | En el portátil, por wifi |
 | --- | --- | --- |
 | 1280x720 a 10 fps (y la profundidad a unos 15) | Color a 3,5 Hz y profundidad a 15 Hz: unos 300 Mbit/s entre las dos. La cámara gasta más de un núcleo del Raspberry Pi | Color a 0,2 Hz y profundidad a 0,8 Hz: casi nada |
 | 640x360 a 5 fps (la de arriba), búfer de recepción por defecto | Color y profundidad a 5 Hz: unos 46 Mbit/s entre las dos. La cámara gasta un 30 % de un núcleo | Color a 4,1–4,6 Hz y profundidad a 1,5 Hz |
 | 640x360 a 5 fps, con el [búfer de recepción ampliado](#búfer-de-recepción-del-portátil) | Igual | **Color y profundidad a 5 Hz: llega todo** |
+
+**Usa 3 fps si vas a usar YOLO 3D.** `detect_3d_node` empareja la profundidad,
+el `camera_info` y las detecciones, y solo acepta 0,5 s de diferencia entre sus
+sellos. A 5 fps, el color y el `camera_info` llegaban por wifi a unos 3 Hz
+mientras la profundidad seguía a 5 Hz, así que el retraso del color crecía
+(hasta unos 3 s) y `/yolo/detections_3d` nunca se publicaba. Con `i_fps: 3.0`
+en `rgb`, `left` y `right` (en `oakd_pro.yaml`), los sellos difieren como
+mucho un fotograma (0,33 s) y el 3D funciona. Para comprobarlo mide con YOLO
+en marcha la diferencia entre los sellos de `/oakd/stereo/image_raw`,
+`/oakd/rgb/image_raw`, `/oakd/rgb/camera_info` y `/yolo/tracking`: debe quedar
+por debajo de 0,5 s y no crecer.
 
 No subas la resolución ni los fps: con 640x360 a 5 fps ya se usan unos
 46 Mbit/s de la wifi, que comparten todos los que estén en esa red. Cada
