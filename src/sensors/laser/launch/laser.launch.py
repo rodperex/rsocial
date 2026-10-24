@@ -29,7 +29,7 @@ def launch_setup(context):
             output='screen',
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
-                'min_distance': 0.5,
+                'min_distance': 0.8,
                 'base_frame': 'base_footprint'
             }],
             remappings=[
