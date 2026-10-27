@@ -194,6 +194,9 @@ tb4-sim = {cmd = "bash -c 'export ROS_DOMAIN_ID=${TB4_SIM_DOMAIN_ID:-1}; exec ba
 # tb4-rgbd: the real TurtleBot 4 with the color and depth images enabled (ROBOT=tb4_rgbd,
 # needed for the 3D examples; see README-tb4-real.md)
 tb4-rgbd = {cmd = "bash -c 'export FASTRTPS_DEFAULT_PROFILES_FILE=\"$PIXI_PROJECT_ROOT/pixi/fastdds-tb4.xml\"; exec bash pixi/robot-shell.sh \"TurtleBot 4 (RGBD)\" ROS_DOMAIN_ID RMW_IMPLEMENTATION ROBOT FASTRTPS_DEFAULT_PROFILES_FILE'", env = {ROS_DOMAIN_ID = "0", RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", ROBOT = "tb4_rgbd"}, description = "Shell for the real TurtleBot 4 with depth (tb4_rgbd)"}
+# tb4-rgbd-c: like tb4-rgbd, but the images travel compressed and are decompressed on
+# this computer (ROBOT=tb4_rgbd_c; see README-tb4-real.md)
+tb4-rgbd-c = {cmd = "bash -c 'export FASTRTPS_DEFAULT_PROFILES_FILE=\"$PIXI_PROJECT_ROOT/pixi/fastdds-tb4.xml\"; exec bash pixi/robot-shell.sh \"TurtleBot 4 (RGBD comprimida)\" ROS_DOMAIN_ID RMW_IMPLEMENTATION ROBOT FASTRTPS_DEFAULT_PROFILES_FILE'", env = {ROS_DOMAIN_ID = "0", RMW_IMPLEMENTATION = "rmw_fastrtps_cpp", ROBOT = "tb4_rgbd_c"}, description = "Shell for the real TurtleBot 4 with compressed images (tb4_rgbd_c)"}
 
 # `install/setup.bash` is created only after the first build. Source it
 # explicitly with `pixi run source-local` after building the workspace.

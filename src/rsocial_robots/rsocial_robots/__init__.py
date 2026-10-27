@@ -41,6 +41,6 @@ def robot_arguments():
             'robot',
             choices=list(load_robots()),
             description=('Robot the example runs on, simulated (kobuki_sim, tb4_sim) '
-                         'or real (kobuki, tb4, tb4_rgbd)')
+                         'or real (kobuki, tb4, tb4_rgbd, tb4_rgbd_c)')
         ),
     ]

@@ -102,3 +102,30 @@ tb4_rgbd:
   # Bumper used by vff_control to stop on contact (type: kobuki or create3)
   bumper_topic: /hazard_detection
   bumper_type: create3
+# Like tb4_rgbd, but the robot sends the color and depth images compressed
+# (image_transport), so they take much less WiFi (see README-tb4-real.md).
+# decompress.launch.py (camera package), which yolo.launch.py includes,
+# republishes them uncompressed on this computer, on image_topic and
+# depth_topic. Nothing on this computer should subscribe to
+# /oakd/rgb/image_raw or /oakd/stereo/image_raw: those images would travel
+# uncompressed over the WiFi again.
+tb4_rgbd_c:
+  use_sim_time: false
+  scan_topic: /scan
+  # Pose of the laser on the robot: yaw (rad) of its frame and whether it is upside down
+  laser_yaw: 1.5707963267948966
+  laser_flipped: false
+  image_topic: /oakd/rgb/image_local
+  depth_topic: /oakd/stereo/image_local
+  camera_info_topic: /oakd/rgb/camera_info
+  # Compressed images sent by the robot; the transport is the last part of the topic
+  compressed_image_topic: /oakd/rgb/image_raw/compressed
+  compressed_depth_topic: /oakd/stereo/image_raw/compressedDepth
+  camera_frame: oakd_link
+  optical_frame: oakd_rgb_camera_optical_frame
+  fix_image_frame: false
+  depth_image_units_divisor: 1000  # depth in mm (16UC1)
+  stamped_cmd_vel: true
+  # Bumper used by vff_control to stop on contact (type: kobuki or create3)
+  bumper_topic: /hazard_detection
+  bumper_type: create3

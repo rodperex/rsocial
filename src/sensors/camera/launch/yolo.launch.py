@@ -26,6 +26,20 @@ def launch_setup(context):
     robot = get_robot(context)
 
     return [
+        # Decompresses the images of the robots that send them compressed (does nothing otherwise)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(
+                    get_package_share_directory('camera'),
+                    'launch',
+                    'decompress.launch.py'
+                )
+            ),
+            launch_arguments={
+                'robot': LaunchConfiguration('robot'),
+            }.items()
+        ),
+
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 os.path.join(
@@ -53,7 +67,7 @@ def generate_launch_description():
             'robot',
             choices=list(load_robots()),
             description=('Robot whose camera feeds YOLO, simulated (kobuki_sim, tb4_sim) '
-                         'or real (kobuki, tb4, tb4_rgbd)')
+                         'or real (kobuki, tb4, tb4_rgbd, tb4_rgbd_c)')
         ),
         DeclareLaunchArgument(
             'use_3d',

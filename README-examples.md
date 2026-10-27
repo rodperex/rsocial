@@ -186,7 +186,7 @@ es el simulado o el real:
 | | Kobuki | TurtleBot 4 |
 | --- | --- | --- |
 | Simulador | `robot:=kobuki_sim` | `robot:=tb4_sim` |
-| Robot real | `robot:=kobuki` | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (ver [bloque 7](#turtlebot-4-real-activar-la-profundidad)) |
+| Robot real | `robot:=kobuki` | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 7](#turtlebot-4-real-activar-la-profundidad)) |
 
 Con él, el launcher elige los topics del robot, el tipo de mensaje de
 velocidad y si los nodos usan el reloj del simulador (`use_sim_time`), que es
@@ -200,15 +200,17 @@ preparación de la terminal:
 | --- | --- |
 | `pixi run tb4-sim`, o `pixi shell` y `tb4sim` | `tb4_sim` |
 | `pixi run tb4`, o `pixi shell` y `tb4` | `tb4` |
+| `pixi run tb4-rgbd` | `tb4_rgbd` |
+| `pixi run tb4-rgbd-c` | `tb4_rgbd_c` |
 | `pixi run kobuki-sim`, o `pixi shell -e kobuki` | `kobuki_sim` |
 | `pixi run kobuki` | `kobuki` |
 
 Las tareas `kobuki` y `kobuki-sim` abren una shell del entorno `kobuki` con el
 workspace cargado, igual que `tb4` y `tb4-sim`.
 
-Para el resto de casos (TurtleBot 4 real con profundidad o instalación nativa
-sin Pixi), defínela a mano en cada terminal en la que lances ejemplos, después
-de preparar la terminal:
+Para el resto de casos (por ejemplo, la instalación nativa sin Pixi), defínela
+a mano en cada terminal en la que lances ejemplos, después de preparar la
+terminal:
 
 ```bash
 export ROBOT=kobuki     # o kobuki_sim, tb4_sim, tb4, tb4_rgbd
@@ -231,21 +233,22 @@ Los topics y frames de cada caso están en un único fichero,
 mismo robot no publica siempre en los mismos topics en el simulador y en el
 robot real, por eso tienen entradas distintas:
 
-| | `kobuki_sim` | `kobuki` | `tb4_sim` | `tb4` | `tb4_rgbd` |
-| --- | --- | --- | --- | --- | --- |
-| Láser | `/scan_raw` | `/scan_filtered` | `/scan` | `/scan` | `/scan` |
-| Imagen | `/rgbd_camera/image` | `/camera/color/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` |
-| Profundidad | `/rgbd_camera/depth_image` (m) | `/camera/depth/image_raw` (mm) | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) |
-| Frame óptico | `camera_rgb_optical_frame` | `camera_color_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` |
-| Velocidad (`/cmd_vel`) | `Twist` | `Twist` | `TwistStamped` | `TwistStamped` | `TwistStamped` |
-| `use_sim_time` | `true` | `false` | `true` | `false` | `false` |
+| | `kobuki_sim` | `kobuki` | `tb4_sim` | `tb4` | `tb4_rgbd` | `tb4_rgbd_c` |
+| --- | --- | --- | --- | --- | --- | --- |
+| Láser | `/scan_raw` | `/scan_filtered` | `/scan` | `/scan` | `/scan` | `/scan` |
+| Imagen | `/rgbd_camera/image` | `/camera/color/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` | `/oakd/rgb/image_local` (descomprimida en el portátil) |
+| Profundidad | `/rgbd_camera/depth_image` (m) | `/camera/depth/image_raw` (mm) | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) | `/oakd/stereo/image_local` (mm, descomprimida en el portátil) |
+| Frame óptico | `camera_rgb_optical_frame` | `camera_color_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` |
+| Velocidad (`/cmd_vel`) | `Twist` | `Twist` | `TwistStamped` | `TwistStamped` | `TwistStamped` | `TwistStamped` |
+| `use_sim_time` | `true` | `false` | `true` | `false` | `false` | `false` |
 
 Las entradas de los simuladores están comprobadas. Las de los robots reales
 dependen de los sensores montados y de cómo se lanzan sus drivers: la del
 Kobuki supone el láser RPLIDAR con el filtro de `kobuki.launch.py` y la cámara
 Astra (`astra:=true`). Las del TurtleBot 4 dependen de cómo esté configurada
-su cámara: `tb4` es la configuración de fábrica, que no publica profundidad, y
-`tb4_rgbd` la configuración con profundidad (ver
+su cámara: `tb4` es la configuración de fábrica, que no publica profundidad,
+`tb4_rgbd` la configuración con profundidad y `tb4_rgbd_c` la misma con las
+imágenes comprimidas en la wifi (ver
 [TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
 Antes de usar un robot real,
 comprueba sus topics con `ros2 topic list` y, si no coinciden, cámbialos en el
@@ -593,6 +596,15 @@ Después lanza los ejemplos con `robot:=tb4_rgbd`. Esta entrada usa
 que la imagen en color y la de profundidad tengan el mismo tamaño, y el robot
 alinea la profundidad con esa imagen. La imagen pequeña se sigue publicando,
 así que `robot:=tb4` sigue funcionando para los ejemplos 2D.
+
+Para gastar menos WiFi, usa `robot:=tb4_rgbd_c` (terminal con
+`pixi run tb4-rgbd-c`). El robot envía las imágenes comprimidas y
+`yolo.launch.py` arranca también dos nodos que las descomprimen en el
+portátil, en `/oakd/rgb/image_local` y `/oakd/stereo/image_local`. Con esta
+entrada no te suscribas a los topics `image_raw` del robot (por ejemplo, desde
+RViz), porque esas imágenes volverían a viajar sin comprimir. Los detalles
+están en
+[README-tb4-real.md](README-tb4-real.md#imágenes-comprimidas).
 
 Con el robot en la base, la cámara está apagada para ahorrar batería. Ver
 [Arrancar y parar la cámara y el láser](README-tb4-real.md#arrancar-y-parar-la-cámara-y-el-láser).

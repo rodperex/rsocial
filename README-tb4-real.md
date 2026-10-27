@@ -250,7 +250,8 @@ En el robot, por SSH:
    ejemplos con `robot:=$ROBOT`, en lugar de `robot:=tb4`. Esa
    entrada usa `/oakd/rgb/image_raw` en lugar de la imagen pequeña, porque
    YOLO 3D necesita que la imagen en color y la de profundidad tengan el
-   mismo tamaño.
+   mismo tamaño. Si quieres que las imágenes viajen comprimidas, usa
+   `pixi run tb4-rgbd-c` (ver [Imágenes comprimidas](#imágenes-comprimidas)).
 
 ### Por qué 640x360 y pocas imágenes por segundo
 
@@ -275,8 +276,9 @@ en marcha la diferencia entre los sellos de `/oakd/stereo/image_raw`,
 `/oakd/rgb/image_raw`, `/oakd/rgb/camera_info` y `/yolo/tracking`: debe quedar
 por debajo de 0,5 s y no crecer.
 
-No subas la resolución ni los fps: con 640x360 a 5 fps ya se usan unos
-46 Mbit/s de la wifi, que comparten todos los que estén en esa red. Cada
+Sin comprimir, no subas la resolución ni los fps: con 640x360 a 5 fps ya se
+usan unos 46 Mbit/s de la wifi, que comparten todos los que estén en esa red
+(comprimidas sí se pueden subir, ver [Subir los fps](#subir-los-fps)). Cada
 equipo y cada programa que se suscribe a la cámara (YOLO, RViz, `rqt`...)
 recibe su propia copia, así que cierra lo que no uses.
 
@@ -313,6 +315,204 @@ añadiendo a esa función:
 
 ```bash
 export FASTRTPS_DEFAULT_PROFILES_FILE=~/rsocial/pixi/fastdds-tb4.xml
+```
+
+### Imágenes comprimidas
+
+El driver de la cámara publica cada imagen en varios formatos con
+`image_transport`: sin comprimir (`/oakd/rgb/image_raw`) y comprimida
+(`/oakd/rgb/image_raw/compressed`, en JPEG). Para la profundidad, el formato
+comprimido es `/oakd/stereo/image_raw/compressedDepth`, en PNG, que no pierde
+información. YOLO solo admite imágenes sin comprimir, así que hay que
+descomprimirlas en el portátil:
+
+```text
+robot                                             portátil
+/oakd/rgb/image_raw/compressed         ──wifi──►  decompress_image ──► /oakd/rgb/image_local
+/oakd/stereo/image_raw/compressedDepth ──wifi──►  decompress_depth ──► /oakd/stereo/image_local
+```
+
+La entrada `tb4_rgbd_c` de
+[`robots.yaml`](src/rsocial_robots/config/robots.yaml) hace esto:
+
+- `ros2 launch camera yolo.launch.py robot:=tb4_rgbd_c` arranca además los dos
+  nodos `republish` de `image_transport` del dibujo
+  ([`decompress.launch.py`](src/sensors/camera/launch/decompress.launch.py)).
+  Con las demás entradas no arranca nada.
+- Todos los ejemplos usan las imágenes descomprimidas, `/oakd/rgb/image_local`
+  y `/oakd/stereo/image_local`. El `camera_info` no cambia: es pequeño y viaja
+  tal cual.
+- Los sellos de tiempo se conservan, así que YOLO 3D empareja la profundidad y
+  las detecciones igual que sin comprimir.
+
+Para usarla:
+
+1. Configura la cámara del robot como en [Activarlas](#activarlas). Para
+   comprimir no hay que cambiar nada más en `oakd_pro.yaml`: los topics
+   comprimidos los añaden los plugins de `image_transport` instalados en el
+   robot, y el Raspberry Pi solo comprime mientras alguien está suscrito a
+   ellos. No actives `i_publish_compressed` en el fichero: deja de publicar
+   la imagen sin comprimir, cambia los topics y comprimiría la profundidad
+   en JPEG, que pierde información.
+2. Comprueba que el robot publica las imágenes comprimidas:
+
+   ```bash
+   ros2 topic list | grep -E 'compressed$|compressedDepth$'
+   # /oakd/rgb/image_raw/compressed
+   # /oakd/stereo/image_raw/compressedDepth
+   ```
+
+   Si no salen, en el robot faltan los plugins de compresión. Instálalos por
+   SSH y reinicia el servicio:
+
+   ```bash
+   sudo apt install ros-jazzy-image-transport-plugins
+   turtlebot4-service-restart
+   ```
+
+3. Abre las terminales con `pixi run tb4-rgbd-c` (deja `ROBOT=tb4_rgbd_c`) y
+   lanza los ejemplos con `robot:=$ROBOT`.
+
+Para ver las imágenes sin YOLO (en RViz o `rqt_image_view`), arranca los
+descompresores solos:
+
+```bash
+ros2 launch camera decompress.launch.py robot:=$ROBOT
+```
+
+No lo hagas con YOLO en marcha, porque YOLO ya los arranca y cada imagen
+llegaría dos veces.
+
+**No te suscribas desde el portátil a `/oakd/rgb/image_raw` ni a
+`/oakd/stereo/image_raw`.** El robot sigue publicando esas imágenes sin
+comprimir, pero solo las envía por la wifi si alguien está suscrito a ellas:
+en DDS, cada mensaje se envía solo a los suscriptores de su topic, así que sin
+suscriptores no sale nada del robot. Si en RViz, `rqt` o un
+`ros2 topic hz` eliges uno de esos topics, vuelven a viajar sin comprimir
+mientras siga abierto. Para comprobar que no viajan, mira que no tengan
+suscriptores:
+
+```bash
+ros2 topic info /oakd/rgb/image_raw        # Subscription count: 0
+ros2 topic info /oakd/stereo/image_raw     # Subscription count: 0
+```
+
+Los descompresores tampoco piden nada al robot si nadie usa sus imágenes:
+solo se suscriben a los topics comprimidos mientras alguien está suscrito a
+`/oakd/rgb/image_local` o a `/oakd/stereo/image_local`.
+
+#### Subir los fps
+
+Sin comprimir, los 3 fps vienen de la wifi (ver
+[Por qué 640x360 y pocas imágenes por segundo](#por-qué-640x360-y-pocas-imágenes-por-segundo)).
+El color en JPEG ocupa en torno a la décima parte que sin comprimir y la
+profundidad se comprime bastante menos, porque PNG no pierde información, así
+que comprimidas caben más imágenes por segundo. El límite pasa a ser la CPU
+del Raspberry Pi, que tiene que comprimirlas, sobre todo la profundidad.
+
+Los fps se cambian en el mismo `oakd_pro.yaml` del robot, en `i_fps` de
+`rgb`, `left` y `right` (los tres con el mismo valor), y después se reinicia
+el servicio con `turtlebot4-service-restart`. Empieza por 5:
+
+```yaml
+rgb:
+  i_fps: 5.0
+left:
+  i_fps: 5.0
+right:
+  i_fps: 5.0
+```
+
+Todavía no está medido con este robot. Antes de pasar a 6, mide con 5:
+
+- El ancho de banda de los topics comprimidos, con
+  `ros2 topic bw /oakd/rgb/image_raw/compressed` y
+  `ros2 topic bw /oakd/stereo/image_raw/compressedDepth`. No uses
+  `ros2 topic bw` con los topics sin comprimir, porque se suscribe a ellos y
+  los hace viajar.
+- La CPU del proceso de la cámara en el robot, con `top`.
+- La diferencia entre sellos con YOLO 3D en marcha, como en
+  [Por qué 640x360 y pocas imágenes por segundo](#por-qué-640x360-y-pocas-imágenes-por-segundo):
+  debe quedar por debajo de 0,5 s y no crecer.
+
+#### Calidad de la compresión
+
+Cada imagen tiene su propio ajuste, y los dos funcionan de forma distinta:
+
+| | Color: `jpeg_quality` | Profundidad: `png_level` |
+| --- | --- | --- |
+| Formato | JPEG, pierde calidad | PNG, no pierde nada |
+| Valores | 1 a 100 (de fábrica, 95) | 1 a 9 (de fábrica, 3) |
+| Número más alto | Más calidad y ocupa más | Ocupa algo menos y gasta más CPU |
+| CPU | Casi no cambia con el valor | Crece con el nivel |
+
+Medido en un portátil con una imagen de 640x360, comprimiendo con un solo
+núcleo. La profundidad es sintética, con un ruido como el de una cámara
+estéreo:
+
+| Ajuste | Tiempo por imagen | Tamaño | Frente a sin comprimir |
+| --- | --- | --- | --- |
+| JPEG 95 (de fábrica) | 2,2 ms | 111 KB | 6 veces menos |
+| **JPEG 80** | 1,6 ms | 52 KB | 13 veces menos |
+| JPEG 60 | 1,5 ms | 34 KB | 20 veces menos |
+| **PNG 1** | 21 ms | 269 KB | 1,7 veces menos |
+| PNG 3 (de fábrica) | 25 ms | 266 KB | 1,7 veces menos |
+| PNG 9 | 52 ms | 263 KB | 1,7 veces menos |
+
+La profundidad es la que gasta CPU y la que menos se comprime: el ruido
+apenas deja comprimir, y subir el nivel del PNG dobla la CPU sin reducir casi
+el tamaño. Con esas medidas, a 5 fps queda así (la CPU del Raspberry Pi 4 es
+una estimación: un núcleo suyo es unas 4 o 5 veces más lento que el del
+portátil):
+
+| Imágenes a 5 fps | Wifi | CPU para comprimir en el Raspberry Pi |
+| --- | --- | --- |
+| Sin comprimir | 46 Mbit/s | Nada |
+| Color en JPEG 80, profundidad sin comprimir | unos 20 Mbit/s | Muy poca (en torno al 5 % de un núcleo) |
+| Color en JPEG 80 y profundidad en PNG 1 | unos 13 Mbit/s | En torno a la mitad de un núcleo |
+
+Comprimir el color sale casi gratis y es lo que más ayuda por cada punto de
+CPU. Comprimir también la profundidad ahorra otros 7 Mbit/s, pero es lo que
+carga el Raspberry Pi. Con las dos comprimidas debería llegar todo a 5 fps
+con margen. Si el Raspberry Pi no da, la alternativa es comprimir solo el
+color.
+
+Valores recomendados:
+
+- **`png_level: 1`** para la profundidad. Ocupa lo mismo que con 3 y gasta
+  menos CPU, y la profundidad llega exacta con cualquier nivel. No lo subas.
+- **`jpeg_quality: 80`** para el color. Ocupa la mitad que con 95 y no se nota
+  ni a la vista ni en YOLO. Por debajo de 60 aparecen defectos en la imagen
+  que pueden empeorar las detecciones.
+
+Son parámetros del nodo de la cámara. Su nombre sale del topic, así que
+deberían ser `stereo.image_raw.compressedDepth.png_level` y
+`rgb.image_raw.compressed.jpeg_quality`. Comprueba los nombres exactos en el
+robot, con la cámara en marcha:
+
+```bash
+ros2 param list /oakd | grep -iE 'png_level|jpeg_quality'
+```
+
+Pruébalos en marcha:
+
+```bash
+ros2 param set /oakd stereo.image_raw.compressedDepth.png_level 1
+ros2 param set /oakd rgb.image_raw.compressed.jpeg_quality 80
+```
+
+Para que no se pierdan al reiniciar, añádelos a `oakd_pro.yaml`, dentro de
+`rgb` y `stereo`:
+
+```yaml
+rgb:
+  image_raw:
+    compressed:
+      jpeg_quality: 80
+stereo:
+  image_raw:
+    compressedDepth:
+      png_level: 1
 ```
 
 ### Desactivarlas

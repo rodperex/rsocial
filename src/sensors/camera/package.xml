@@ -17,6 +17,8 @@
   <depend>launch</depend>
   <depend>launch_ros</depend>
   <exec_depend>rsocial_robots</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>image_transport_plugins</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
