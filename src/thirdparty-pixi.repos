@@ -10,7 +10,7 @@ repositories:
   thirdparty/simple_hri:
     type: git
     url: https://github.com/rodperex/simple_hri.git
-    version: 951b380af6a9828ab59e8076f8864da5bd037d19
+    version: 57d704ea9dbb127a51ef8aae4c4c610fdc346ca4
   thirdparty/nao_pos:
     type: git
     url: https://github.com/andoniroldan/nao_pos.git

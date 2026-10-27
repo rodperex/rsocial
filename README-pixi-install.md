@@ -14,7 +14,8 @@ Reserva unos 25 GB libres. La instalación descarga varios GB (ROS 2, PyTorch
 y lo que añada cada entorno adicional), así que la primera vez tarda un rato.
 Para ejecutar YOLO y Whisper en la GPU hace falta una tarjeta NVIDIA con
 driver 580 o posterior (`nvidia-smi` lo muestra); sin ella funcionan en la
-CPU, más despacio.
+CPU, más despacio. El STT faster-whisper de `simple_hri` solo usa la GPU si
+además hay CUDA 12 en el sistema; si no, funciona en la CPU.
 
 El TTS de `simple_hri` reproduce el audio con `aplay`, que no está en Pixi y
 se usa el del sistema. Ubuntu lo trae instalado; si no lo tienes:

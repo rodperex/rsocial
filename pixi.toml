@@ -105,6 +105,9 @@ openai = ">=1.32.0"
 google-cloud-texttospeech = ">=2.16.0"
 torch = ">=2.5.0"
 huggingface-hub = ">=0.20.0"
+# Backends faster_whisper (STT) y piper (TTS); Silero VAD viene de torch.hub
+faster-whisper = ">=1.1.0"
+piper-tts = ">=1.3.0"
 
 # Dependencias extra del simulador Kobuki/Gazebo (entorno `kobuki`).
 # Uso: pixi install -e kobuki && pixi run -e kobuki build

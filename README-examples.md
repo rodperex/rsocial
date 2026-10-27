@@ -914,6 +914,26 @@ export GOOGLE_APPLICATION_CREDENTIALS="/ruta/a/las-credenciales.json"
 ros2 launch simple_hri simple_hri.launch.py backend:=cloud
 ```
 
+Con cualquier `backend`, el STT y el TTS locales (Whisper y MMS-TTS) se pueden
+cambiar por faster-whisper y Piper, más rápidos y con voces más naturales:
+
+```bash
+ros2 launch simple_hri simple_hri.launch.py stt:=faster_whisper tts:=piper
+ros2 launch simple_hri simple_hri.launch.py backend:=ollama stt:=faster_whisper tts:=piper whisper_model:=small
+```
+
+La primera vez descargan el modelo de faster-whisper y la voz de Piper al
+directorio `models/` y Silero VAD a `~/.cache/torch/hub`. Piper funciona en la
+CPU. En Pixi, faster-whisper usa la GPU solo si el sistema tiene CUDA 12
+(`/usr/local/cuda`); si no, avisa (`GPU unavailable ... using the CPU`) y
+funciona en la CPU, donde va bien con `tiny`, `base` o `small`. Si el nodo
+falla al cargar Silero VAD con `No module named 'torchaudio'`, tienes una
+copia antigua en la caché; bórrala y se descarga la actual:
+
+```bash
+rm -rf ~/.cache/torch/hub/snakers4_silero-vad_master
+```
+
 Con `simple_hri` en marcha, en otra terminal. Los ejemplos `*_client` hacen lo
 mismo que su pareja sin sufijo, pero usando la clase reutilizable `HRIClient`
 (paquete `hri_client`) en lugar de llamar a los servicios directamente:
