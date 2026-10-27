@@ -26,6 +26,9 @@ from rsocial_robots import get_robot, robot_arguments
 def launch_setup(context):
     robot = get_robot(context)
 
+    def float_arg(name):
+        return float(LaunchConfiguration(name).perform(context))
+
     return [
         # Obstacle detector node (publishes raw repulsive vectors)
         Node(
@@ -98,11 +101,12 @@ def launch_setup(context):
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
                 'max_linear_speed': 0.5,
-                'max_angular_speed': 0.7,
+                'max_angular_speed': float_arg('max_angular_speed'),
+                'angular_gain': float_arg('angular_gain'),
                 'repulsive_gain_factor': 0.5,
                 'repulsive_influence_distance': 0.5,
-                'search_angular_speed': 0.4,  # 0.0 disables the target search
-                'search_timeout': 2.0,
+                'search_angular_speed': float_arg('search_angular_speed'),
+                'search_timeout': float_arg('search_timeout'),
                 'stay_distance': 1.0,
                 'enable_stamped_cmd_vel': robot['stamped_cmd_vel'],
                 'bumper_type': robot['bumper_type'],
@@ -126,6 +130,26 @@ def generate_launch_description():
             'device',
             default_value='cuda:0',
             description='Device YOLO runs on: cuda:0 (GPU) or cpu'
+        ),
+        DeclareLaunchArgument(
+            'angular_gain',
+            default_value='2.0',
+            description='Angular speed (rad/s) per radian between the robot and the VFF vector'
+        ),
+        DeclareLaunchArgument(
+            'max_angular_speed',
+            default_value='1.2',
+            description='Maximum angular speed (rad/s)'
+        ),
+        DeclareLaunchArgument(
+            'search_angular_speed',
+            default_value='0.8',
+            description='Angular speed (rad/s) of the target search (0.0 disables it)'
+        ),
+        DeclareLaunchArgument(
+            'search_timeout',
+            default_value='0.5',
+            description='Seconds without seeing the target before the search starts'
         ),
         OpaqueFunction(function=launch_setup),
     ])

@@ -69,7 +69,6 @@ class ThreeDYOLOClassDetectorNode(Node):
 
         source_frame = detection.header.frame_id
         target_frame = self.base_frame
-        detection_time = detection.header.stamp
 
         dist = math.sqrt(
             target_point.point.x**2 + target_point.point.y**2 + target_point.point.z**2)
@@ -88,8 +87,14 @@ class ThreeDYOLOClassDetectorNode(Node):
             transform = self.tf_buffer.lookup_transform(
                 target_frame,
                 source_frame,
-                detection_time,  # Use the actual timestamp from the sensor data
-                timeout=rclpy.duration.Duration(seconds=0.5)
+                # The right transform is the one at the detection time (the header stamp).
+                # The latest one is used instead because the clocks that stamp the images
+                # and the TF may be out of sync: on the TurtleBot 4 the camera uses the
+                # Raspberry Pi clock and the base TF the Create 3 clock, and then the
+                # transform at the detection time is never available. Here the result is
+                # the same, because both frames are fixed on the robot; with a frame that
+                # moves with respect to the other one (odom, map) use the detection time
+                rclpy.time.Time()
             )
             # Transform the point to the target frame
             transformed_point = do_transform_point(target_point, transform)

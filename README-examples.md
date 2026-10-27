@@ -713,8 +713,9 @@ apártala, quítala o coloca el objetivo en otra dirección. Por la misma razón
 usa obstáculos que lleguen a la altura del láser (otra silla o una caja), no
 objetos bajos.
 
-**Cómo se comporta.** El robot se detiene a `stay_distance` (1 m) del objetivo
-en las versiones 3D.
+**Cómo se comporta.** En las versiones 3D, el robot deja de avanzar a
+`stay_distance` (1 m) del objetivo, pero sigue girando hacia él: si el objetivo
+se mueve a su alrededor, el robot gira sobre sí mismo para no perderlo.
 En las 2D no hay distancia, así que sigue avanzando hasta que la repulsión lo
 frena delante del objeto.
 
@@ -722,13 +723,34 @@ Si el objetivo deja de verse (por ejemplo, porque al esquivar un obstáculo sale
 de la imagen), el robot se para y, si pasan 2 s (`search_timeout`) sin
 volver a verlo, gira sobre sí mismo hacia el lado donde lo vio por última vez
 hasta encontrarlo (`search_angular_speed`; 0 desactiva la búsqueda).
+`full_vff_3d.launch.py` empieza a buscar antes (a los 0,5 s) y gira más
+rápido, para seguir a alguien que rodea al robot (ver más abajo).
 
 El controlador combina un vector unitario hacia el objetivo (solo importa su
 dirección) con una repulsión `k·(1/d − 1/ρ₀)` que solo actúa con obstáculos
 delante y a menos de `repulsive_influence_distance`. Solo avanza con la
 componente de la resultante que apunta hacia delante: si apunta hacia atrás,
-gira sin avanzar. Avanza a 0,3 m/s y gira a 0,5 rad/s como máximo; estos valores
-y las ganancias se cambian en los launchers de `src/vff_control/launch/`.
+gira sin avanzar. El giro es proporcional al ángulo de la resultante
+(`angular_gain`, en rad/s por radián). Avanza a 0,3 m/s y gira a 0,5 rad/s como
+máximo; estos valores y las ganancias se cambian en los launchers de
+`src/vff_control/launch/`.
+
+En `full_vff_3d.launch.py`, el giro y la búsqueda son argumentos del launcher,
+para probar valores sin tocar el fichero:
+
+| Argumento | Por defecto | Qué hace |
+| --- | --- | --- |
+| `angular_gain` | 2,0 | Velocidad de giro por radián de ángulo hacia el objetivo |
+| `max_angular_speed` | 1,2 rad/s | Velocidad de giro máxima |
+| `search_angular_speed` | 0,8 rad/s | Velocidad de giro al buscar el objetivo (0 la desactiva) |
+| `search_timeout` | 0,5 s | Tiempo sin ver el objetivo antes de empezar a buscarlo |
+
+```bash
+ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:=person angular_gain:=1.5
+```
+
+Si al girar hacia el objetivo el robot se pasa y oscila a un lado y a otro,
+baja `angular_gain`.
 
 ## 9. Navegación con Nav2
 

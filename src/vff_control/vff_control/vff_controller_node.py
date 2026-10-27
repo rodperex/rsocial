@@ -209,10 +209,18 @@ class VFFControllerNode(Node):
 
         distance = math.hypot(attractive.x, attractive.y)
         if self.stay_distance > 0 and distance < self.stay_distance:
+            # Close enough: it does not advance, but keeps turning to face the target,
+            # so it follows a target that moves around it
+            cmd = Twist()
+            cmd.angular.z = max(-self.max_angular_speed,
+                                min(self.angular_gain * math.atan2(attractive.y, attractive.x),
+                                    self.max_angular_speed))
             self.get_logger().debug(f'Target @ {attractive.x:.2f} m, {attractive.y:.2f}. '
                                     f'Within stay distance ({distance:.2f} < '
-                                    f'{self.stay_distance}), stopping')
-            self.stop()  # Explicitly stop: otherwise the robot keeps the last command
+                                    f'{self.stay_distance}), turning only: '
+                                    f'angular={cmd.angular.z:.2f}')
+            self.publish_vel(cmd)
+            self.moving = True
             return
 
         # Attraction: unit vector towards the target. Only its direction matters, so the
