@@ -213,7 +213,7 @@ a mano en cada terminal en la que lances ejemplos, después de preparar la
 terminal:
 
 ```bash
-export ROBOT=kobuki     # o kobuki_sim, tb4_sim, tb4, tb4_rgbd
+export ROBOT=tb4     # o tb4_sim, tb4_rgbd, tb4_rgbd_c, kobuki_sim, kobuki
 ```
 
 Compruébala con `echo $ROBOT` antes de lanzar un ejemplo.
@@ -401,16 +401,16 @@ vuelve a avanzar.
 FSM con `if/elif` sobre el estado actual:
 
 ```bash
-ros2 launch fsm_bumpgo bumpgo.launch.py      # Kobuki
 ros2 launch fsm_bumpgo bumpgo_tb4.launch.py  # TurtleBot 4
+ros2 launch fsm_bumpgo bumpgo.launch.py      # Kobuki
 ```
 
 La misma FSM con una clase por estado (`on_entry`, `on_do`, `on_exit`) y
 transiciones explícitas:
 
 ```bash
-ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
 ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py  # TurtleBot 4
+ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
 ```
 
 Cada robot tiene su propio nodo y su propio launcher (los del TurtleBot 4
@@ -922,11 +922,11 @@ ros2 run bt_examples decorator          # decoradores FailureIsSuccess y Retry
 Con el robot en marcha. El mismo comportamiento que el bloque 6, con un
 árbol de `py_trees`:
 
-| Árbol | Kobuki | TurtleBot 4 |
+| Árbol | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
-| Construido en Python | `ros2 launch bt_bumpgo bumpgo.launch.py` | `ros2 launch bt_bumpgo bumpgo_tb4.launch.py` |
-| Gira hacia el lado contrario al choque (usa la blackboard y `py_trees_ros`) | `ros2 launch bt_bumpgo side_bumpgo.launch.py` | `ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py` |
-| Cargado desde un XML de Groot | `ros2 launch bt_bumpgo groot_bumpgo.launch.py` | `ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py` |
+| Construido en Python | `ros2 launch bt_bumpgo bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo bumpgo.launch.py` |
+| Gira hacia el lado contrario al choque (usa la blackboard y `py_trees_ros`) | `ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo side_bumpgo.launch.py` |
+| Cargado desde un XML de Groot | `ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo groot_bumpgo.launch.py` |
 
 Como en el bloque 6, cada robot tiene su propio nodo y launcher. Entre las dos
 versiones solo cambia `CheckBump` (y `Turn` en la versión side); el resto de
@@ -943,10 +943,10 @@ atrás de la base, o se moverá a saltos tras cada choque. Ver
 `ForceSuccess`, `ForceFailure`, `Action` y `Condition`. Para cargar otro XML:
 
 ```bash
-# Kobuki
-ros2 run bt_bumpgo bumpgo_groot --ros-args -p xml_file:=/ruta/a/arbol.xml \
-  -r /out_vel:=/cmd_vel -r /bumper:=/events/bumper
 # TurtleBot 4
 ros2 run bt_bumpgo bumpgo_groot_tb4 --ros-args -p xml_file:=/ruta/a/arbol.xml \
   -r /out_vel:=/cmd_vel -p enable_stamped_cmd_vel:=true
+# Kobuki
+ros2 run bt_bumpgo bumpgo_groot --ros-args -p xml_file:=/ruta/a/arbol.xml \
+  -r /out_vel:=/cmd_vel -r /bumper:=/events/bumper
 ```
