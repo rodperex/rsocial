@@ -426,104 +426,14 @@ terminan en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper:
 
 ### TurtleBot 4 real
 
-En el TurtleBot 4 con Jazzy, la Create 3 publica bajo `/_do_not_use` y el
-Raspberry Pi solo republica los topics de
-`/opt/ros/jazzy/share/turtlebot4_bringup/config/republisher.yaml`.
-`hazard_detection` viene comentado: si `ros2 topic info /hazard_detection`
-indica 0 publicadores, descoméntalo en el robot y reinicia el servicio
-(`turtlebot4-service-restart`). Ese fichero lo instala el paquete
-`ros-jazzy-turtlebot4-bringup`: si se actualiza el software del robot
-(`sudo apt upgrade`), puede volver a escribirse el original y habrá que
-descomentar la línea de nuevo.
+Antes de lanzar los bump and go en el robot real, comprueba dos cosas en
+[README-tb4-real.md](README-tb4-real.md):
 
-#### Mecanismos de seguridad de la Create 3
-
-La Create 3 tiene dos mecanismos de seguridad que interfieren con el bump and
-go:
-
-- **Reflejos** (`reflexes_enabled`): al chocar, la base retrocede y gira un
-  poco por su cuenta, ignorando `/cmd_vel` durante un instante. Después la FSM
-  o el árbol recuperan el control.
-- **Límite de marcha atrás** (`safety_override`): sin sensores traseros, la
-  base solo deja retroceder unos centímetros. Al pasar de ahí, publica el
-  hazard `BACKUP_LIMIT` y se para.
-
-El resultado es que el robot se mueve a saltos al retroceder y al girar
-después del choque. El giro en sí no es el problema: sin choques, la base gira
-de forma uniforme.
-
-Sus parámetros solo son accesibles **desde el Raspberry Pi del robot**. La
-Create 3 está en una red USB privada con él, y `create3_repub` no republica el
-servicio de parámetros. Desde el portátil, la llamada se queda en
-`waiting for service to become available...`. Entra por SSH (con la IP del
-display, o `turtlebot4.local` si tu red resuelve mDNS) y ejecútalo allí:
-
-```bash
-ssh ubuntu@turtlebot4.local
-```
-
-Para **desactivarlos**:
-
-```bash
-ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/SetParameters \
-  "{parameters: [{name: safety_override, value: {type: 4, string_value: backup_only}},
-                 {name: reflexes_enabled, value: {type: 1, bool_value: false}}]}"
-```
-
-Para **volver a activarlos** (valores de fábrica):
-
-```bash
-ros2 service call /_do_not_use/motion_control/set_parameters rcl_interfaces/srv/SetParameters \
-  "{parameters: [{name: safety_override, value: {type: 4, string_value: none}},
-                 {name: reflexes_enabled, value: {type: 1, bool_value: true}}]}"
-```
-
-Las dos llamadas responden con `successful=True` por cada parámetro. Para ver
-cómo están:
-
-```bash
-ros2 service call /_do_not_use/motion_control/get_parameters rcl_interfaces/srv/GetParameters \
-  "{names: [safety_override, reflexes_enabled]}"
-```
-
-En la respuesta, el primer valor es `safety_override` (`string_value`) y el
-segundo, `reflexes_enabled` (`bool_value`). Con la seguridad activa salen
-`string_value='none'` y `bool_value=True`.
-
-El cambio dura **hasta que se reinicie la base**. Al apagar el robot o al
-reiniciar la aplicación de la Create 3, vuelven los valores de fábrica, y el
-bump and go vuelve a ir a saltos. Compruébalo al empezar cada sesión.
-
-Para que el cambio sea **permanente**, guárdalo en el fichero de parámetros de
-la Create 3. Ese fichero está dentro de la base, no en el Raspberry Pi, y se
-edita desde su servidor web:
-
-1. Abre en el navegador `http://<IP del robot>:8080` (la IP del display; el
-   Raspberry Pi redirige ese puerto a la base).
-2. Entra en **Application → Configuration**. El cuadro **ROS 2 Parameters
-   File** ya trae un bloque `motion_control` con `safety_override: "none"`.
-   Cambia ese valor y añade `reflexes_enabled` debajo, dentro del mismo
-   bloque. No añadas un segundo bloque `motion_control`: quedaría duplicado.
-
-   ```yaml
-   motion_control:
-     ros__parameters:
-       # (comentarios del fichero original)
-       safety_override: "backup_only"
-       reflexes_enabled: false
-   ```
-
-3. Pulsa **Save** y reinicia la aplicación (**Application → Restart
-   Application**).
-
-Tras el reinicio, compruébalo en el Raspberry Pi con `get_parameters`, como
-arriba. Para volver a la configuración de fábrica, deja
-`safety_override: "none"`, borra la línea de `reflexes_enabled`, guarda y
-reinicia la aplicación.
-
-Con la seguridad desactivada, el robot puede caer marcha atrás por un escalón
-y no se aparta solo al chocar: úsalo en suelo plano y despejado, y vuelve a
-activarla al terminar si el robot lo van a usar otros.
+- Que el robot republica el bumper: si `ros2 topic info /hazard_detection`
+  indica 0 publicadores, ver [Bumper](README-tb4-real.md#bumper).
+- Que están desactivados los reflejos y el límite de marcha atrás de la base:
+  si no, el robot va a saltos al retroceder y al girar tras cada choque. Ver
+  [Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
 
 ## 7. Sensores: cámara y YOLO
 
@@ -573,21 +483,10 @@ milímetros. El launcher le indica a YOLO las unidades según la entrada del YAM
 
 La cámara del TurtleBot 4 (OAK-D) puede medir profundidad, pero el robot viene
 configurado para no hacerlo: solo publica una imagen en color pequeña (250x250).
-
-> **¿Por qué no se publica por defecto?** Calcular la profundidad no es el
-> problema: lo hace la propia cámara. El problema es mover las imágenes. La
-> Raspberry Pi del robot tiene que recibirlas por USB y publicarlas en ROS 2, y
-> los nodos que las usan (YOLO, RViz...) suelen estar en otro equipo, así que
-> viajan por la WiFi. Una imagen en color de 1280x720 ocupa unos 2,8 MB y una de
-> profundidad del mismo tamaño unos 1,8 MB: a 30 imágenes por segundo son más de
-> 1 Gbit/s, mucho más de lo que da una WiFi. La imagen de 250x250 ocupa unos
-> 190 KB (unos 45 Mbit/s), y la navegación del robot no necesita la cámara, así
-> que los fabricantes dejan solo esa para que el robot vaya fluido.
-
-Con esa
-configuración (`robot:=tb4`) funcionan los ejemplos 2D, pero no los 3D (YOLO
-3D, `yolo_class_3d`, `yolo_class_3d_alt`, `vff_3d` y `full_vff_3d`), porque no
-hay imagen de profundidad.
+Con esa configuración (`robot:=tb4`) funcionan los ejemplos 2D, pero no los
+3D (YOLO 3D, `yolo_class_3d`, `yolo_class_3d_alt`, `vff_3d` y `full_vff_3d`),
+porque no hay imagen de profundidad. Por qué viene así está en
+[Cámara: imagen completa y profundidad](README-tb4-real.md#cámara-imagen-completa-y-profundidad).
 
 Para los ejemplos 3D hay que cambiar la configuración de la cámara en el
 robot: activar la profundidad y publicar la imagen en color, ambas a 640x360 y
@@ -1035,7 +934,7 @@ comportamientos se reutilizan.
 
 En el TurtleBot 4 real, desactiva antes los reflejos y el límite de marcha
 atrás de la base, o se moverá a saltos tras cada choque. Ver
-[Mecanismos de seguridad de la Create 3](#mecanismos-de-seguridad-de-la-create-3).
+[Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
 
 `groot_bumpgo.launch.py` carga el árbol desde `src/bt_bumpgo/bt_xml/bumpgo.xml`
 (formato BehaviorTree.CPP v4, editable con Groot). El parser está en

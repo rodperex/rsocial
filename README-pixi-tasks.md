@@ -121,9 +121,10 @@ además el feedback mientras se acerca (`sees_dock`: si ve la base).
 Lo mismo se puede hacer desde el display del robot real, con las opciones
 **Dock** y **Undock** del menú.
 
-Los reflejos y el límite de marcha atrás de la base no tienen tarea: sus
-parámetros solo se pueden cambiar desde el Raspberry Pi del robot. Ver
-[Mecanismos de seguridad de la Create 3](README-examples.md#mecanismos-de-seguridad-de-la-create-3).
+Los reflejos y el límite de marcha atrás de la base no tienen tarea: se
+cambian con una llamada al servicio de parámetros de la base, o de forma
+permanente desde su web. Ver
+[Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
 
 ## Comandos de Pixi útiles
 
