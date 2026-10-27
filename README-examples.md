@@ -541,10 +541,13 @@ el controlador del VFF descarta los vectores de más de 0,5 s.
 
 ### Con la cámara del robot
 
-`camera yolo.launch.py` lanza YOLO con los topics de la cámara de cada robot
-(ver [Topics de cada robot](#topics-de-cada-robot)).
+Con el simulador o el robot real en marcha, la cámara ya está publicando: solo
+hay que lanzar YOLO y la conversión. `camera yolo.launch.py` lanza YOLO con los
+topics de la cámara de cada robot (ver
+[Topics de cada robot](#topics-de-cada-robot)).
 
-Detecciones 2D (en píxeles), publicadas en `/detections_2d`:
+Detecciones 2D (en píxeles), publicadas en `/detections_2d` (cada comando en
+su terminal):
 
 ```bash
 ros2 launch camera yolo.launch.py robot:=$ROBOT
@@ -553,7 +556,8 @@ ros2 topic echo /detections_2d
 ```
 
 Detecciones 3D (posición en metros usando la profundidad), publicadas en
-`/detections_3d`. Hay que lanzar YOLO con `use_3d:=True`:
+`/detections_3d`. Hay que lanzar YOLO con `use_3d:=True` (cada comando en su
+terminal):
 
 ```bash
 ros2 launch camera yolo.launch.py robot:=$ROBOT use_3d:=True
@@ -611,21 +615,33 @@ Con el robot en la base, la cámara está apagada para ahorrar batería. Ver
 
 ### Con la cámara OAK-D
 
-Sirve sin robot o con una OAK-D montada en el robot real:
+Para una OAK-D conectada por USB al portátil, sin robot o montada en el Kobuki.
+No es el caso del TurtleBot 4: su OAK-D la lanza el propio robot, así que con
+él (o con el simulador) se usa el apartado anterior. Aquí nadie lanza la
+cámara, así que hacen falta tres launchers, cada uno en su terminal: el driver
+de la cámara, YOLO con los topics de la OAK-D y la conversión a `vision_msgs`.
+Si ya has lanzado el driver con el Kobuki (ver
+[README-kobuki-pixi.md](README-kobuki-pixi.md)), sáltate la terminal 1:
 
 ```bash
+# Terminal 1: driver de la cámara
 ros2 launch oak_d_camera camera.launch.py \
   use_disparity:=False use_lr_raw:=False use_pointcloud:=False
+
+# Terminal 2: YOLO
 ros2 launch yolo_bringup yolo.launch.py \
   input_image_topic:=/color/image \
   input_depth_topic:=/stereo/depth \
   input_depth_info_topic:=/stereo/camera_info \
   target_frame:=oak-d_frame
+
+# Terminal 3: conversión a /detections_2d
 ros2 launch camera yolo_to_standard2d.launch.py
 ```
 
-Para 3D, añade `use_3d:=True` a YOLO y usa
-`ros2 launch camera yolo_to_standard3d.launch.py robot:=kobuki`. Con la OAK-D
+Para 3D, añade `use_3d:=True` a YOLO (terminal 2) y, en la terminal 3, lanza
+`ros2 launch camera yolo_to_standard3d.launch.py robot:=kobuki` en lugar de la
+conversión 2D. Con la OAK-D
 vale cualquier entrada de robot real: de ella solo se usa que no hay que
 corregir el frame de la imagen (ver `fix_image_frame` en el YAML).
 
