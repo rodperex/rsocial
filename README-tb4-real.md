@@ -759,6 +759,43 @@ Si actualizas el software del robot (`sudo apt upgrade`), el fichero puede
 volver a la versión de fábrica: repite los pasos de activación (ver
 [Ficheros del robot que cambian con las actualizaciones](#ficheros-del-robot-que-cambian-con-las-actualizaciones)).
 
+## Liberar CPU del Raspberry Pi: los diagnósticos
+
+El robot arranca dos nodos de diagnósticos, `diagnostics_updater` y
+`aggregator_node`, que vigilan su estado (batería, cámara, láser, wifi...) y
+lo publican en `/diagnostics` y `/diagnostics_agg`. Ningún ejemplo los usa, y
+`diagnostics_updater` gasta en torno al 28 % de un núcleo del Raspberry Pi,
+casi tanto como la cámara comprimiendo las imágenes a 10 fps. Si el Raspberry
+Pi va justo de CPU (por ejemplo, al subir los fps de la cámara), conviene
+desactivarlos.
+
+Se activan con la variable `TURTLEBOT4_DIAGNOSTICS` de
+`/etc/turtlebot4/setup.bash`, que el servicio lee al arrancar. En el robot,
+por SSH, con el robot fuera de la base (para que la cámara no se bloquee al
+reiniciar, ver [Arrancar y parar la cámara y el láser](#arrancar-y-parar-la-cámara-y-el-láser)):
+
+```bash
+sed -i 's/TURTLEBOT4_DIAGNOSTICS="1"/TURTLEBOT4_DIAGNOSTICS="0"/' /etc/turtlebot4/setup.bash
+grep DIAGNOSTICS /etc/turtlebot4/setup.bash     # TURTLEBOT4_DIAGNOSTICS="0"
+turtlebot4-service-restart
+```
+
+Después del reinicio no tienen que aparecer:
+
+```bash
+pgrep -af "diagnostics_updater|aggregator_node"   # sin salida
+```
+
+El fichero también se puede cambiar con `turtlebot4-setup`: en **ROS Setup →
+Bash Setup**, `TURTLEBOT4_DIAGNOSTICS` a `0`, y después, en el menú principal,
+**Apply Settings**. Sin ese último paso, el cambio no se escribe en el fichero.
+Comprueba después con el `grep` que ha quedado en `"0"`. Para volver a
+activarlos, pon `"1"` y reinicia el servicio.
+
+Sin diagnósticos, el robot funciona igual: solo dejan de publicarse
+`/diagnostics` y `/diagnostics_agg`, que usan herramientas como
+`rqt_robot_monitor`.
+
 ## Si el robot deja de responder o desaparecen nodos
 
 - **El robot no responde a `ping` ni a `ssh` durante un rato:** casi siempre
