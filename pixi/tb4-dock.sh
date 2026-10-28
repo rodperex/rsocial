@@ -38,20 +38,20 @@ lidar_motor() {
 
 case "$1" in
     dock)
-        # The result of the action sometimes does not reach this computer although the base
-        # has docked (right after the robot service restarts), so the timeout ends the wait
-        # and the lidar is stopped if the base says that it is docked, whatever the result
-        timeout 120 ros2 action send_goal --feedback /dock irobot_create_msgs/action/Dock '{}'
-        # dock_status may still say "not docked" for a few seconds after the action ends,
-        # so it is asked several times (up to 30 s) before giving up
+        # The output is shown as it arrives (tee) and kept to read the result of the action
+        result=$(timeout 120 ros2 action send_goal --feedback /dock \
+            irobot_create_msgs/action/Dock '{}' | tee /dev/stderr)
         docked=false
-        for _ in 1 2 3 4 5 6; do
-            if timeout 5 ros2 topic echo --once /dock_status --field is_docked 2> /dev/null \
-                    | grep -q True; then
-                docked=true
-                break
-            fi
-        done
+        if grep -q 'is_docked: true' <<< "$result"; then
+            docked=true
+        # The result sometimes does not reach this computer although the base has docked
+        # (right after the robot service restarts): then dock_status is asked. Its type is
+        # given because a new ros2 process does not know the topic yet, and without it
+        # ros2 topic echo gives up at once instead of waiting for a message
+        elif timeout 30 ros2 topic echo --once /dock_status irobot_create_msgs/msg/DockStatus \
+                --field is_docked 2> /dev/null | grep -q True; then
+            docked=true
+        fi
         if $docked; then
             lidar_motor stop_motor
         else
