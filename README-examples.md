@@ -925,23 +925,36 @@ paquete `kobuki` son de los mundos simulados y no valen para un sitio real.
 
 ### TurtleBot 4 en el simulador
 
-Son los pasos 3 a 5 de
-[README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3).
-Con el simulador ya lanzado, cada comando en su terminal (preparadas con
-`tb4sim` o `pixi run tb4-sim`), y el robot fuera de la base (`pixi run
-undock`):
+Los ejemplos de navegación se prueban en la casa, que se parece más a los
+sitios donde trabajan los robots sociales que el almacén. Cada comando en su
+terminal (preparadas con `tb4sim` o `pixi run tb4-sim`):
 
 ```bash
-# 1. Localización, con el mapa del mundo que estés usando (aquí, maze)
-ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
-  map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/maze.yaml
+# 1. Simulador de la casa (sim-house-nvidia con la GPU NVIDIA, ver README-pixi-install.md)
+pixi run sim-house
 
-# 2. RViz, para dar la posición inicial y objetivos
+# 2. Sacar el robot de la base
+pixi run undock
+
+# 3. Localización, con el mapa de la casa
+ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
+  map:=$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml
+
+# 4. RViz, para dar la posición inicial y objetivos
 ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
 
-# 3. Nav2, después de dar la posición inicial
+# 5. Nav2, después de dar la posición inicial
 ros2 launch turtlebot4_navigation nav2.launch.py use_sim_time:=true
 ```
+
+En la casa, el robot aparece en la habitación central, en (0, 1,5), mirando
+hacia la derecha del mapa (+x), con la base de carga delante; al sacarlo de la
+base retrocede un poco. Da la posición inicial ahí, con **2D Pose Estimate**,
+antes de lanzar Nav2.
+
+Con otro mundo, cambia el simulador y el mapa (ver la tabla de abajo y
+[README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3),
+que usa el almacén).
 
 Los mapas de cada mundo:
 
