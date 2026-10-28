@@ -180,9 +180,10 @@ sim-house-generic = {cmd = "bash -c 'source install/setup.bash && exec ros2 laun
 # TurtleBot 4 dock actions (served by the Create 3 base, also in the simulator).
 # They take ROS_DOMAIN_ID and RMW_IMPLEMENTATION from the calling shell: run them
 # in a terminal prepared with tb4 or tb4-sim, or they will wait for a server
-# that is in another domain.
-undock = {cmd = "ros2 action send_goal /undock irobot_create_msgs/action/Undock '{}'", description = "Undock the TurtleBot 4 (real or simulated)"}
-dock = {cmd = "ros2 action send_goal --feedback /dock irobot_create_msgs/action/Dock '{}'", description = "Dock the TurtleBot 4 (real or simulated)"}
+# that is in another domain. With the real robot they also start and stop the lidar
+# motor, so that it does not spin while docked (see pixi/tb4-dock.sh).
+undock = {cmd = "bash pixi/tb4-dock.sh undock", description = "Start the lidar and undock the TurtleBot 4 (real or simulated)"}
+dock = {cmd = "bash pixi/tb4-dock.sh dock", description = "Dock the TurtleBot 4 and stop the lidar (real or simulated)"}
 
 # Prepare a terminal for a robot: open a new shell with the workspace sourced and
 # the variables of that robot (ROBOT for the examples, and for the TurtleBot 4 its

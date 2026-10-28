@@ -87,8 +87,18 @@ real y para el simulador.
 
 | Tarea | Qué hace | Comando equivalente |
 | --- | --- | --- |
-| `undock` | Retrocede para salir de la base y gira hacia fuera | `ros2 action send_goal /undock irobot_create_msgs/action/Undock '{}'` |
-| `dock` | Busca la base delante de él y se acopla | `ros2 action send_goal --feedback /dock irobot_create_msgs/action/Dock '{}'` |
+| `undock` | Retrocede para salir de la base y gira hacia fuera. Con el robot real, antes arranca el láser | `ros2 action send_goal /undock irobot_create_msgs/action/Undock '{}'` |
+| `dock` | Busca la base delante de él y se acopla. Con el robot real, después para el láser | `ros2 action send_goal --feedback /dock irobot_create_msgs/action/Dock '{}'` |
+
+Las dos llaman a `pixi/tb4-dock.sh`. Arrancar y parar el láser hace falta
+cuando el `power_saver` del robot está desactivado, para que no gire mientras
+se carga (ver
+[Arrancar y parar la cámara y el láser](README-tb4-real.md#arrancar-y-parar-la-cámara-y-el-láser)).
+Con el `power_saver` activo no molesta: el robot ya lo apaga y lo enciende solo.
+Para saber si es el simulador, miran si alguien publica `/clock`, que solo
+publica el simulador: en él no tocan el láser. No usan `ROBOT`, porque
+`pixi run` vuelve a activar el entorno y lo deja en `tb4_sim`, sea cual sea
+el de la terminal.
 
 Lánzalas en una terminal preparada con `tb4` (robot real) o `tb4-sim`
 (simulador). Las tareas no fijan el dominio ni el middleware: usan los de la

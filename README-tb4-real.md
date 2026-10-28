@@ -284,8 +284,11 @@ Llamar a mano a `/oakd/start_camera` tampoco recibe respuesta. Se arregla
 reiniciando el servicio **con el robot fuera de la base**, para que la cámara
 arranque directamente.
 
-Para que no pase, desactiva el `power_saver`, así la cámara y el láser no se
-apagan nunca. En el robot, por SSH:
+Para que no pase, desactiva el `power_saver`: así `turtlebot4_node` ya no
+apaga la cámara en la base. El `power_saver` no distingue entre la cámara y el
+láser, así que tampoco apaga el láser; de eso se encargan `pixi run dock` y
+`pixi run undock` (ver abajo). En el robot, por SSH, **con el robot fuera de la
+base** (para que la cámara arranque directamente al reiniciar):
 
 ```bash
 sudo sed -i 's/power_saver: true/power_saver: false/' /opt/ros/jazzy/share/turtlebot4_bringup/config/turtlebot4.yaml
@@ -293,9 +296,23 @@ grep -n power_saver /opt/ros/jazzy/share/turtlebot4_bringup/config/turtlebot4.ya
 turtlebot4-service-restart
 ```
 
-En la base gastará algo más de batería mientras se carga. Las actualizaciones
-del robot pueden devolver el fichero a su versión de fábrica (ver
+Para volver al comportamiento de fábrica, cambia `false` por `true` y reinicia
+el servicio. Las actualizaciones del robot pueden devolver el fichero a su
+versión de fábrica (ver
 [Ficheros del robot que cambian con las actualizaciones](#ficheros-del-robot-que-cambian-con-las-actualizaciones)).
+
+Sin `power_saver`, el láser se gestiona con las tareas de la base de carga:
+
+| Tarea | Qué hace con el láser |
+| --- | --- |
+| `pixi run dock` | Después de acoplarse, lo para (`/stop_motor`), para que no gire mientras se carga. Solo si la base confirma que se ha acoplado |
+| `pixi run undock` | Antes de salir de la base, lo arranca (`/start_motor`) |
+
+Si el robot entra en la base de otra forma (desde el display, con un botón o
+llevándolo a mano), el láser sigue girando: páralo con
+`ros2 service call /stop_motor std_srvs/srv/Empty`. La cámara se queda
+encendida en la base, y gasta algo más de batería mientras se carga. En el
+simulador, las tareas no tocan el láser: no tiene esos servicios.
 
 Parar la cámara también sirve para liberar la wifi y la CPU del Raspberry Pi
 cuando no la necesitas.
