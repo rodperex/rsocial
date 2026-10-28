@@ -28,6 +28,8 @@ event of the transition: COMPLETED goes to the next waypoint, and ERROR (Nav2
 aborted it), TIMEOUT (it took longer than goal_timeout) or CANCELED end the mission.
 """
 
+import time
+
 from navigation_client.navigation_client import NavigationClient, NavigationState
 import rclpy
 from rclpy.executors import ExternalShutdownException
@@ -52,6 +54,7 @@ class FSMNavNode(Node):
 
         self.nav_client = NavigationClient(self)
         self.state = 'WAIT_NAV2'
+        self.nav_ready_time = None  # When the Nav2 server was found
         self.get_logger().info('fsm_nav_node started: waiting for Nav2')
 
         self.timer = self.create_timer(0.5, self.control_cycle)
@@ -59,7 +62,14 @@ class FSMNavNode(Node):
     def control_cycle(self):
         if self.state == 'WAIT_NAV2':
             # Waits at most 1 s per cycle, so the node keeps running while Nav2 starts
-            if self.nav_client.wait_for_action_server(1.0):
+            if self.nav_ready_time is None:
+                if self.nav_client.wait_for_action_server(1.0):
+                    self.get_logger().info('Nav2 available')
+                    self.nav_ready_time = time.time()
+            # The first goal is sent a little later: right after this node connects, the
+            # discovery traffic can make Nav2 miss its internal timeouts (on a loaded
+            # computer it then aborts the goal at once)
+            elif time.time() - self.nav_ready_time > 2.0:
                 self.go_to('NAV1', 0)
 
         elif self.state in ('NAV1', 'NAV2'):
