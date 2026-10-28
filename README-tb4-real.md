@@ -100,7 +100,7 @@ Si no ves los topics del robot:
 - **Ejemplos:** se lanzan con `robot:=tb4` (o `robot:=$ROBOT`, que `tb4` deja
   a `tb4`). Ver
   [Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos).
-- **Bump and go (bloques 6 y 12):** no usan `robot:=`. Tienen sus propios
+- **Bump and go (bloques 8 y 13):** no usan `robot:=`. Tienen sus propios
   launchers, que terminan en `_tb4`. Si lanzas el del Kobuki con `robot:=tb4`,
   `ros2 launch` ignora ese argumento sin avisar, y el robot no se mueve
   (publica `Twist` y escucha un bumper que no existe).
@@ -124,7 +124,7 @@ descomentar la línea de nuevo.
 ## Mecanismos de seguridad de la Create 3
 
 La base tiene dos mecanismos de seguridad que interfieren con los bump and go
-(bloques 6 y 12 de [README-examples.md](README-examples.md)):
+(bloques 8 y 13 de [README-examples.md](README-examples.md)):
 
 - **Reflejos** (`reflexes_enabled`): al chocar, la base retrocede y gira un
   poco por su cuenta, ignorando `/cmd_vel` durante un instante. Después la FSM

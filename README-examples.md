@@ -12,17 +12,18 @@ necesita varios procesos, cada comando va en una terminal distinta.
 | 3 | [Movimiento en lazo abierto](#3-movimiento-en-lazo-abierto) | `square_motion` | Simulador o robot real |
 | 4 | [TF: movimiento con odometría y seguimiento](#4-tf-movimiento-con-odometría-y-seguimiento) | `tf_square_motion`, `tf_seeker` | Simulador o robot real |
 | 5 | [Sensores: láser](#5-sensores-láser) | `laser` | Simulador o robot real |
-| 6 | [Máquinas de estados: bump and go](#6-máquinas-de-estados-bump-and-go) | `fsm_bumpgo` | Simulador o robot real |
-| 7 | [Sensores: cámara y YOLO](#7-sensores-cámara-y-yolo) | `camera` | Simulador, robot real o cámara OAK-D |
-| 8 | [Navegación reactiva con VFF](#8-navegación-reactiva-con-vff) | `vff_control` | Simulador o robot real, y YOLO |
-| 9 | [Navegación con Nav2](#9-navegación-con-nav2) | `navigation_client`, `nav2_example`, `fsm_nav` | Simulador o robot real, con Nav2 |
-| 10 | [Interacción humano-robot](#10-interacción-humano-robot) | `hri_client`, `hri_examples` | `simple_hri` |
-| 11 | [Árboles de comportamiento sin robot](#11-árboles-de-comportamiento-sin-robot) | `bt_examples` | Nada |
-| 12 | [Árboles de comportamiento: bump and go](#12-árboles-de-comportamiento-bump-and-go) | `bt_bumpgo` | Simulador o robot real |
+| 6 | [Sensores: cámara y YOLO](#6-sensores-cámara-y-yolo) | `camera` | Cámara OAK-D, simulador o robot real |
+| 7 | [Navegación reactiva con VFF](#7-navegación-reactiva-con-vff) | `vff_control` | Simulador o robot real, y YOLO |
+| 8 | [Máquinas de estados: bump and go](#8-máquinas-de-estados-bump-and-go) | `fsm_bumpgo` | Simulador o robot real |
+| 9 | [Máquinas de estados: ir hacia la persona que llama](#9-máquinas-de-estados-ir-hacia-la-persona-que-llama) | `fsm_calling_person` | Robot real con profundidad, y YOLO |
+| 10 | [Navegación con Nav2](#10-navegación-con-nav2) | `navigation_client`, `nav2_example`, `fsm_nav` | Simulador o robot real, con Nav2 |
+| 11 | [Interacción humano-robot](#11-interacción-humano-robot) | `hri_client`, `hri_examples` | `simple_hri` |
+| 12 | [Árboles de comportamiento sin robot](#12-árboles-de-comportamiento-sin-robot) | `bt_examples` | Nada |
+| 13 | [Árboles de comportamiento: bump and go](#13-árboles-de-comportamiento-bump-and-go) | `bt_bumpgo` | Simulador o robot real |
 
 ## Robots
 
-Los bloques 3 a 9 y el 12 necesitan un robot, real o simulado. Todos funcionan
+Los bloques 3 a 10 y el 13 necesitan un robot, real o simulado. Todos funcionan
 con los dos robots del curso: el **Kobuki** y el **TurtleBot 4**.
 
 Con el TurtleBot 4 físico hay que hacer algunas cosas más (sacarlo de la base,
@@ -30,7 +31,7 @@ desactivar la seguridad de la base para los bump and go, activar la
 profundidad de la cámara…). Están resumidas en
 [README-tb4-real.md](README-tb4-real.md).
 
-Además, el bloque 10 tiene un ejemplo para el robot **NAO**. Es el único: el
+Además, el bloque 11 tiene un ejemplo para el robot **NAO**. Es el único: el
 NAO no es uno de los robots del curso y el resto de ejemplos no funciona con
 él.
 
@@ -118,11 +119,11 @@ Si el láser no funciona bien con tu gráfica, usa `sim-nvidia` o `sim-generic`
 en lugar de `sim` (ver
 [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación)).
 
-Los bloques 3 a 6 y el 12 funcionan en cualquiera de ellos: `empty` es el más
+Los bloques 3 a 5, el 8 y el 13 funcionan en cualquiera de ellos: `empty` es el más
 cómodo para los de movimiento y `maze` o `warehouse` para los que usan el láser
 (bump and go, obstáculos).
 
-Para los bloques 7 a 9 (cámara, VFF y Nav2) viene mejor una casa con muebles,
+Para los bloques 6, 7 y 10 (cámara, VFF y Nav2) viene mejor una casa con muebles,
 como la del simulador del Kobuki. Este repositorio incluye el paquete
 `tb4_worlds`, que lanza el TurtleBot 4 en esa misma casa de AWS RoboMaker
 (necesita el workspace compilado; ver
@@ -134,7 +135,7 @@ ros2 launch tb4_worlds small_house.launch.py    # sin Pixi
 ```
 
 Para los ejemplos de cámara conviene además preparar la escena (ver el
-[bloque 8](#8-navegación-reactiva-con-vff)).
+[bloque 7](#7-navegación-reactiva-con-vff)).
 
 #### Mundos del Kobuki
 
@@ -168,7 +169,7 @@ paquete, así que estos comandos valen en cualquier ordenador. Con
 opciones.
 
 Los mapas de estos mundos, para la navegación, están en el paquete `kobuki`
-(ver el [bloque 9](#9-navegación-con-nav2)):
+(ver el [bloque 10](#10-navegación-con-nav2)):
 
 | Mundo | Mapa (`map:=`) |
 | --- | --- |
@@ -186,7 +187,7 @@ es el simulado o el real:
 | | Kobuki | TurtleBot 4 |
 | --- | --- | --- |
 | Simulador | `robot:=kobuki_sim` | `robot:=tb4_sim` |
-| Robot real | `robot:=kobuki` | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 7](#turtlebot-4-real-activar-la-profundidad)) |
+| Robot real | `robot:=kobuki` | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 6](#turtlebot-4-real-activar-la-profundidad)) |
 
 Con él, el launcher elige los topics del robot, el tipo de mensaje de
 velocidad y si los nodos usan el reloj del simulador (`use_sim_time`), que es
@@ -221,7 +222,7 @@ Compruébala con `echo $ROBOT` antes de lanzar un ejemplo.
 Así, `ros2 launch square_motion square_move.launch.py robot:=$ROBOT` vale para
 todos los casos.
 
-Los bump and go (bloques 6 y 12) son la excepción: leen el bumper, que es
+Los bump and go (bloques 8 y 13) son la excepción: leen el bumper, que es
 distinto en cada robot, así que tienen un nodo y un launcher para cada uno. Los
 del TurtleBot 4 terminan en `_tb4`.
 
@@ -393,49 +394,7 @@ Lanza solo una de las dos y, en otra terminal, mira el resultado:
 ros2 topic echo /obstacle
 ```
 
-## 6. Máquinas de estados: bump and go
-
-Con el robot en marcha. El robot avanza; al chocar retrocede, gira y
-vuelve a avanzar.
-
-FSM con `if/elif` sobre el estado actual:
-
-```bash
-ros2 launch fsm_bumpgo bumpgo_tb4.launch.py  # TurtleBot 4
-ros2 launch fsm_bumpgo bumpgo.launch.py      # Kobuki
-```
-
-La misma FSM con una clase por estado (`on_entry`, `on_do`, `on_exit`) y
-transiciones explícitas:
-
-```bash
-ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py  # TurtleBot 4
-ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
-```
-
-Cada robot tiene su propio nodo y su propio launcher (los del TurtleBot 4
-terminan en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper:
-
-- **Kobuki**: `/events/bumper` publica un mensaje cada vez que un bumper se
-  pulsa o se suelta. En el simulador lo genera un nodo a partir del láser.
-- **TurtleBot 4**: la base iRobot Create 3 no tiene un topic de bumper. Los
-  golpes llegan en `/hazard_detection`, un vector con todos los peligros
-  activos (golpe, precipicio, límite de marcha atrás…). Un golpe es una
-  detección de tipo `BUMP`. Sus launchers publican además `TwistStamped`, que
-  es lo que espera el TurtleBot 4.
-
-### TurtleBot 4 real
-
-Antes de lanzar los bump and go en el robot real, comprueba dos cosas en
-[README-tb4-real.md](README-tb4-real.md):
-
-- Que el robot republica el bumper: si `ros2 topic info /hazard_detection`
-  indica 0 publicadores, ver [Bumper](README-tb4-real.md#bumper).
-- Que están desactivados los reflejos y el límite de marcha atrás de la base:
-  si no, el robot va a saltos al retroceder y al girar tras cada choque. Ver
-  [Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
-
-## 7. Sensores: cámara y YOLO
+## 6. Sensores: cámara y YOLO
 
 YOLO (`yolo_ros`) detecta objetos en la imagen y publica sus propios mensajes;
 el paquete `camera` los convierte a los mensajes estándar de `vision_msgs`, que
@@ -444,10 +403,107 @@ son los que usan los bloques siguientes.
 YOLO usa la GPU por defecto (`device:=cuda:0`). El PyTorch del entorno está
 compilado para CUDA 13, que necesita un driver NVIDIA 580 o posterior;
 compruébalo con `nvidia-smi`. Sin GPU compatible, añade `device:=cpu` a los
-comandos que lanzan YOLO: `yolo.launch.py` (de `camera` o de `yolo_bringup`) y
-los `full_vff_*.launch.py` del bloque 8. Irá mucho más lento: en CPU, YOLO da
-unas pocas detecciones por segundo, y el robot puede avanzar a tirones porque
-el controlador del VFF descarta los vectores de más de 0,5 s.
+comandos que lanzan YOLO: `yolo.launch.py` (de `camera` o de `yolo_bringup`),
+los `full_vff_*.launch.py` del bloque 7 y `calling_person.launch.py` del
+bloque 9. Irá mucho más lento: en CPU, YOLO da unas pocas detecciones por
+segundo, y el robot puede avanzar a tirones porque el controlador del VFF
+descarta los vectores de más de 0,5 s.
+
+### Con la cámara OAK-D
+
+Lo más sencillo para empezar: una OAK-D conectada por USB al portátil, sin
+robot. Con el simulador o un robot real (también el TurtleBot 4, cuya OAK-D la
+lanza el propio robot) se usa el apartado
+[Con la cámara del robot](#con-la-cámara-del-robot).
+
+Aquí nadie lanza la cámara, así que hacen falta tres launchers, cada uno en su
+terminal: el driver de la cámara, YOLO con los topics de la OAK-D y la
+conversión a `vision_msgs`. Si la OAK-D está montada en el Kobuki y ya has
+lanzado su driver (ver [README-kobuki-pixi.md](README-kobuki-pixi.md)),
+sáltate la terminal 1:
+
+```bash
+# Terminal 1: driver de la cámara
+ros2 launch oak_d_camera camera.launch.py \
+  use_disparity:=False use_lr_raw:=False use_pointcloud:=False
+
+# Terminal 2: YOLO
+ros2 launch yolo_bringup yolo.launch.py \
+  input_image_topic:=/color/image \
+  input_depth_topic:=/stereo/depth \
+  input_depth_info_topic:=/stereo/camera_info \
+  target_frame:=oak-d_frame
+
+# Terminal 3: conversión a /detections_2d
+ros2 launch camera yolo_to_standard2d.launch.py
+
+# Terminal 4: ver las detecciones
+ros2 topic echo /detections_2d
+```
+
+Para 3D, añade `use_3d:=True` a YOLO (terminal 2) y, en la terminal 3, lanza
+`ros2 launch camera yolo_to_standard3d.launch.py` en lugar de la conversión 2D.
+
+Si al lanzar la cámara hay problemas de permisos de acceso al USB:
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/80-movidius.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+### Detección, segmentación y pose
+
+YOLO usa por defecto el modelo `yolov8m.pt`, que solo detecta: la caja y la
+clase de cada objeto. El argumento `model` elige otro modelo, tanto en
+`yolo_bringup yolo.launch.py` como en `camera yolo.launch.py`:
+
+| `model` | Qué añade |
+| --- | --- |
+| `yolov8m.pt` (por defecto) | Detección: caja y clase de cada objeto |
+| `yolov8m-seg.pt` | Segmentación: además, la máscara (silueta) de cada objeto |
+| `yolov8m-pose.pt` | Pose: solo personas, con los 17 puntos del cuerpo (ojos, hombros, codos...) |
+
+Con la OAK-D, cambia el comando de la terminal 2:
+
+```bash
+# Segmentación
+ros2 launch yolo_bringup yolo.launch.py \
+  input_image_topic:=/color/image \
+  input_depth_topic:=/stereo/depth \
+  input_depth_info_topic:=/stereo/camera_info \
+  target_frame:=oak-d_frame \
+  model:=yolov8m-seg.pt
+
+# Pose
+ros2 launch yolo_bringup yolo.launch.py \
+  input_image_topic:=/color/image \
+  input_depth_topic:=/stereo/depth \
+  input_depth_info_topic:=/stereo/camera_info \
+  target_frame:=oak-d_frame \
+  model:=yolov8m-pose.pt
+```
+
+Con la cámara del robot:
+
+```bash
+ros2 launch camera yolo.launch.py robot:=$ROBOT model:=yolov8m-seg.pt   # segmentación
+ros2 launch camera yolo.launch.py robot:=$ROBOT model:=yolov8m-pose.pt  # pose
+```
+
+La primera vez, YOLO descarga el modelo al directorio desde el que lo lanzas.
+La conversión a `vision_msgs` (`/detections_2d` y `/detections_3d`) solo se
+queda con la caja y la clase; las máscaras y los puntos del cuerpo están en
+`/yolo/detections` (campos `mask` y `keypoints`). La forma más rápida de
+verlos es la imagen que dibuja YOLO, en otra terminal:
+
+```bash
+ros2 run rqt_image_view rqt_image_view /yolo/dbg_image
+```
+
+La `m` del nombre es el tamaño del modelo: `n`, `s`, `m`, `l` o `x`, de más
+rápido a más preciso. Sin GPU, `yolov8n.pt` (o `yolov8n-seg.pt`,
+`yolov8n-pose.pt`) va bastante más fluido.
 
 ### Con la cámara del robot
 
@@ -512,47 +568,7 @@ están en
 Con el robot en la base, la cámara está apagada para ahorrar batería. Ver
 [Arrancar y parar la cámara y el láser](README-tb4-real.md#arrancar-y-parar-la-cámara-y-el-láser).
 
-### Con la cámara OAK-D
-
-Para una OAK-D conectada por USB al portátil, sin robot o montada en el Kobuki.
-No es el caso del TurtleBot 4: su OAK-D la lanza el propio robot, así que con
-él (o con el simulador) se usa el apartado anterior. Aquí nadie lanza la
-cámara, así que hacen falta tres launchers, cada uno en su terminal: el driver
-de la cámara, YOLO con los topics de la OAK-D y la conversión a `vision_msgs`.
-Si ya has lanzado el driver con el Kobuki (ver
-[README-kobuki-pixi.md](README-kobuki-pixi.md)), sáltate la terminal 1:
-
-```bash
-# Terminal 1: driver de la cámara
-ros2 launch oak_d_camera camera.launch.py \
-  use_disparity:=False use_lr_raw:=False use_pointcloud:=False
-
-# Terminal 2: YOLO
-ros2 launch yolo_bringup yolo.launch.py \
-  input_image_topic:=/color/image \
-  input_depth_topic:=/stereo/depth \
-  input_depth_info_topic:=/stereo/camera_info \
-  target_frame:=oak-d_frame
-
-# Terminal 3: conversión a /detections_2d
-ros2 launch camera yolo_to_standard2d.launch.py
-```
-
-Para 3D, añade `use_3d:=True` a YOLO (terminal 2) y, en la terminal 3, lanza
-`ros2 launch camera yolo_to_standard3d.launch.py robot:=kobuki` en lugar de la
-conversión 2D. Con la OAK-D
-vale cualquier entrada de robot real: de ella solo se usa que no hay que
-corregir el frame de la imagen (ver `fix_image_frame` en el YAML).
-
-Si al lanzar la cámara hay problemas de permisos de acceso al USB:
-
-```bash
-echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="03e7", MODE="0666", GROUP="plugdev"' | sudo tee /etc/udev/rules.d/80-movidius.rules
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-## 8. Navegación reactiva con VFF
+## 7. Navegación reactiva con VFF
 
 Con el robot en marcha. El robot se dirige hacia un objeto detectado por
 YOLO (vector de atracción) mientras esquiva los obstáculos del láser (vector de
@@ -577,42 +593,53 @@ Lanza solo una de las dos y, en otra terminal, mira el resultado:
 ros2 topic echo /repulsive_vector
 ```
 
+En todos estos launchers, `target_class` es la clase de YOLO hacia la que va
+el robot. Los comandos de abajo usan `person`; cámbiala por la que quieras
+(ver más abajo). Si no la pones, cada launcher usa su propia clase por
+defecto (`sports ball`, `cup` o `chair`), y el robot no va hacia ti aunque
+YOLO te detecte. La excepción es `full_vff_3d.launch.py`, que por defecto va
+hacia una persona (`person`).
+
 **Atracción.** Vector hacia la clase objetivo, en `/attractive_vector`. Hace
-falta YOLO y la conversión del bloque 7 en marcha (2D o 3D, según el caso):
+falta YOLO y la conversión del bloque 6 en marcha (2D o 3D, según el caso):
 
 ```bash
-ros2 launch vff_control yolo_class_2d.launch.py robot:=$ROBOT       # 2D: solo dirección (distancia fija de 1 m)
-ros2 launch vff_control yolo_class_3d.launch.py robot:=$ROBOT       # 3D: posición a partir de /detections_3d
-ros2 launch vff_control yolo_class_3d_alt.launch.py robot:=$ROBOT   # 3D calculado a mano: detección 2D + imagen de profundidad
+# target_class:=person -> cámbiala por la clase que quieras (chair, cup...)
+ros2 launch vff_control yolo_class_2d.launch.py robot:=$ROBOT target_class:=person      # 2D: solo dirección (distancia fija de 1 m)
+ros2 launch vff_control yolo_class_3d.launch.py robot:=$ROBOT target_class:=person      # 3D: posición a partir de /detections_3d
+ros2 launch vff_control yolo_class_3d_alt.launch.py robot:=$ROBOT target_class:=person  # 3D calculado a mano: detección 2D + imagen de profundidad
 ros2 topic echo /attractive_vector
 ```
 
 **VFF completo** (detector de obstáculos, detector de la clase y controlador),
-con YOLO y la conversión del bloque 7 en marcha:
+con YOLO y la conversión del bloque 6 en marcha:
 
 ```bash
-ros2 launch vff_control vff_2d.launch.py robot:=$ROBOT
-ros2 launch vff_control vff_3d.launch.py robot:=$ROBOT  # además se detiene a 1 m del objetivo
+# target_class:=person -> cámbiala por la clase que quieras (chair, cup...)
+ros2 launch vff_control vff_2d.launch.py robot:=$ROBOT target_class:=person
+ros2 launch vff_control vff_3d.launch.py robot:=$ROBOT target_class:=person  # además se detiene a 1 m del objetivo
 ```
 
 **Todo en uno** (también lanza YOLO y la conversión; no hace falta nada más
 que el robot):
 
 ```bash
-ros2 launch vff_control full_vff_2d.launch.py robot:=$ROBOT
+# target_class:=person -> cámbiala por la clase que quieras (chair, cup...)
+ros2 launch vff_control full_vff_2d.launch.py robot:=$ROBOT target_class:=person
+# Por defecto, target_class:=person; añádelo para cambiarla
 ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT
 ```
 
-Sin GPU, añade `device:=cpu` (ver el [bloque 7](#7-sensores-cámara-y-yolo)).
+Sin GPU, añade `device:=cpu` (ver el [bloque 6](#6-sensores-cámara-y-yolo)).
 
-La clase objetivo se elige con el argumento `target_class`, que admite
-cualquier clase que detecte YOLO (las de COCO: `person`, `chair`, `cup`,
-`bottle`, `dog`...). Por defecto es `chair` en los launchers 3D y `cup` en los
-2D. Por ejemplo:
+`target_class` admite cualquier clase que detecte YOLO (las de COCO: `person`,
+`chair`, `cup`, `bottle`, `dog`...). La clase por defecto de cada launcher sale
+con `--show-args` (por ejemplo,
+`ros2 launch vff_control full_vff_3d.launch.py --show-args`). Las clases con
+espacios van entre comillas:
 
 ```bash
-ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:=person
-ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:='sports ball'  # con espacios, entre comillas
+ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:='sports ball'
 ```
 
 Para ver qué clases está detectando YOLO en cada momento:
@@ -638,8 +665,9 @@ Si el objetivo deja de verse (por ejemplo, porque al esquivar un obstáculo sale
 de la imagen), el robot se para y, si pasan 2 s (`search_timeout`) sin
 volver a verlo, gira sobre sí mismo hacia el lado donde lo vio por última vez
 hasta encontrarlo (`search_angular_speed`; 0 desactiva la búsqueda).
-`full_vff_3d.launch.py` empieza a buscar antes (a los 0,5 s) y gira más
-rápido, para seguir a alguien que rodea al robot (ver más abajo).
+`full_vff_3d.launch.py` empieza a buscar antes (a los 0,5 s) y se orienta más
+rápido hacia el objetivo, para seguir a alguien que rodea al robot (ver más
+abajo).
 
 El controlador combina un vector unitario hacia el objetivo (solo importa su
 dirección) con una repulsión `k·(1/d − 1/ρ₀)` que solo actúa con obstáculos
@@ -657,7 +685,7 @@ para probar valores sin tocar el fichero:
 | --- | --- | --- |
 | `angular_gain` | 2,0 | Velocidad de giro por radián de ángulo hacia el objetivo |
 | `max_angular_speed` | 1,2 rad/s | Velocidad de giro máxima |
-| `search_angular_speed` | 0,8 rad/s | Velocidad de giro al buscar el objetivo (0 la desactiva) |
+| `search_angular_speed` | 0,7 rad/s | Velocidad de giro al buscar el objetivo (0 la desactiva) |
 | `search_timeout` | 0,5 s | Tiempo sin ver el objetivo antes de empezar a buscarlo |
 
 ```bash
@@ -667,7 +695,158 @@ ros2 launch vff_control full_vff_3d.launch.py robot:=$ROBOT target_class:=person
 Si al girar hacia el objetivo el robot se pasa y oscila a un lado y a otro,
 baja `angular_gain`.
 
-## 9. Navegación con Nav2
+## 8. Máquinas de estados: bump and go
+
+Con el robot en marcha. El robot avanza; al chocar retrocede, gira y
+vuelve a avanzar.
+
+FSM con `if/elif` sobre el estado actual:
+
+```bash
+ros2 launch fsm_bumpgo bumpgo_tb4.launch.py  # TurtleBot 4
+ros2 launch fsm_bumpgo bumpgo.launch.py      # Kobuki
+```
+
+La misma FSM con una clase por estado (`on_entry`, `on_do`, `on_exit`) y
+transiciones explícitas:
+
+```bash
+ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py  # TurtleBot 4
+ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
+```
+
+Cada robot tiene su propio nodo y su propio launcher (los del TurtleBot 4
+terminan en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper:
+
+- **Kobuki**: `/events/bumper` publica un mensaje cada vez que un bumper se
+  pulsa o se suelta. En el simulador lo genera un nodo a partir del láser.
+- **TurtleBot 4**: la base iRobot Create 3 no tiene un topic de bumper. Los
+  golpes llegan en `/hazard_detection`, un vector con todos los peligros
+  activos (golpe, precipicio, límite de marcha atrás…). Un golpe es una
+  detección de tipo `BUMP`. Sus launchers publican además `TwistStamped`, que
+  es lo que espera el TurtleBot 4.
+
+### TurtleBot 4 real
+
+Antes de lanzar los bump and go en el robot real, comprueba dos cosas en
+[README-tb4-real.md](README-tb4-real.md):
+
+- Que el robot republica el bumper: si `ros2 topic info /hazard_detection`
+  indica 0 publicadores, ver [Bumper](README-tb4-real.md#bumper).
+- Que están desactivados los reflejos y el límite de marcha atrás de la base:
+  si no, el robot va a saltos al retroceder y al girar tras cada choque. Ver
+  [Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
+
+## 9. Máquinas de estados: ir hacia la persona que llama
+
+Con el robot en marcha. Junta los tres bloques anteriores: el modelo de pose de
+YOLO ([bloque 6](#detección-segmentación-y-pose)), el VFF (bloque 7) y una
+máquina de estados con una clase por estado, como la de bump and go (bloque 8).
+El robot gira sobre sí mismo hasta ver a una persona con el brazo levantado y
+entonces va hacia ella, esquivando los obstáculos.
+
+```bash
+ros2 launch fsm_calling_person calling_person.launch.py robot:=$ROBOT
+ros2 launch fsm_calling_person calling_person.launch.py robot:=$ROBOT arm_angle_threshold:=90.0  # basta con el brazo en horizontal
+```
+
+El launcher arranca YOLO y todos los nodos: solo hace falta el robot. Es 3D,
+porque el robot necesita saber a qué distancia está la persona, así que con el
+TurtleBot 4 real hace falta `robot:=tb4_rgbd` o `tb4_rgbd_c` (ver
+[TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
+Los mundos del simulador no tienen personas: se prueba con el robot real.
+
+| Argumento | Por defecto | Qué hace |
+| --- | --- | --- |
+| `arm_angle_threshold` | 120,0 | Ángulo del brazo (grados) a partir del cual la persona llama |
+| `arrive_distance` | 1,0 m | Distancia a la persona a la que el robot se para |
+| `search_angular_speed` | 0,3 rad/s | Velocidad de giro de la FSM mientras nadie llama (estado `SEARCH`) |
+| `model` | `yolov8m-pose.pt` | Modelo de pose (`yolov8n-pose.pt` va más fluido sin GPU) |
+| `device` | `cuda:0` | `cpu` sin GPU (ver el [bloque 6](#6-sensores-cámara-y-yolo)) |
+
+### Los nodos
+
+Tiene la misma estructura que `full_vff_3d` (bloque 7): un nodo publica el
+vector de repulsión, otro el de atracción y el controlador del VFF mueve el
+robot con los dos. Cambian dos cosas: el vector de atracción lo publica un
+detector nuevo, que apunta a la persona que llama, y hay una máquina de estados
+que decide cuándo se mueve el VFF.
+
+| Nodo | Paquete | Qué hace |
+| --- | --- | --- |
+| `obstacle_detector_node` | `vff_control` | Vector de repulsión (`/repulsive_vector`), el mismo del bloque 7 |
+| `calling_person_detector_node` | `fsm_calling_person` | Vector de atracción (`/attractive_vector`) hacia la persona que llama; en `full_vff_3d` lo publica `yolo_class_detector_node_3d` |
+| `vff_controller_node` | `vff_control` | Mueve el robot con los dos vectores, el mismo del bloque 7 |
+| `calling_person_fsm_node` | `fsm_calling_person` | Máquina de estados: activa y desactiva el VFF y resetea el detector |
+
+### El detector: quién llama
+
+El detector mide el ángulo del brazo de cada persona en la imagen, entre la
+recta del hombro a la muñeca y la vertical hacia abajo: 0° con el brazo bajado,
+90° en horizontal y 180° hacia arriba. Una persona llama cuando supera
+`arm_angle_threshold` (120° por defecto) en 3 imágenes seguidas; con una sola
+imagen habría falsos avisos, porque mientras el robot gira las imágenes salen
+movidas. Si ve personas pero ninguna llama, lo dice en el log (`Seen people,
+but nobody is calling`).
+
+Cuando alguien llama, el detector avisa una vez en `/calling_person` y desde
+entonces publica en `/attractive_vector` la posición de esa persona, aunque baje
+el brazo. Sabe que es la misma persona en cada imagen por el identificador que
+le da el tracking de YOLO, que el launcher activa (`use_tracking:=True`).
+
+El detector se queda con esa persona hasta que recibe un reset
+(`/calling_person_reset`, `std_msgs/Empty`), que le hace olvidarla y volver a
+esperar a que alguien llame. Hace falta porque la persona suele seguir delante
+del robot después de que llegue: sin el reset, el detector seguiría con ella y
+no se enteraría de una llamada nueva.
+
+A diferencia del resto de ejemplos, el detector no usa los mensajes estándar
+(`/detections_3d`, de `vision_msgs`), sino directamente los de YOLO
+(`/yolo/detections_3d`, de `yolo_msgs`): `vision_msgs` no tiene un campo para
+los puntos del cuerpo, así que la conversión del bloque 6 los pierde, y
+tampoco copia el identificador de tracking.
+
+### La máquina de estados
+
+La máquina de estados no sabe nada de YOLO: solo escucha al detector.
+
+| Estado | Al entrar | Mientras está | Pasa a |
+| --- | --- | --- | --- |
+| `SEARCH` | Desactiva el VFF y resetea el detector | Gira despacio (0,3 rad/s) | `APPROACH` cuando el detector avisa en `/calling_person` |
+| `APPROACH` | Activa el VFF | Nada: el VFF mueve el robot hacia la persona | `ARRIVED` cuando el vector de atracción mide menos de `arrive_distance`; `SEARCH` si no llega ningún vector en 5 s |
+| `ARRIVED` | | Se queda quieto | `SEARCH` a los 5 s |
+
+Al salir de `APPROACH` (al llegar o al perder a la persona) desactiva el VFF.
+
+El aviso de `/calling_person` es un evento, como el golpe del bumper en bump
+and go: el callback solo lo apunta, y el único estado que lo comprueba es
+`SEARCH`. Si alguien levanta el brazo mientras el robot va hacia otra persona,
+se ignora.
+
+El VFF es el mismo nodo del bloque 7, con un topic `enable` (`std_msgs/Bool`)
+para activarlo y desactivarlo. En este launcher arranca desactivado
+(`start_enabled:=False`) y la máquina de estados lo activa en `/vff_enable`
+solo en `APPROACH`. Desactivado no publica velocidades, así que el VFF y la
+máquina de estados nunca mueven el robot a la vez. En los launchers del bloque 7
+arranca activado.
+
+### Ver qué está pasando
+
+Los logs de `calling_person_detector_node` y `calling_person_fsm` cuentan cada
+aviso y cada cambio de estado. Además, en otras terminales:
+
+```bash
+ros2 run rqt_image_view rqt_image_view /yolo/dbg_image   # puntos del cuerpo que detecta YOLO
+ros2 topic echo /calling_person                          # avisos del detector
+ros2 topic echo /attractive_vector                       # posición de la persona que llamó
+```
+
+El robot gira despacio para que YOLO llegue a ver a la persona: en el
+TurtleBot 4 real, YOLO 3D da unas 3 imágenes por segundo. Si no reacciona,
+comprueba en `/yolo/dbg_image` que YOLO ve los hombros y las muñecas, y no te
+pongas demasiado cerca: la persona tiene que salir entera en la imagen.
+
+## 10. Navegación con Nav2
 
 Nav2 necesita dos cosas: un mapa del sitio y saber dónde está el robot en
 él (localización con AMCL). El mapa se indica con `map:=` y la **ruta
@@ -807,7 +986,7 @@ Las posiciones están pensadas para el mapa del Kobuki. Con el TurtleBot 4 (en
 la casa, cuyo mapa tiene otro origen, o en otro mundo) comprueba en RViz que los
 puntos caen en zonas libres y, si no, cámbialos.
 
-## 10. Interacción humano-robot
+## 11. Interacción humano-robot
 
 Los ejemplos usan los servicios de `simple_hri`: STT (voz a texto), TTS (texto
 a voz), Extract (extraer información de una frase con un LLM) y YesNo
@@ -903,7 +1082,7 @@ Además de `simple_hri`, necesita en marcha los servidores del NAO:
 ros2 run hri_examples nao_hri_example
 ```
 
-## 11. Árboles de comportamiento sin robot
+## 12. Árboles de comportamiento sin robot
 
 Árboles pequeños con `py_trees` y acciones que generan números aleatorios.
 Sirven para entender cada tipo de nodo sin robot ni simulador. Ejecútalos
@@ -917,9 +1096,9 @@ ros2 run bt_examples reactive_fallback  # Fallback sin memoria (reactivo)
 ros2 run bt_examples decorator          # decoradores FailureIsSuccess y Retry
 ```
 
-## 12. Árboles de comportamiento: bump and go
+## 13. Árboles de comportamiento: bump and go
 
-Con el robot en marcha. El mismo comportamiento que el bloque 6, con un
+Con el robot en marcha. El mismo comportamiento que el bloque 8, con un
 árbol de `py_trees`:
 
 | Árbol | TurtleBot 4 | Kobuki |
@@ -928,7 +1107,7 @@ Con el robot en marcha. El mismo comportamiento que el bloque 6, con un
 | Gira hacia el lado contrario al choque (usa la blackboard y `py_trees_ros`) | `ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo side_bumpgo.launch.py` |
 | Cargado desde un XML de Groot | `ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo groot_bumpgo.launch.py` |
 
-Como en el bloque 6, cada robot tiene su propio nodo y launcher. Entre las dos
+Como en el bloque 8, cada robot tiene su propio nodo y launcher. Entre las dos
 versiones solo cambia `CheckBump` (y `Turn` en la versión side); el resto de
 comportamientos se reutilizan.
 

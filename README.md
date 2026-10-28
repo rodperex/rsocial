@@ -219,7 +219,7 @@ Los ejemplos de interacción usan
 [`simple_hri`](https://github.com/rodperex/simple_hri), que ofrece
 reconocimiento de voz, síntesis de voz y extracción de información con modelos
 de lenguaje. Puede usar modelos locales o servicios en la nube (ver
-[README-examples.md](README-examples.md#10-interacción-humano-robot)). Los
+[README-examples.md](README-examples.md#11-interacción-humano-robot)). Los
 modelos locales se descargan la primera vez que se lanzan, así que esa vez
 necesitan Internet.
 
