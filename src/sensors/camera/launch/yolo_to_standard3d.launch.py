@@ -40,6 +40,7 @@ def launch_setup(context):
 
 
 def generate_launch_description():
-    return LaunchDescription(robot_arguments() + [
+    # Defaults to a real robot so that a camera without robot (e.g. an OAK-D) needs no argument
+    return LaunchDescription(robot_arguments(default='tb4') + [
         OpaqueFunction(function=launch_setup),
     ])

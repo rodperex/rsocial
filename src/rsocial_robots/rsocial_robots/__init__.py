@@ -34,13 +34,15 @@ def get_robot(context):
     return load_robots()[LaunchConfiguration('robot').perform(context)]
 
 
-def robot_arguments():
-    """Declare the robot launch argument of the examples."""
+def robot_arguments(default=None):
+    """Declare the robot launch argument of the examples, required unless a default is given."""
+    kwargs = {} if default is None else {'default_value': default}
     return [
         DeclareLaunchArgument(
             'robot',
             choices=list(load_robots()),
             description=('Robot the example runs on, simulated (kobuki_sim, tb4_sim) '
-                         'or real (kobuki, tb4, tb4_rgbd, tb4_rgbd_c)')
+                         'or real (kobuki, tb4, tb4_rgbd, tb4_rgbd_c)'),
+            **kwargs
         ),
     ]

@@ -53,6 +53,8 @@ def launch_setup(context):
                 'input_depth_topic': robot['depth_topic'],
                 'input_depth_info_topic': robot['camera_info_topic'],
                 'target_frame': robot['camera_frame'],
+                'model': LaunchConfiguration('model'),
+                'use_tracking': LaunchConfiguration('use_tracking'),
                 'use_3d': LaunchConfiguration('use_3d'),
                 'depth_image_units_divisor': str(robot['depth_image_units_divisor']),
                 'device': LaunchConfiguration('device'),
@@ -68,6 +70,17 @@ def generate_launch_description():
             choices=list(load_robots()),
             description=('Robot whose camera feeds YOLO, simulated (kobuki_sim, tb4_sim) '
                          'or real (kobuki, tb4, tb4_rgbd, tb4_rgbd_c)')
+        ),
+        DeclareLaunchArgument(
+            'model',
+            default_value='yolov8m.pt',
+            description=('YOLO model: yolov8m.pt (detection), yolov8m-seg.pt (segmentation) '
+                         'or yolov8m-pose.pt (pose)')
+        ),
+        DeclareLaunchArgument(
+            'use_tracking',
+            default_value='True',
+            description='Set to True to give each detection an id kept between images'
         ),
         DeclareLaunchArgument(
             'use_3d',
