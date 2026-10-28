@@ -764,7 +764,7 @@ Los mundos del simulador no tienen personas: se prueba con el robot real.
 | --- | --- | --- |
 | `arm_angle_threshold` | 120,0 | Ángulo del brazo (grados) a partir del cual la persona llama |
 | `arrive_distance` | 1,0 m | Distancia a la persona a la que el robot se para |
-| `search_angular_speed` | 0,3 rad/s | Velocidad de giro de la FSM mientras nadie llama (estado `SEARCH`) |
+| `search_angular_speed` | 0,5 rad/s | Velocidad de giro de la FSM mientras nadie llama (estado `SEARCH`) |
 | `search_text` | «Estoy buscando a alguien que me llame» | Lo que dice al entrar en `SEARCH` |
 | `approach_text` | «He visto a una persona con la mano levantada. Voy hacia ella» | Lo que dice al entrar en `APPROACH` |
 | `greeting` | «¡Hola! Espero que tengas un buen día» | Lo que dice al llegar junto a la persona (`ARRIVED`) |
@@ -817,11 +817,24 @@ tampoco copia el identificador de tracking.
 
 ### La máquina de estados
 
+En la arquitectura del tema 4 (misión, tarea y capacidad), este ejemplo es
+una **tarea**, no una misión: ir hacia la persona que llama es un único
+objetivo, y la máquina de estados decide **cómo** cumplirlo, ordenando y
+supervisando las capacidades (el detector, el VFF y el TTS). La misión
+decidiría **qué** objetivo toca, y aquí no hay nada que elegir. La frontera es
+difusa porque, con un solo objetivo, la tarea es todo lo que hace el robot.
+En un robot real habría una misión por encima: por ejemplo, una que decide
+cuándo atender llamadas y cuándo ir a cargar. `SEARCH`, `APPROACH` y `ARRIVED`
+no son tareas, sino las fases de esta tarea.
+
+La tarea está modelada con una máquina de estados, como bump and go (bloque
+8). También podría haberse hecho con un árbol de comportamiento (bloque 13).
+
 La máquina de estados no sabe nada de YOLO: solo escucha al detector.
 
 | Estado | Al entrar | Mientras está | Pasa a |
 | --- | --- | --- | --- |
-| `SEARCH` | Dice «Estoy buscando a alguien que me llame», desactiva el VFF y resetea el detector | Gira despacio (0,3 rad/s) | `APPROACH` cuando el detector avisa en `/calling_person` |
+| `SEARCH` | Dice «Estoy buscando a alguien que me llame», desactiva el VFF y resetea el detector | Gira despacio (0,5 rad/s) | `APPROACH` cuando el detector avisa en `/calling_person` |
 | `APPROACH` | Dice «He visto a una persona con la mano levantada. Voy hacia ella» y activa el VFF | Nada: el VFF mueve el robot hacia la persona | `ARRIVED` cuando el vector de atracción mide menos de `arrive_distance`; `SEARCH` si no llega ningún vector en 5 s |
 | `ARRIVED` | Saluda: «¡Hola! Espero que tengas un buen día» | Se queda quieto | `SEARCH` cuando ha terminado de hablar y han pasado 5 s |
 
@@ -850,6 +863,13 @@ para activarlo y desactivarlo. En este launcher arranca desactivado
 solo en `APPROACH`. Desactivado no publica velocidades, así que el VFF y la
 máquina de estados nunca mueven el robot a la vez. En los launchers del bloque 7
 arranca activado.
+
+El topic `enable` se usa **por sencillez**. En la arquitectura del tema 4, una
+capacidad como el VFF se activa y se desactiva como *lifecycle node*: la tarea
+le pide las transiciones `activate` y `deactivate`, y el nodo sabe en todo
+momento en qué estado está (`inactive` o `active`). Aquí basta con un `Bool`,
+que hace lo mismo con menos código; convertir `vff_controller_node` en
+*lifecycle node* sería la versión fiel a la teoría.
 
 ### Ver qué está pasando
 

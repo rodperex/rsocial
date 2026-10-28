@@ -43,10 +43,10 @@ from enum import auto, Enum
 import math
 
 from geometry_msgs.msg import Twist, TwistStamped, Vector3
+from hri_client.hri_client import HRIClient
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
-from hri_client.hri_client import HRIClient
 from rclpy.node import Node
 from std_msgs.msg import Bool, Empty, String
 
