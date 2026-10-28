@@ -20,6 +20,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from rsocial_robots import get_robot, robot_arguments
 
 
@@ -112,7 +113,23 @@ def launch_setup(context):
             ]
         ),
 
-        # FSM: turns until a person calls, enables the VFF and resets the detector
+        # TTS of simple_hri (/tts_action), the only service of simple_hri the FSM uses: the
+        # whole simple_hri.launch.py would also load Whisper and a language model. It runs
+        # on the CPU, so that the GPU is left for YOLO
+        Node(
+            package='simple_hri',
+            executable=['tts_', LaunchConfiguration('tts')],
+            name='tts_service_node',
+            output='screen',
+            parameters=[{
+                'lang_code': 'spa',
+                'use_gpu': False,
+                'play_sound': True
+            }]
+        ),
+
+        # FSM: turns until a person calls, enables the VFF, resets the detector and says
+        # what it is doing on entering each state
         Node(
             package='fsm_calling_person',
             executable='calling_person_fsm_node',
@@ -122,6 +139,11 @@ def launch_setup(context):
                 'use_sim_time': robot['use_sim_time'],
                 'arrive_distance': float_arg('arrive_distance'),
                 'search_angular_speed': float_arg('search_angular_speed'),
+                # As text: otherwise they are read as YAML, which fails with some sentences
+                'search_text': ParameterValue(LaunchConfiguration('search_text'), value_type=str),
+                'approach_text': ParameterValue(
+                    LaunchConfiguration('approach_text'), value_type=str),
+                'greeting': ParameterValue(LaunchConfiguration('greeting'), value_type=str),
                 'enable_stamped_cmd_vel': robot['stamped_cmd_vel']
             }],
             remappings=[
@@ -157,6 +179,28 @@ def generate_launch_description():
             'search_angular_speed',
             default_value='0.5',
             description='Angular speed (rad/s) at which the FSM turns while nobody is calling'
+        ),
+        DeclareLaunchArgument(
+            'search_text',
+            default_value='Estoy buscando a alguien que me llame',
+            description='What the robot says on entering SEARCH (empty: nothing)'
+        ),
+        DeclareLaunchArgument(
+            'approach_text',
+            default_value='He visto a una persona con la mano levantada. Voy hacia ella',
+            description='What the robot says on entering APPROACH (empty: nothing)'
+        ),
+        DeclareLaunchArgument(
+            'greeting',
+            default_value='¡Hola! Espero que tengas un buen día',
+            description='What the robot says on entering ARRIVED, next to the person '
+                        '(empty: nothing)'
+        ),
+        DeclareLaunchArgument(
+            'tts',
+            default_value='piper',
+            choices=['piper', 'mms'],
+            description='TTS of simple_hri: piper or mms (both local, on the CPU)'
         ),
         OpaqueFunction(function=launch_setup),
     ])

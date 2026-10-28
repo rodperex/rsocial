@@ -743,14 +743,18 @@ Con el robot en marcha. Junta los tres bloques anteriores: el modelo de pose de
 YOLO ([bloque 6](#detección-segmentación-y-pose)), el VFF (bloque 7) y una
 máquina de estados con una clase por estado, como la de bump and go (bloque 8).
 El robot gira sobre sí mismo hasta ver a una persona con el brazo levantado y
-entonces va hacia ella, esquivando los obstáculos.
+entonces va hacia ella, esquivando los obstáculos. Además, va diciendo en voz
+alta lo que hace, con el TTS de `simple_hri` (bloque 11): así se oye en qué
+estado está la máquina de estados.
 
 ```bash
 ros2 launch fsm_calling_person calling_person.launch.py robot:=$ROBOT
 ros2 launch fsm_calling_person calling_person.launch.py robot:=$ROBOT arm_angle_threshold:=90.0  # basta con el brazo en horizontal
 ```
 
-El launcher arranca YOLO y todos los nodos: solo hace falta el robot. Es 3D,
+El launcher arranca YOLO, el TTS y todos los nodos: solo hace falta el robot.
+El TTS suena en el portátil. La primera vez, Piper descarga la voz al
+directorio `models/`, así que esa vez necesita internet. Es 3D,
 porque el robot necesita saber a qué distancia está la persona, así que con el
 TurtleBot 4 real hace falta `robot:=tb4_rgbd` o `tb4_rgbd_c` (ver
 [TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
@@ -761,6 +765,10 @@ Los mundos del simulador no tienen personas: se prueba con el robot real.
 | `arm_angle_threshold` | 120,0 | Ángulo del brazo (grados) a partir del cual la persona llama |
 | `arrive_distance` | 1,0 m | Distancia a la persona a la que el robot se para |
 | `search_angular_speed` | 0,3 rad/s | Velocidad de giro de la FSM mientras nadie llama (estado `SEARCH`) |
+| `search_text` | «Estoy buscando a alguien que me llame» | Lo que dice al entrar en `SEARCH` |
+| `approach_text` | «He visto a una persona con la mano levantada. Voy hacia ella» | Lo que dice al entrar en `APPROACH` |
+| `greeting` | «¡Hola! Espero que tengas un buen día» | Lo que dice al llegar junto a la persona (`ARRIVED`) |
+| `tts` | `piper` | TTS de `simple_hri`: `piper` o `mms` (los dos locales, en la CPU) |
 | `model` | `yolov8m-pose.pt` | Modelo de pose (`yolov8n-pose.pt` va más fluido sin GPU) |
 | `device` | `cuda:0` | `cpu` sin GPU (ver el [bloque 6](#6-sensores-cámara-y-yolo)) |
 
@@ -777,7 +785,8 @@ que decide cuándo se mueve el VFF.
 | `obstacle_detector_node` | `vff_control` | Vector de repulsión (`/repulsive_vector`), el mismo del bloque 7 |
 | `calling_person_detector_node` | `fsm_calling_person` | Vector de atracción (`/attractive_vector`) hacia la persona que llama; en `full_vff_3d` lo publica `yolo_class_detector_node_3d` |
 | `vff_controller_node` | `vff_control` | Mueve el robot con los dos vectores, el mismo del bloque 7 |
-| `calling_person_fsm_node` | `fsm_calling_person` | Máquina de estados: activa y desactiva el VFF y resetea el detector |
+| `calling_person_fsm_node` | `fsm_calling_person` | Máquina de estados: activa y desactiva el VFF, resetea el detector y dice lo que hace |
+| `tts_service_node` | `simple_hri` | TTS (acción `/tts_action`). Solo el TTS: el launcher de `simple_hri` arrancaría también Whisper y un modelo de lenguaje, que aquí no hacen falta y le quitarían la GPU a YOLO |
 
 ### El detector: quién llama
 
@@ -812,9 +821,9 @@ La máquina de estados no sabe nada de YOLO: solo escucha al detector.
 
 | Estado | Al entrar | Mientras está | Pasa a |
 | --- | --- | --- | --- |
-| `SEARCH` | Desactiva el VFF y resetea el detector | Gira despacio (0,3 rad/s) | `APPROACH` cuando el detector avisa en `/calling_person` |
-| `APPROACH` | Activa el VFF | Nada: el VFF mueve el robot hacia la persona | `ARRIVED` cuando el vector de atracción mide menos de `arrive_distance`; `SEARCH` si no llega ningún vector en 5 s |
-| `ARRIVED` | | Se queda quieto | `SEARCH` a los 5 s |
+| `SEARCH` | Dice «Estoy buscando a alguien que me llame», desactiva el VFF y resetea el detector | Gira despacio (0,3 rad/s) | `APPROACH` cuando el detector avisa en `/calling_person` |
+| `APPROACH` | Dice «He visto a una persona con la mano levantada. Voy hacia ella» y activa el VFF | Nada: el VFF mueve el robot hacia la persona | `ARRIVED` cuando el vector de atracción mide menos de `arrive_distance`; `SEARCH` si no llega ningún vector en 5 s |
+| `ARRIVED` | Saluda: «¡Hola! Espero que tengas un buen día» | Se queda quieto | `SEARCH` cuando ha terminado de hablar y han pasado 5 s |
 
 Al salir de `APPROACH` (al llegar o al perder a la persona) desactiva el VFF.
 
@@ -822,6 +831,18 @@ El aviso de `/calling_person` es un evento, como el golpe del bumper en bump
 and go: el callback solo lo apunta, y el único estado que lo comprueba es
 `SEARCH`. Si alguien levanta el brazo mientras el robot va hacia otra persona,
 se ignora.
+
+La máquina de estados habla con `HRIClient` (paquete `hri_client`, bloque 11),
+sin esperar: `start_speaking` empieza la frase y vuelve enseguida, y `ARRIVED`
+comprueba en cada ciclo si ha terminado (`is_speaking_done`). Si el robot
+cambia de estado a mitad de una frase, la corta y dice la del estado nuevo. Las
+frases son argumentos del launcher (`search_text`, `approach_text` y `greeting`);
+con una frase vacía, ese estado no dice nada. Por ejemplo:
+
+```bash
+ros2 launch fsm_calling_person calling_person.launch.py robot:=$ROBOT \
+  greeting:='Hola, ¿en qué te puedo ayudar?' search_text:=''
+```
 
 El VFF es el mismo nodo del bloque 7, con un topic `enable` (`std_msgs/Bool`)
 para activarlo y desactivarlo. En este launcher arranca desactivado

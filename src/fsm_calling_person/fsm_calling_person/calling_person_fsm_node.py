@@ -23,11 +23,13 @@ The FSM only coordinates the other nodes, like the VFF of vff_control:
   - vff_controller_node (vff_control): moves the robot with both vectors. It is
     launched disabled, and this node enables it (vff_enable) only to approach the
     person, so only one of them publishes velocities at a time
+  - The TTS of simple_hri (tts_action), through HRIClient (hri_client): on entering each
+    state the robot says what it is doing, and it greets the person when it reaches them
 
 States:
   - SEARCH: turn in place until a person calls
   - APPROACH: VFF enabled, until the robot is next to the person
-  - ARRIVED: stay still for a while and search again
+  - ARRIVED: greet the person, stay still for a while and search again
 
 Follows the classic FSM anatomy (see fsm_bumpgo):
   - State: on_entry / on_do / on_exit lifecycle
@@ -44,6 +46,7 @@ from geometry_msgs.msg import Twist, TwistStamped, Vector3
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
+from hri_client.hri_client import HRIClient
 from rclpy.node import Node
 from std_msgs.msg import Bool, Empty, String
 
@@ -88,6 +91,7 @@ class SearchState(State):
 
     def on_entry(self):
         self.fsm.get_logger().info('Entering SEARCH')
+        self.fsm.say(self.fsm.search_text)
         self.fsm.enable_vff(False)
         # The detector forgets the previous person: otherwise it would stick to them
         # while they are in view and the robot would not notice a new call
@@ -113,6 +117,7 @@ class ApproachState(State):
     def on_entry(self):
         self.fsm.get_logger().info(
             f'Entering APPROACH: person {self.fsm.calling_id} is calling, going towards them')
+        self.fsm.say(self.fsm.approach_text)
         self.fsm.enable_vff(True)
         # Only the vectors received from now on count. The time is set to now so that
         # the lost guard counts from here until the first vector arrives
@@ -149,18 +154,22 @@ class ApproachState(State):
 
 
 class ArrivedState(State):
-    """Robot stays still next to the person for a while before searching again."""
+    """Robot greets the person and stays still next to them before searching again."""
 
     def on_entry(self):
         self.fsm.get_logger().info('Entering ARRIVED: next to the person')
         self.fsm.reset_state_timer()
+        self.speaking = self.fsm.say(self.fsm.greeting)
 
     def on_do(self):
         self.fsm.publish_vel(linear=0.0, angular=0.0)
+        if self.speaking and self.fsm.hri.is_speaking_done():
+            self.speaking = False
 
     def check_transition(self):
-        # guard: enough time has elapsed next to the person
-        if self.fsm.time_in_state() > self.fsm.arrived_wait:
+        # guard: it has finished speaking and enough time has elapsed next to the person,
+        # so that it does not start turning in the middle of the sentence
+        if not self.speaking and self.fsm.time_in_state() > self.fsm.arrived_wait:
             return SearchState(self.fsm)
         return None
 
@@ -178,6 +187,12 @@ class CallingPersonFSM(Node):
         self.declare_parameter('lost_timeout', 5.0)
         # Seconds the robot stays next to the person before searching again
         self.declare_parameter('arrived_wait', 5.0)
+        # What the robot says on entering each state ('' = nothing)
+        self.declare_parameter('search_text', 'Estoy buscando a alguien que me llame')
+        self.declare_parameter(
+            'approach_text', 'He visto a una persona con la mano levantada. Voy hacia ella')
+        self.declare_parameter(
+            'greeting', '¡Hola! Espero que tengas un buen día')
         # Some robots (e.g. ros2_control diff_drive_controller) expect TwistStamped
         self.declare_parameter('enable_stamped_cmd_vel', False)
 
@@ -185,6 +200,9 @@ class CallingPersonFSM(Node):
         self.arrive_distance = self.get_parameter('arrive_distance').value
         self.lost_timeout = Duration(seconds=self.get_parameter('lost_timeout').value)
         self.arrived_wait = Duration(seconds=self.get_parameter('arrived_wait').value)
+        self.search_text = self.get_parameter('search_text').value
+        self.approach_text = self.get_parameter('approach_text').value
+        self.greeting = self.get_parameter('greeting').value
         self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
 
         # From calling_person_detector_node
@@ -198,6 +216,10 @@ class CallingPersonFSM(Node):
         self.vff_enable_pub = self.create_publisher(Bool, 'vff_enable', 10)
         self.detector_reset_pub = self.create_publisher(Empty, 'calling_person_reset', 10)
 
+        # Only the TTS of simple_hri is used. wait_for_services is not called: it also waits
+        # for the STT, Extract and Yes/No, which this example does not launch
+        self.hri = HRIClient(self)
+
         self.last_event = None
         self.calling_id = None
         # Last attractive vector and when it arrived. The vector tells how far the person
@@ -208,6 +230,10 @@ class CallingPersonFSM(Node):
         self.attractive_ts = None
         self.state_ts = self.get_clock().now()
 
+        # The first SEARCH does not speak: the launcher starts the TTS at the same time as
+        # this node, and Piper takes a few seconds to load the voice, so /tts_action does
+        # not exist yet and the sentence is lost (HRIClient gives up after its timeout).
+        # The following times the TTS is already running and it speaks
         self.current_state = SearchState(self)
         self.current_state.on_entry()
 
@@ -246,6 +272,17 @@ class CallingPersonFSM(Node):
 
     def reset_detector(self):
         self.detector_reset_pub.publish(Empty())
+
+    def say(self, text: str) -> bool:
+        """Start saying text with the TTS; return whether it started (False if text is empty)."""
+        if not text:
+            return False
+        # A sentence of the previous state that has not finished is cut: the robot says
+        # what it is doing now. The TTS runs in the background: start_speaking returns at
+        # once, and the timeout ends it if simple_hri does not answer
+        self.hri.cancel_speaking()
+        self.hri.start_speaking(text, timeout_sec=15.0)
+        return True
 
     def publish_vel(self, linear: float, angular: float):
         vel = Twist()
