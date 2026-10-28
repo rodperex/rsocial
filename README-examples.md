@@ -886,10 +886,11 @@ cuántos lanzamientos son:
 | Robot real | `ros2 launch kobuki navigation.launch.py map:=...` | Los mismos, sin `use_sim_time` |
 | Mapa por defecto | Simulador: la casa. Robot real: ninguno, `map:=` es obligatorio | `warehouse` |
 
-En todos los casos, al arrancar hay que dar en RViz la posición inicial del
-robot con **2D Pose Estimate**: clic donde está el robot y arrastrar hacia
-donde mira. Las lecturas del láser tienen que quedar encima de las paredes
-del mapa.
+Al arrancar hay que dar en RViz la posición inicial del robot con **2D Pose
+Estimate**: clic donde está el robot y arrastrar hacia donde mira. Las
+lecturas del láser tienen que quedar encima de las paredes del mapa. La
+excepción es el Kobuki en el simulador: su localización ya arranca en (0, 0),
+que es donde aparece el robot.
 
 ### Kobuki en el simulador
 
@@ -996,16 +997,26 @@ ros2 run nav2_example simple_navigation_app  # un objetivo, con feedback de la d
 ros2 launch fsm_nav fsm_nav.launch.py         # FSM que visita dos waypoints seguidos
 ```
 
-`simple_navigation_app` usa la clase reutilizable `NavigationClient` (paquete
-`navigation_client`) y navega a la posición fijada en
-`src/nav2_example/nav2_example/simple_navigation_app.py`. Los puntos de la FSM
-se configuran en `src/fsm_nav/config/waypoints.yaml`; si un objetivo falla, la
-FSM se detiene. Estos ejemplos solo hablan con Nav2, así que no necesitan
-`robot`.
+Los dos usan la clase reutilizable `NavigationClient` (paquete
+`navigation_client`), que manda el objetivo a Nav2 sin bloquear el nodo y dice
+cómo terminó: `COMPLETED`, `ERROR` (Nav2 lo abortó), `TIMEOUT` o `CANCELED`.
+Los dos terminan solos al acabar.
 
-Las posiciones están pensadas para el mapa del Kobuki. Con el TurtleBot 4 (en
-la casa, cuyo mapa tiene otro origen, o en otro mundo) comprueba en RViz que los
-puntos caen en zonas libres y, si no, cámbialos.
+- `simple_navigation_app` va a un objetivo, (6, −2) por defecto, y muestra la
+  distancia que le queda. Otro objetivo, en metros y radianes en el frame
+  `map`: `ros2 run nav2_example simple_navigation_app --ros-args -p x:=4.0 -p
+  y:=0.0 -p yaw:=1.57`.
+- `fsm_nav` es una máquina de estados de misión: espera a Nav2 (`WAIT_NAV2`),
+  va al primer punto (`NAV1`), después al segundo (`NAV2`) y termina (`DONE`).
+  Si un objetivo no se completa (`ERROR` o `TIMEOUT`, a los `goal_timeout`
+  segundos), la misión se aborta. Los puntos, (−1, 0) y (4, 0), y el tiempo
+  máximo se configuran en `src/fsm_nav/config/waypoints.yaml`.
+
+Estos ejemplos solo hablan con Nav2, así que no necesitan `robot`. Sus puntos
+caen en zonas libres de los mapas de la casa (del Kobuki y del TurtleBot 4) y
+del almacén del TurtleBot 4. En otro mundo, comprueba en RViz que los puntos
+caen en zonas libres y, si no, cámbialos: en `depot`, por ejemplo, el de
+`simple_navigation_app` cae fuera de la zona conocida.
 
 ## 11. Interacción humano-robot
 

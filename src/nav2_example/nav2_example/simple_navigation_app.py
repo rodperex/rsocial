@@ -10,7 +10,15 @@ class SimpleNavigationApp(Node):
     def __init__(self):
         super().__init__('simple_navigation_app_py_node')
         self.nav_client_ = NavigationClient(self)
-        self.target_pose_ = self.nav_client_.create_pose_stamped(6.0, -2.0, 0.0)
+        # Goal in the map frame. The default one is free in the maps of the house (Kobuki and
+        # TurtleBot 4) and of the TurtleBot 4 warehouse
+        self.declare_parameter('x', 6.0)
+        self.declare_parameter('y', -2.0)
+        self.declare_parameter('yaw', 0.0)
+        self.target_pose_ = self.nav_client_.create_pose_stamped(
+            self.get_parameter('x').value,
+            self.get_parameter('y').value,
+            self.get_parameter('yaw').value)
 
         self.server_ready_ = False
         self.goal_sent_ = False
@@ -49,6 +57,7 @@ class SimpleNavigationApp(Node):
 
         self.timer_.cancel()
         self.get_logger().info('Application finished')
+        raise SystemExit
 
 
 def main(args=None):
@@ -58,6 +67,8 @@ def main(args=None):
 
     try:
         rclpy.spin(app_node)
+    except SystemExit:
+        pass  # Clean exit when the navigation is finished
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:

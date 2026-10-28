@@ -12,10 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from action_msgs.msg import GoalStatus
-from nav2_msgs.action import NavigateToPose
+"""
+Mission FSM on Nav2: visit two waypoints one after the other.
+
+States:
+  - WAIT_NAV2: wait until the Nav2 action server is available
+  - NAV1: navigate to the first waypoint
+  - NAV2: navigate to the second waypoint
+  - DONE: the mission is over (both waypoints reached, or a goal failed)
+
+The navigation goes through NavigationClient (navigation_client), like
+simple_navigation_app of nav2_example. send_goal() returns at once, and each cycle
+asks is_goal_done(): the FSM never blocks. When a goal finishes, its state is the
+event of the transition: COMPLETED goes to the next waypoint, and ERROR (Nav2
+aborted it), TIMEOUT (it took longer than goal_timeout) or CANCELED end the mission.
+"""
+
+from navigation_client.navigation_client import NavigationClient, NavigationState
 import rclpy
-from rclpy.action import ActionClient
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 
@@ -23,76 +37,56 @@ from rclpy.node import Node
 class FSMNavNode(Node):
     def __init__(self):
         super().__init__('fsm_nav_node')
-        self.state = 'INIT'
-        # Declare parameters for each waypoint
+
+        # Waypoints (map frame) and the time allowed to reach each one
         self.declare_parameter('nav1.x', 0.0)
         self.declare_parameter('nav1.y', 0.0)
         self.declare_parameter('nav2.x', 0.0)
         self.declare_parameter('nav2.y', 0.0)
-        # Read the waypoints from the parameters
+        self.declare_parameter('goal_timeout', 120.0)
         self.waypoints = [
-            {
-                'x': self.get_parameter('nav1.x').get_parameter_value().double_value,
-                'y': self.get_parameter('nav1.y').get_parameter_value().double_value
-            },
-            {
-                'x': self.get_parameter('nav2.x').get_parameter_value().double_value,
-                'y': self.get_parameter('nav2.y').get_parameter_value().double_value
-            }
+            (self.get_parameter('nav1.x').value, self.get_parameter('nav1.y').value),
+            (self.get_parameter('nav2.x').value, self.get_parameter('nav2.y').value),
         ]
-        self.current_index = 0
-        self.nav_action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
-        self.timer = self.create_timer(1.0, self.state_machine)
-        self.get_logger().info('fsm_nav_node started')
+        self.goal_timeout = self.get_parameter('goal_timeout').value
 
-    def state_machine(self):
-        if self.state == 'INIT':
-            self.get_logger().info('State: INIT -> NAV1')
-            self.state = 'NAV1'
-            self.current_index = 0
-            self.send_goal(self.current_index)
-        # Transitions NAV1->NAV2 and NAV2->DONE are handled in goal_result_callback
+        self.nav_client = NavigationClient(self)
+        self.state = 'WAIT_NAV2'
+        self.get_logger().info('fsm_nav_node started: waiting for Nav2')
 
-    def send_goal(self, index):
-        self.nav_action_client.wait_for_server()
-        goal_msg = NavigateToPose.Goal()
-        goal_msg.pose.header.frame_id = 'map'
-        goal_msg.pose.header.stamp = self.get_clock().now().to_msg()
-        goal_msg.pose.pose.position.x = self.waypoints[index]['x']
-        goal_msg.pose.pose.position.y = self.waypoints[index]['y']
-        goal_msg.pose.pose.orientation.w = 1.0
+        self.timer = self.create_timer(0.5, self.control_cycle)
 
-        self.get_logger().info(f'Sending goal: {self.waypoints[index]}')
-        send_goal_future = self.nav_action_client.send_goal_async(goal_msg)
-        send_goal_future.add_done_callback(self.goal_response_callback)
+    def control_cycle(self):
+        if self.state == 'WAIT_NAV2':
+            # Waits at most 1 s per cycle, so the node keeps running while Nav2 starts
+            if self.nav_client.wait_for_action_server(1.0):
+                self.go_to('NAV1', 0)
 
-    def goal_response_callback(self, future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.get_logger().warn('Goal rejected')
-            self.state = 'DONE'
-            return
+        elif self.state in ('NAV1', 'NAV2'):
+            if not self.nav_client.is_goal_done():
+                return
+            result = self.nav_client.get_goal_state()
+            if result != NavigationState.COMPLETED:
+                self.get_logger().error(f'{self.state} failed ({result.name}): mission aborted')
+                self.finish()
+            elif self.state == 'NAV1':
+                self.go_to('NAV2', 1)
+            else:
+                self.get_logger().info('NAV2 reached')
+                self.finish()
 
-        self.get_logger().info('Goal accepted')
-        result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(self.goal_result_callback)
+    def go_to(self, state, index):
+        x, y = self.waypoints[index]
+        self.get_logger().info(f'State: {self.state} -> {state}: going to ({x:.2f}, {y:.2f})')
+        self.state = state
+        self.nav_client.send_goal(
+            self.nav_client.create_pose_stamped(x, y, 0.0), timeout_sec=self.goal_timeout)
 
-    def goal_result_callback(self, future):
-        status = future.result().status
-        if status != GoalStatus.STATUS_SUCCEEDED:
-            # An aborted or canceled goal is not a success: do not move to the next waypoint
-            self.get_logger().error(f'Navigation failed in state {self.state} (status {status})')
-            self.state = 'DONE'
-            return
-
-        if self.state == 'NAV1':
-            self.get_logger().info('State: NAV1 -> NAV2')
-            self.state = 'NAV2'
-            self.current_index = 1
-            self.send_goal(self.current_index)
-        elif self.state == 'NAV2':
-            self.get_logger().info('State: NAV2 -> DONE')
-            self.state = 'DONE'
+    def finish(self):
+        self.get_logger().info(f'State: {self.state} -> DONE')
+        self.state = 'DONE'
+        self.timer.cancel()
+        raise SystemExit
 
 
 def main(args=None):
@@ -100,6 +94,8 @@ def main(args=None):
     node = FSMNavNode()
     try:
         rclpy.spin(node)
+    except SystemExit:
+        pass  # Clean exit when the mission is over
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:

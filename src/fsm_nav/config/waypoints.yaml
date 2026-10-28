@@ -1,5 +1,9 @@
+# Waypoints in the map frame. These are free in the maps of the house (Kobuki and
+# TurtleBot 4) and of the TurtleBot 4 warehouse; with another map, check them in RViz
 fsm_nav_node:
   ros__parameters:
+    # Seconds to reach each waypoint; after that the goal is canceled (TIMEOUT)
+    goal_timeout: 120.0
     nav1:
       x: -1.0
       y: 0.0
