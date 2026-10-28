@@ -15,20 +15,34 @@
 import os
 
 from launch import LaunchDescription
+from launch.actions import OpaqueFunction
 from launch_ros.actions import Node
+from rsocial_robots import get_robot, robot_arguments
 
 
-def generate_launch_description():
+def launch_setup(context):
+    robot = get_robot(context)
     config_path = os.path.join(
         os.path.dirname(__file__),
         '..', 'config', 'waypoints.yaml'
     )
-    return LaunchDescription([
+    return [
         Node(
             package='fsm_nav',
             executable='fsm_nav_node',
             name='fsm_nav_node',
             output='screen',
-            parameters=[config_path]
+            parameters=[
+                config_path,
+                # In the simulator the node uses its clock, so that the goal timeout counts
+                # robot time (see navigation_client)
+                {'use_sim_time': robot['use_sim_time']},
+            ]
         )
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription(robot_arguments() + [
+        OpaqueFunction(function=launch_setup),
     ])

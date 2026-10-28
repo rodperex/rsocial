@@ -1,12 +1,14 @@
 from enum import Enum
 import math
-import time
+from typing import Optional
 
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
+from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 
 
 class NavigationState(Enum):
@@ -32,7 +34,7 @@ class NavigationClient:
         self.last_feedback_ = None
 
         self.state_ = NavigationState.IDLE
-        self.deadline_ = None
+        self.deadline_: Optional[Time] = None
         self.cancel_requested_ = False
         # Identifies the current goal: callbacks of a previous goal (e.g. its result arriving
         # after a timeout) must not change the state of the new one
@@ -55,7 +57,10 @@ class NavigationClient:
         self.last_feedback_ = None
 
         self.state_ = NavigationState.IN_PROGRESS
-        self.deadline_ = None if timeout_sec is None else time.time() + timeout_sec
+        # The timeout counts robot time (the node clock): with use_sim_time it is the time of
+        # the simulator, so a goal does not time out sooner because the simulator runs slow
+        self.deadline_ = (None if timeout_sec is None
+                          else self.node_.get_clock().now() + Duration(seconds=timeout_sec))
         self.cancel_requested_ = False
         self.goal_seq_ += 1
         seq = self.goal_seq_
@@ -158,7 +163,7 @@ class NavigationClient:
 
     def is_goal_done(self):
         if (self.state_ == NavigationState.IN_PROGRESS and self.deadline_ is not None
-                and time.time() > self.deadline_):
+                and self.node_.get_clock().now() > self.deadline_):
             self.node_.get_logger().warn('Navigation timed out: canceling the goal')
             self._finish(NavigationState.TIMEOUT)
         return self.goal_done_

@@ -15,10 +15,13 @@ class SimpleNavigationApp(Node):
         self.declare_parameter('x', 6.0)
         self.declare_parameter('y', -2.0)
         self.declare_parameter('yaw', 0.0)
+        # Seconds of robot time to reach the goal; after that it is canceled (TIMEOUT)
+        self.declare_parameter('goal_timeout', 120.0)
         self.target_pose_ = self.nav_client_.create_pose_stamped(
             self.get_parameter('x').value,
             self.get_parameter('y').value,
             self.get_parameter('yaw').value)
+        self.goal_timeout_ = self.get_parameter('goal_timeout').value
 
         self.server_ready_ = False
         self.goal_sent_ = False
@@ -36,7 +39,7 @@ class SimpleNavigationApp(Node):
 
         if not self.goal_sent_:
             self.get_logger().info('Sending navigation goal...')
-            self.nav_client_.send_goal(self.target_pose_)
+            self.nav_client_.send_goal(self.target_pose_, timeout_sec=self.goal_timeout_)
             self.goal_sent_ = True
             return
 
@@ -53,7 +56,8 @@ class SimpleNavigationApp(Node):
         if self.nav_client_.was_goal_successful():
             self.get_logger().info('Navigation succeeded')
         else:
-            self.get_logger().warn('Navigation failed')
+            self.get_logger().warn(
+                f'Navigation failed ({self.nav_client_.get_goal_state().name})')
 
         self.timer_.cancel()
         self.get_logger().info('Application finished')

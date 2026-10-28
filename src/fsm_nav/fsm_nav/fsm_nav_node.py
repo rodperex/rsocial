@@ -13,19 +13,19 @@
 # limitations under the License.
 
 """
-Mission FSM on Nav2: visit two waypoints one after the other.
+Task modeled as an FSM on Nav2: visit two waypoints one after the other.
 
 States:
   - WAIT_NAV2: wait until the Nav2 action server is available
   - NAV1: navigate to the first waypoint
   - NAV2: navigate to the second waypoint
-  - DONE: the mission is over (both waypoints reached, or a goal failed)
+  - DONE: the task is over (both waypoints reached, or a goal failed)
 
 The navigation goes through NavigationClient (navigation_client), like
 simple_navigation_app of nav2_example. send_goal() returns at once, and each cycle
 asks is_goal_done(): the FSM never blocks. When a goal finishes, its state is the
 event of the transition: COMPLETED goes to the next waypoint, and ERROR (Nav2
-aborted it), TIMEOUT (it took longer than goal_timeout) or CANCELED end the mission.
+aborted it), TIMEOUT (it took longer than goal_timeout) or CANCELED end the task.
 """
 
 import time
@@ -77,7 +77,7 @@ class FSMNavNode(Node):
                 return
             result = self.nav_client.get_goal_state()
             if result != NavigationState.COMPLETED:
-                self.get_logger().error(f'{self.state} failed ({result.name}): mission aborted')
+                self.get_logger().error(f'{self.state} failed ({result.name}): task aborted')
                 self.finish()
             elif self.state == 'NAV1':
                 self.go_to('NAV2', 1)
@@ -105,7 +105,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except SystemExit:
-        pass  # Clean exit when the mission is over
+        pass  # Clean exit when the task is over
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:

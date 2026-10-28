@@ -149,6 +149,9 @@ class HRIClient:
     # ============ TIMEOUT AND CANCELLATION HELPERS ============
 
     def _deadline(self, timeout_sec):
+        # Wall-clock time on purpose, also in the simulator (unlike NavigationClient, which
+        # counts robot time): listening and speaking happen in real time, so 8 s for a person
+        # to start speaking must be 8 real seconds
         return None if timeout_sec is None else time.time() + timeout_sec
 
     def _expired(self, deadline) -> bool:

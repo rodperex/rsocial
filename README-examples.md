@@ -1006,8 +1006,8 @@ ros2 launch turtlebot4_navigation nav2.launch.py    # después de dar la posici�
 Con Nav2 en marcha, en otra terminal:
 
 ```bash
-ros2 run nav2_example simple_navigation_app  # un objetivo, con feedback de la distancia restante
-ros2 launch fsm_nav fsm_nav.launch.py         # FSM que visita dos waypoints seguidos
+ros2 launch nav2_example simple_navigation_app.launch.py robot:=$ROBOT  # un objetivo, con feedback de la distancia restante
+ros2 launch fsm_nav fsm_nav.launch.py robot:=$ROBOT                     # FSM que visita dos puntos seguidos
 ```
 
 Los dos usan la clase reutilizable `NavigationClient` (paquete
@@ -1017,19 +1017,29 @@ Los dos terminan solos al acabar.
 
 - `simple_navigation_app` va a un objetivo, (6, −2) por defecto, y muestra la
   distancia que le queda. Otro objetivo, en metros y radianes en el frame
-  `map`: `ros2 run nav2_example simple_navigation_app --ros-args -p x:=4.0 -p
-  y:=0.0 -p yaw:=1.57`.
-- `fsm_nav` es una máquina de estados de misión: espera a Nav2 (`WAIT_NAV2`),
-  va al primer punto (`NAV1`), después al segundo (`NAV2`) y termina (`DONE`).
-  Si un objetivo no se completa (`ERROR` o `TIMEOUT`, a los `goal_timeout`
-  segundos), la misión se aborta. Los puntos, (−1, 0) y (4, 0), y el tiempo
-  máximo se configuran en `src/fsm_nav/config/waypoints.yaml`.
+  `map`: `ros2 launch nav2_example simple_navigation_app.launch.py
+  robot:=$ROBOT x:=4.0 y:=0.0 yaw:=1.57`.
+- `fsm_nav` es una **tarea**, modelada con una máquina de estados: espera a
+  Nav2 (`WAIT_NAV2`), va al primer punto (`NAV1`), después al segundo (`NAV2`)
+  y termina (`DONE`). Si un objetivo no se completa (`ERROR` o `TIMEOUT`), la
+  tarea se aborta. Es una tarea y no una misión, como `fsm_calling_person`
+  (bloque 9): tiene un solo objetivo, visitar los dos puntos, y decide cómo
+  cumplirlo con la capacidad de navegar. Podría haberse hecho también con un
+  árbol de comportamiento (bloque 13).
+  Los puntos, (−1, 0) y (4, 0), y el tiempo máximo se configuran en
+  `src/fsm_nav/config/waypoints.yaml`.
 
-Estos ejemplos solo hablan con Nav2, así que no necesitan `robot`. Sus puntos
-caen en zonas libres de los mapas de la casa (del Kobuki y del TurtleBot 4) y
-del almacén del TurtleBot 4. En otro mundo, comprueba en RViz que los puntos
-caen en zonas libres y, si no, cámbialos: en `depot`, por ejemplo, el de
-`simple_navigation_app` cae fuera de la zona conocida.
+El tiempo máximo de cada objetivo es de 2 minutos (`goal_timeout`, 120 s) y
+cuenta **tiempo de robot**: en el simulador, el tiempo simulado. Por eso los
+dos se lanzan con `robot:=$ROBOT`, que les dice si están en el simulador
+(`use_sim_time`): el simulador suele ir más despacio que el tiempo real (en un
+portátil, la casa puede ir a la cuarta parte), y con el reloj de la pared un
+objetivo se cancelaría antes de que el robot pudiera llegar.
+
+Sus puntos caen en zonas libres de los mapas de la casa (del Kobuki y del
+TurtleBot 4) y del almacén del TurtleBot 4. En otro mundo, comprueba en RViz
+que los puntos caen en zonas libres y, si no, cámbialos: en `depot`, por
+ejemplo, el de `simple_navigation_app` cae fuera de la zona conocida.
 
 ## 11. Interacción humano-robot
 
