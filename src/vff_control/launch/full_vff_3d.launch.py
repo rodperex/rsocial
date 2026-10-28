@@ -126,7 +126,7 @@ def generate_launch_description():
     return LaunchDescription(robot_arguments() + [
         DeclareLaunchArgument(
             'target_class',
-            default_value='sports ball',
+            default_value='person',
             description='YOLO class the robot goes to (e.g. person, chair, cup, bottle)'
         ),
         DeclareLaunchArgument(
@@ -146,7 +146,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'search_angular_speed',
-            default_value='0.8',
+            default_value='0.7',
             description='Angular speed (rad/s) of the target search (0.0 disables it)'
         ),
         DeclareLaunchArgument(
