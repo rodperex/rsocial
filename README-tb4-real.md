@@ -446,8 +446,15 @@ UDP con el búfer de recepción por defecto de Linux (`net.core.rmem_default`,
 208 KB). Una imagen de 460–690 KB llega de golpe, desborda el búfer y el
 kernel descarta trozos. Basta con perder uno para perder la imagen entera.
 
-`pixi run tb4` lo evita cargando el perfil de Fast DDS
-[`pixi/fastdds-tb4.xml`](pixi/fastdds-tb4.xml) (variable
+Pasa también entre dos programas del mismo portátil. Fast DDS los comunica
+por memoria compartida en bloques de 512 KB, y un mensaje más grande va por
+UDP, con el mismo búfer. Es el caso de `tb4_rgbd_c`: el descompresor publica
+`/oakd/rgb/image_local` en el portátil (640x360x3 = 675 KB) y YOLO la lee en
+otro programa. Medido en el portátil con imágenes de ese tamaño a 10 por
+segundo, sin el perfil de abajo llegan 3,5 por segundo y con él, las 10.
+
+`pixi run tb4` (y `tb4-rgbd` y `tb4-rgbd-c`) lo evita cargando el perfil de
+Fast DDS [`pixi/fastdds-tb4.xml`](pixi/fastdds-tb4.xml) (variable
 `FASTRTPS_DEFAULT_PROFILES_FILE`), que pide búferes de 4 MB. El kernel no
 deja pasar de `net.core.rmem_max`, que en un Ubuntu recién instalado es de
 208 KB. Súbelo una vez en tu portátil (necesita `sudo` y queda guardado para
