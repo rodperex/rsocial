@@ -100,6 +100,9 @@ def launch_setup(context):
             output='screen',
             parameters=[{
                 'use_sim_time': robot['use_sim_time'],
+                # Starts moving the robot. With False it waits for True on /enable
+                # (std_msgs/Bool), as in fsm_calling_person
+                'start_enabled': True,
                 'max_linear_speed': 0.5,
                 'max_angular_speed': float_arg('max_angular_speed'),
                 'angular_gain': float_arg('angular_gain'),

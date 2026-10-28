@@ -19,6 +19,7 @@ import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from std_msgs.msg import Bool
 
 
 class VFFControllerNode(Node):
@@ -45,6 +46,9 @@ class VFFControllerNode(Node):
         # robot turns in place at search_angular_speed until it sees it again (0 disables it)
         self.declare_parameter('search_angular_speed', 0.4)
         self.declare_parameter('search_timeout', 2.0)
+        # The controller can be switched on and off by publishing on the enable topic.
+        # While disabled it publishes no velocity, so another node can move the robot
+        self.declare_parameter('start_enabled', True)
 
         self.max_linear_speed = self.get_parameter('max_linear_speed').value
         self.max_angular_speed = self.get_parameter('max_angular_speed').value
@@ -57,6 +61,7 @@ class VFFControllerNode(Node):
         self.search_angular_speed = self.get_parameter('search_angular_speed').value
         self.search_timeout = Duration(seconds=self.get_parameter('search_timeout').value)
         self.bump_pause = Duration(seconds=self.get_parameter('bump_pause').value)
+        self.enabled = self.get_parameter('start_enabled').value
 
         # Subscribers
         self.attractive_sub = self.create_subscription(
@@ -70,6 +75,13 @@ class VFFControllerNode(Node):
             Vector3,
             'repulsive_vector',
             self.repulsive_callback,
+            10
+        )
+
+        self.enable_sub = self.create_subscription(
+            Bool,
+            'enable',
+            self.enable_callback,
             10
         )
 
@@ -142,6 +154,21 @@ class VFFControllerNode(Node):
         else:
             self.cmd_pub.publish(twist)
 
+    def enable_callback(self, msg: Bool):
+        if msg.data == self.enabled:
+            return
+        self.enabled = msg.data
+        self.get_logger().info('VFF enabled' if self.enabled else 'VFF disabled')
+        # Forget the previous target: it starts from scratch every time it is enabled
+        self.attractive_vec = None
+        self.attractive_ts = None
+        self.searching = False
+        self.start_time = self.get_clock().now()
+        if not self.enabled:
+            # Stop once and then publish nothing until it is enabled again
+            self.publish_vel(Twist())
+            self.moving = False
+
     def attractive_callback(self, msg: Vector3):
         self.attractive_vec = msg
         self.attractive_ts = self.get_clock().now()
@@ -180,6 +207,9 @@ class VFFControllerNode(Node):
         self.moving = True
 
     def control_cycle(self):
+        if not self.enabled:
+            return
+
         if self.bump_until is not None:
             if self.get_clock().now() < self.bump_until:
                 # Publish zero every cycle: the robot must not move while the pause lasts
