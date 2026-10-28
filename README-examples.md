@@ -1125,9 +1125,40 @@ copia antigua en la caché; bórrala y se descarga la actual:
 rm -rf ~/.cache/torch/hub/snakers4_silero-vad_master
 ```
 
-Con `simple_hri` en marcha, en otra terminal. Los ejemplos `*_client` hacen lo
-mismo que su pareja sin sufijo, pero usando la clase reutilizable `HRIClient`
-(paquete `hri_client`) en lugar de llamar a los servicios directamente:
+`simple_hri` ofrece escuchar (STT) y hablar (TTS) de dos formas, que hacen lo
+mismo por dentro, y extraer información y detectar sí/no solo como servicio:
+
+| Capacidad | Servicio | Acción |
+| --- | --- | --- |
+| Escuchar | `/stt_service` (`std_srvs/SetBool`) | `/stt_action` (`Listen`) |
+| Hablar | `/tts_service` (`Speech`) | `/tts_action` (`Say`) |
+| Extraer información | `/extract_service` (`Extract`) | No hay |
+| Sí o no | `/yesno_service` (`YesNo`) | No hay |
+
+El servicio es lo más sencillo: se pide y la respuesta llega al final, sin
+saber nada mientras tanto. La acción añade lo que un servicio no puede dar:
+*feedback* (en qué fase está la escucha, cuánto audio queda), cancelación
+(cortar la grabación o el audio) y, al hablar, que no termina hasta que acaba
+de sonar. Es la regla del tema 4: servicios para consultas puntuales, acciones
+para actividades largas, y escuchar y hablar lo son.
+
+La clase `HRIClient` (paquete `hri_client`) envuelve todo esto con el contrato
+de una capacidad del tema 4, el mismo que `NavigationClient` para navegar:
+`wait_for_services()` como precondición, `start_listen()` y
+`start_speaking(texto)` para empezar, `is_listen_done()` e
+`is_speaking_done()` para saber si ha terminado sin bloquear el nodo, el estado
+final (`COMPLETED`, `ERROR`, `TIMEOUT` o `CANCELED`), el *feedback*, la
+cancelación y un tiempo máximo (`timeout_sec`). Para escuchar y hablar usa las
+acciones, y para extraer y para sí/no, los servicios.
+
+`hri_example`, `hri_example2` y `hri_example3` vienen por parejas para comparar
+las dos formas. Sin sufijo, llaman a los servicios directamente (`call_async`)
+y gestionan ellos mismos cada respuesta pendiente (el *future*), sin *feedback*
+ni cancelación. Los `*_client` hacen lo mismo con `HRIClient`: el ciclo de
+control solo pregunta si ha terminado y qué ha pasado. `say`, `repeat` y
+`generate_response` usan también `HRIClient`.
+
+Con `simple_hri` en marcha, en otra terminal:
 
 ```bash
 ros2 run hri_examples say                  # dice una frase (TTS)
