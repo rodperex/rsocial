@@ -509,7 +509,9 @@ Para usarla:
    robot, y el Raspberry Pi solo comprime mientras alguien está suscrito a
    ellos. No actives `i_publish_compressed` en el fichero: deja de publicar
    la imagen sin comprimir, cambia los topics y comprimiría la profundidad
-   en JPEG, que pierde información.
+   en JPEG, que pierde información. Lo que sí se puede añadir al fichero es
+   la calidad de la compresión, que de fábrica es 95 para el color y 3 para
+   la profundidad (ver [Cambiarla](#cambiarla)).
 2. Comprueba que el robot publica las imágenes comprimidas:
 
    ```bash
@@ -641,35 +643,100 @@ Valores recomendados:
   ni a la vista ni en YOLO. Por debajo de 60 aparecen defectos en la imagen
   que pueden empeorar las detecciones.
 
-Son parámetros del nodo de la cámara. Su nombre sale del topic, así que
-deberían ser `stereo.image_raw.compressedDepth.png_level` y
-`rgb.image_raw.compressed.jpeg_quality`. Comprueba los nombres exactos en el
-robot, con la cámara en marcha:
+En el robot real, con la imagen de la cámara, se ocupa bastante menos que en
+la tabla de arriba: con los valores de fábrica, en torno a 60-66 KB el color y
+92 KB la profundidad por imagen. A 10 fps son unos 12,8 Mbit/s.
+
+##### Cambiarla
+
+Son parámetros del nodo de la cámara (`/oakd`), y su nombre sale del topic,
+con `oakd.` delante:
+
+| Imagen | Parámetro |
+| --- | --- |
+| Color | `oakd.rgb.image_raw.compressed.jpeg_quality` |
+| Profundidad | `oakd.stereo.image_raw.compressedDepth.png_level` |
+
+Para ver cómo están, con la cámara en marcha:
 
 ```bash
-ros2 param list /oakd | grep -iE 'png_level|jpeg_quality'
+ros2 param get /oakd oakd.rgb.image_raw.compressed.jpeg_quality
+ros2 param get /oakd oakd.stereo.image_raw.compressedDepth.png_level
 ```
 
-Pruébalos en marcha:
+Se pueden probar en marcha, sin reiniciar nada, con `ros2 param set`. Lo que
+se cambia así **se pierde al reiniciar el servicio**, que vuelve a los valores
+de `oakd_pro.yaml` o, si no están ahí, a los de fábrica (95 y 3):
 
 ```bash
-ros2 param set /oakd stereo.image_raw.compressedDepth.png_level 1
-ros2 param set /oakd rgb.image_raw.compressed.jpeg_quality 80
+ros2 param set /oakd oakd.rgb.image_raw.compressed.jpeg_quality 80
+ros2 param set /oakd oakd.stereo.image_raw.compressedDepth.png_level 1
 ```
 
-Para que no se pierdan al reiniciar, añádelos a `oakd_pro.yaml`, dentro de
-`rgb` y `stereo`:
+Para que se queden, hay que ponerlos en `oakd_pro.yaml`. El fichero de fábrica
+**no los trae**: no los define el driver de la cámara, sino los plugins de
+compresión de `image_transport`, que los crean con sus valores por defecto al
+publicar las imágenes comprimidas. Así que se añade un bloque nuevo. En el
+robot, por SSH:
 
-```yaml
-rgb:
-  image_raw:
-    compressed:
-      jpeg_quality: 80
-stereo:
-  image_raw:
-    compressedDepth:
-      png_level: 1
-```
+1. Haz una copia del fichero tal como está:
+
+   ```bash
+   cd /opt/ros/jazzy/share/turtlebot4_bringup/config
+   sudo cp oakd_pro.yaml oakd_pro.yaml.antes_compresion
+   ```
+
+2. Edítalo (`sudo nano oakd_pro.yaml`) y añade el bloque `oakd:` **dentro de
+   `ros__parameters`**, al mismo nivel que `camera:`, `rgb:` o `stereo:`
+   (4 espacios). Cada parte del nombre del parámetro separada por un punto es
+   un nivel de indentación más. Así queda el principio del fichero, con el
+   resto igual que en [Activarlas](#activarlas):
+
+   ```yaml
+   /oakd:
+     ros__parameters:
+       oakd:                    # nuevo: compresión de las imágenes
+         rgb:
+           image_raw:
+             compressed:
+               jpeg_quality: 80
+         stereo:
+           image_raw:
+             compressedDepth:
+               png_level: 1
+       camera:
+         i_enable_imu: false
+         # ...
+   ```
+
+   Si `oakd:` (o `camera:`) queda con 2 espacios, al nivel de
+   `ros__parameters:`, el fichero deja de ser YAML válido y la cámara no
+   arranca al reiniciar.
+
+3. Antes de reiniciar, comprueba que el YAML es válido:
+
+   ```bash
+   python3 -c "import yaml; p = yaml.safe_load(open('oakd_pro.yaml'))['/oakd']['ros__parameters']; print(p['oakd'])"
+   ```
+
+   Tiene que mostrar los dos valores, sin errores. Si da `ParserError`, revisa
+   la indentación de la línea que indica.
+
+4. Reinicia el servicio **con el robot fuera de la base** (`pixi run undock`
+   desde el portátil), para que la cámara arranque directamente y no se
+   bloquee (ver [Arrancar y parar la cámara y el láser](#arrancar-y-parar-la-cámara-y-el-láser)):
+
+   ```bash
+   turtlebot4-service-restart
+   ```
+
+5. Cuando la cámara publique (en torno a un minuto), comprueba los valores con
+   los `ros2 param get` de arriba.
+
+Si algo va mal, vuelve a la copia (`sudo cp oakd_pro.yaml.antes_compresion
+oakd_pro.yaml`) y reinicia. Como el resto de cambios de `oakd_pro.yaml`, una
+actualización del robot puede devolver el fichero a su versión de fábrica
+(ver [Ficheros del robot que cambian con las actualizaciones](#ficheros-del-robot-que-cambian-con-las-actualizaciones)).
 
 ### Desactivarlas
 
