@@ -53,6 +53,12 @@ class Event(Enum):
     TIMEOUT = auto()
 
 
+# State is an abstract base class (ABC, from the standard abc module): a template that
+# says which methods a state has, not a state itself. Inheriting from ABC makes Python
+# enforce the methods marked with @abstractmethod: State cannot be instantiated, and
+# neither can a subclass that does not implement them (TypeError when it is created,
+# naming the missing method). Without ABC, @abstractmethod is ignored. The states are
+# plain Python classes, not ROS nodes: the only node is the FSM, reachable as self.fsm
 class State(ABC):
     """Base class for a FSM state, with the on_entry/on_do/on_exit lifecycle."""
 
@@ -62,6 +68,8 @@ class State(ABC):
     def on_entry(self):
         """Run once when entering the state (initialize resources)."""
 
+    # Mandatory: every state does something while it is active. The other methods
+    # do nothing by default, so each state only overrides the ones it needs
     @abstractmethod
     def on_do(self):
         """Run cyclically while in the state (control and evaluation)."""
