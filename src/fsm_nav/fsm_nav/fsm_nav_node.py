@@ -19,8 +19,8 @@ Each state is a task (going to a waypoint) that uses the navigation capability.
 
 States:
   - WAIT_NAV2: wait until the Nav2 action server is available
-  - NAV1: navigate to the first waypoint
-  - NAV2: navigate to the second waypoint
+  - GO_TO_WP1: navigate to the first waypoint
+  - GO_TO_WP2: navigate to the second waypoint
   - DONE: the mission is over (both waypoints reached, or a goal failed)
 
 The navigation goes through NavigationClient (navigation_client), like
@@ -43,14 +43,14 @@ class FSMNavNode(Node):
         super().__init__('fsm_nav_node')
 
         # Waypoints (map frame) and the time allowed to reach each one
-        self.declare_parameter('nav1.x', 0.0)
-        self.declare_parameter('nav1.y', 0.0)
-        self.declare_parameter('nav2.x', 0.0)
-        self.declare_parameter('nav2.y', 0.0)
+        self.declare_parameter('waypoint1.x', 0.0)
+        self.declare_parameter('waypoint1.y', 0.0)
+        self.declare_parameter('waypoint2.x', 0.0)
+        self.declare_parameter('waypoint2.y', 0.0)
         self.declare_parameter('goal_timeout', 120.0)
         self.waypoints = [
-            (self.get_parameter('nav1.x').value, self.get_parameter('nav1.y').value),
-            (self.get_parameter('nav2.x').value, self.get_parameter('nav2.y').value),
+            (self.get_parameter('waypoint1.x').value, self.get_parameter('waypoint1.y').value),
+            (self.get_parameter('waypoint2.x').value, self.get_parameter('waypoint2.y').value),
         ]
         self.goal_timeout = self.get_parameter('goal_timeout').value
 
@@ -72,19 +72,19 @@ class FSMNavNode(Node):
             # discovery traffic can make Nav2 miss its internal timeouts (on a loaded
             # computer it then aborts the goal at once)
             elif time.time() - self.nav_ready_time > 2.0:
-                self.go_to('NAV1', 0)
+                self.go_to('GO_TO_WP1', 0)
 
-        elif self.state in ('NAV1', 'NAV2'):
+        elif self.state in ('GO_TO_WP1', 'GO_TO_WP2'):
             if not self.nav_client.is_goal_done():
                 return
             result = self.nav_client.get_goal_state()
             if result != NavigationState.COMPLETED:
                 self.get_logger().error(f'{self.state} failed ({result.name}): mission aborted')
                 self.finish()
-            elif self.state == 'NAV1':
-                self.go_to('NAV2', 1)
+            elif self.state == 'GO_TO_WP1':
+                self.go_to('GO_TO_WP2', 1)
             else:
-                self.get_logger().info('NAV2 reached')
+                self.get_logger().info('Second waypoint reached')
                 self.finish()
 
     def go_to(self, state, index):

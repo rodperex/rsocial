@@ -1068,9 +1068,9 @@ Los dos terminan solos al acabar.
   `map`: `ros2 launch nav2_example simple_navigation_app.launch.py
   robot:=$ROBOT x:=4.0 y:=0.0 yaw:=1.57`.
 - `fsm_nav` es una **misión**, visitar dos puntos, modelada con una máquina
-  de estados: espera a Nav2 (`WAIT_NAV2`), va al primer punto (`NAV1`),
-  después al segundo (`NAV2`) y termina (`DONE`). Si un objetivo no se
-  completa (`ERROR` o `TIMEOUT`), la misión se aborta. Como en
+  de estados: espera a Nav2 (`WAIT_NAV2`), va al primer punto
+  (`GO_TO_WP1`), después al segundo (`GO_TO_WP2`) y termina (`DONE`). Si un
+  objetivo no se completa (`ERROR` o `TIMEOUT`), la misión se aborta. Como en
   `fsm_calling_person` (bloque 9), cada estado es una **tarea** (ir a un
   punto) que usa una **capacidad** (navegar). Podría haberse hecho también con
   un árbol de comportamiento (bloque 13).

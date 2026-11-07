@@ -4,9 +4,9 @@ fsm_nav_node:
   ros__parameters:
     # Seconds of robot time to reach each waypoint; after that the goal is canceled (TIMEOUT)
     goal_timeout: 120.0
-    nav1:
+    waypoint1:
       x: -1.0
       y: 0.0
-    nav2:
+    waypoint2:
       x: 4.0
       y: 0.0
