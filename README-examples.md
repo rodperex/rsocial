@@ -24,7 +24,9 @@ necesita varios procesos, cada comando va en una terminal distinta.
 ## Robots
 
 Los bloques 3 a 10 y el 13 necesitan un robot, real o simulado. Todos funcionan
-con los dos robots del curso: el **Kobuki** y el **TurtleBot 4**.
+con los dos robots del curso: el **TurtleBot 4** y el **Kobuki**. En el curso
+se usa sobre todo el TurtleBot 4, en el simulador y en el robot real, así que en
+esta guía va siempre primero; con el Kobuki los ejemplos funcionan igual.
 
 Con el TurtleBot 4 físico hay que hacer algunas cosas más (sacarlo de la base,
 desactivar la seguridad de la base para los bump and go, activar la
@@ -67,12 +69,12 @@ kobuki-sim` y `pixi run kobuki`, que ponen `ROBOT`; ver
 Lanza el simulador (o los drivers del robot real) en una terminal aparte y
 déjalo abierto.
 
-| | Kobuki | TurtleBot 4 |
+| | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
-| Simulador en la casa de AWS RoboMaker | `ros2 launch kobuki simulation.launch.py` | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio |
-| Simulador en otros mundos | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) |
-| Robot real | `ros2 launch kobuki kobuki.launch.py` | Ya ejecuta sus drivers: no se lanza nada |
-| Instalación y detalles | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) |
+| Simulador en la casa de AWS RoboMaker | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio | `ros2 launch kobuki simulation.launch.py` |
+| Simulador en otros mundos | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) |
+| Robot real | Ya ejecuta sus drivers: no se lanza nada | `ros2 launch kobuki kobuki.launch.py` |
+| Instalación y detalles | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) |
 
 Recuerda `tb4sim` o `tb4` en cada terminal (ver
 [arriba](#turtlebot-4-preparar-cada-terminal-con-tb4sim-o-tb4)). El TurtleBot 4
@@ -184,10 +186,10 @@ Casi todos los ejemplos usan el mismo código con dos robots. Sus
 launchers tienen un argumento obligatorio, `robot`, que indica el robot y si
 es el simulado o el real:
 
-| | Kobuki | TurtleBot 4 |
+| | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
-| Simulador | `robot:=kobuki_sim` | `robot:=tb4_sim` |
-| Robot real | `robot:=kobuki` | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 6](#turtlebot-4-real-activar-la-profundidad)) |
+| Simulador | `robot:=tb4_sim` | `robot:=kobuki_sim` |
+| Robot real | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 6](#turtlebot-4-real-activar-la-profundidad)) | `robot:=kobuki` |
 
 Con él, el launcher elige los topics del robot, el tipo de mensaje de
 velocidad y si los nodos usan el reloj del simulador (`use_sim_time`), que es
@@ -234,23 +236,24 @@ Los topics y frames de cada caso están en un único fichero,
 mismo robot no publica siempre en los mismos topics en el simulador y en el
 robot real, por eso tienen entradas distintas:
 
-| | `kobuki_sim` | `kobuki` | `tb4_sim` | `tb4` | `tb4_rgbd` | `tb4_rgbd_c` |
+| | `tb4_sim` | `tb4` | `tb4_rgbd` | `tb4_rgbd_c` | `kobuki_sim` | `kobuki` |
 | --- | --- | --- | --- | --- | --- | --- |
-| Láser | `/scan_raw` | `/scan_filtered` | `/scan` | `/scan` | `/scan` | `/scan` |
-| Imagen | `/rgbd_camera/image` | `/camera/color/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` | `/oakd/rgb/image_local` (descomprimida en el portátil) |
-| Profundidad | `/rgbd_camera/depth_image` (m) | `/camera/depth/image_raw` (mm) | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) | `/oakd/stereo/image_local` (mm, descomprimida en el portátil) |
-| Frame óptico | `camera_rgb_optical_frame` | `camera_color_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` |
-| Velocidad (`/cmd_vel`) | `Twist` | `Twist` | `TwistStamped` | `TwistStamped` | `TwistStamped` | `TwistStamped` |
-| `use_sim_time` | `true` | `false` | `true` | `false` | `false` | `false` |
+| Láser | `/scan` | `/scan` | `/scan` | `/scan` | `/scan_raw` | `/scan_filtered` |
+| Imagen | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` | `/oakd/rgb/image_local` (descomprimida en el portátil) | `/rgbd_camera/image` | `/camera/color/image_raw` |
+| Profundidad | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) | `/oakd/stereo/image_local` (mm, descomprimida en el portátil) | `/rgbd_camera/depth_image` (m) | `/camera/depth/image_raw` (mm) |
+| Frame óptico | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `camera_rgb_optical_frame` | `camera_color_optical_frame` |
+| Velocidad (`/cmd_vel`) | `TwistStamped` | `TwistStamped` | `TwistStamped` | `TwistStamped` | `Twist` | `Twist` |
+| `use_sim_time` | `true` | `false` | `false` | `false` | `true` | `false` |
 
 Las entradas de los simuladores están comprobadas. Las de los robots reales
-dependen de los sensores montados y de cómo se lanzan sus drivers: la del
-Kobuki supone el láser RPLIDAR con el filtro de `kobuki.launch.py` y la cámara
-Astra (`astra:=true`). Las del TurtleBot 4 dependen de cómo esté configurada
-su cámara: `tb4` es la configuración de fábrica, que no publica profundidad,
-`tb4_rgbd` la configuración con profundidad y `tb4_rgbd_c` la misma con las
-imágenes comprimidas en la wifi (ver
+dependen de los sensores montados y de cómo se lanzan sus drivers. Las del
+TurtleBot 4 dependen de cómo esté configurada su cámara: `tb4` es la
+configuración de fábrica, que no publica profundidad, `tb4_rgbd` la
+configuración con profundidad y `tb4_rgbd_c` la misma con las imágenes
+comprimidas en la wifi (ver
 [TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
+La del Kobuki supone el láser RPLIDAR con el filtro de `kobuki.launch.py` y la
+cámara Astra (`astra:=true`).
 Antes de usar un robot real,
 comprueba sus topics con `ros2 topic list` y, si no coinciden, cámbialos en el
 YAML. Con `--symlink-install` no hace falta recompilar: el cambio se aplica al
@@ -259,10 +262,10 @@ volver a lanzar.
 Otras diferencias, que los launchers ya resuelven y solo hay que conocer al
 lanzar los nodos con `ros2 run` o escribir nodos nuevos:
 
-| | Kobuki | TurtleBot 4 |
+| | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
-| Velocidad | `geometry_msgs/Twist` | `geometry_msgs/TwistStamped` (parámetro `enable_stamped_cmd_vel:=true` de los nodos) |
-| Bumper | `/events/bumper` (`kobuki_ros_interfaces/BumperEvent`) | `/hazard_detection` (`irobot_create_msgs/HazardDetectionVector`) |
+| Velocidad | `geometry_msgs/TwistStamped` (parámetro `enable_stamped_cmd_vel:=true` de los nodos) | `geometry_msgs/Twist` |
+| Bumper | `/hazard_detection` (`irobot_create_msgs/HazardDetectionVector`) | `/events/bumper` (`kobuki_ros_interfaces/BumperEvent`) |
 | TF de la base | `odom` → `base_footprint` → `base_link` | `odom` → `base_footprint` → `base_link` |
 
 ## 1. Nodos, topics y ciclo de vida
@@ -718,13 +721,13 @@ ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
 Cada robot tiene su propio nodo y su propio launcher (los del TurtleBot 4
 terminan en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper:
 
-- **Kobuki**: `/events/bumper` publica un mensaje cada vez que un bumper se
-  pulsa o se suelta. En el simulador lo genera un nodo a partir del láser.
 - **TurtleBot 4**: la base iRobot Create 3 no tiene un topic de bumper. Los
   golpes llegan en `/hazard_detection`, un vector con todos los peligros
   activos (golpe, precipicio, límite de marcha atrás…). Un golpe es una
   detección de tipo `BUMP`. Sus launchers publican además `TwistStamped`, que
   es lo que espera el TurtleBot 4.
+- **Kobuki**: `/events/bumper` publica un mensaje cada vez que un bumper se
+  pulsa o se suelta. En el simulador lo genera un nodo a partir del láser.
 
 ### TurtleBot 4 real
 
@@ -898,49 +901,18 @@ La navegación no se lanza con el simulador ni con los drivers: va **aparte**,
 en otras terminales y con el robot ya en marcha. Lo que cambia entre robots es
 cuántos lanzamientos son:
 
-| | Kobuki | TurtleBot 4 |
+| | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
-| Lanzamientos | Uno: localización, Nav2 y RViz juntos | Dos: localización y, después de dar la posición inicial, Nav2 |
-| Simulador | `ros2 launch kobuki navigation_sim.launch.py` | `localization.launch.py` y `nav2.launch.py` (paquete `turtlebot4_navigation`), con `use_sim_time:=true` |
-| Robot real | `ros2 launch kobuki navigation.launch.py map:=...` | Los mismos, sin `use_sim_time` |
-| Mapa por defecto | Simulador: la casa. Robot real: ninguno, `map:=` es obligatorio | `warehouse` |
+| Lanzamientos | Dos: localización y, después de dar la posición inicial, Nav2 | Uno: localización, Nav2 y RViz juntos |
+| Simulador | `localization.launch.py` y `nav2.launch.py` (paquete `turtlebot4_navigation`), con `use_sim_time:=true` | `ros2 launch kobuki navigation_sim.launch.py` |
+| Robot real | Los mismos, sin `use_sim_time` | `ros2 launch kobuki navigation.launch.py map:=...` |
+| Mapa por defecto | `warehouse` | Simulador: la casa. Robot real: ninguno, `map:=` es obligatorio |
 
 Al arrancar hay que dar en RViz la posición inicial del robot con **2D Pose
 Estimate**: clic donde está el robot y arrastrar hacia donde mira. Las
 lecturas del láser tienen que quedar encima de las paredes del mapa. La
 excepción es el Kobuki en el simulador: su localización ya arranca en (0, 0),
 que es donde aparece el robot.
-
-### Kobuki en el simulador
-
-Con el simulador ya lanzado (ver [Mundos del Kobuki](#mundos-del-kobuki)), en
-otra terminal:
-
-```bash
-# Casa: usa su mapa por defecto
-ros2 launch kobuki navigation_sim.launch.py
-
-# Otro mundo: su mapa, por ejemplo el de la librería
-ros2 launch kobuki navigation_sim.launch.py \
-  map:=$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml
-```
-
-Abre su propio RViz (`rviz:=False` para no abrirlo). Da la posición inicial y
-espera a que Nav2 termine de arrancar.
-
-### Kobuki real
-
-En una terminal, los drivers con el láser (ver
-[Lanzar el robot](#lanzar-el-robot)); en otra, la navegación con el mapa del
-sitio donde esté el robot:
-
-```bash
-ros2 launch kobuki kobuki.launch.py lidar_s2:=true                  # terminal 1
-ros2 launch kobuki navigation.launch.py map:=$HOME/mapas/lab.yaml   # terminal 2
-```
-
-`$HOME/mapas/lab.yaml` es un ejemplo: pon la ruta de tu mapa. Los mapas del
-paquete `kobuki` son de los mundos simulados y no valen para un sitio real.
 
 ### TurtleBot 4 en el simulador
 
@@ -1020,6 +992,37 @@ ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
 ros2 launch turtlebot4_navigation nav2.launch.py    # después de dar la posición inicial
 ```
 
+### Kobuki en el simulador
+
+Con el simulador ya lanzado (ver [Mundos del Kobuki](#mundos-del-kobuki)), en
+otra terminal:
+
+```bash
+# Casa: usa su mapa por defecto
+ros2 launch kobuki navigation_sim.launch.py
+
+# Otro mundo: su mapa, por ejemplo el de la librería
+ros2 launch kobuki navigation_sim.launch.py \
+  map:=$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml
+```
+
+Abre su propio RViz (`rviz:=False` para no abrirlo). Da la posición inicial y
+espera a que Nav2 termine de arrancar.
+
+### Kobuki real
+
+En una terminal, los drivers con el láser (ver
+[Lanzar el robot](#lanzar-el-robot)); en otra, la navegación con el mapa del
+sitio donde esté el robot:
+
+```bash
+ros2 launch kobuki kobuki.launch.py lidar_s2:=true                  # terminal 1
+ros2 launch kobuki navigation.launch.py map:=$HOME/mapas/lab.yaml   # terminal 2
+```
+
+`$HOME/mapas/lab.yaml` es un ejemplo: pon la ruta de tu mapa. Los mapas del
+paquete `kobuki` son de los mundos simulados y no valen para un sitio real.
+
 ### Ejemplos
 
 Con Nav2 en marcha, en otra terminal:
@@ -1055,8 +1058,8 @@ dos se lanzan con `robot:=$ROBOT`, que les dice si están en el simulador
 portátil, la casa puede ir a la cuarta parte), y con el reloj de la pared un
 objetivo se cancelaría antes de que el robot pudiera llegar.
 
-Sus puntos caen en zonas libres de los mapas de la casa (del Kobuki y del
-TurtleBot 4) y del almacén del TurtleBot 4. En otro mundo, comprueba en RViz
+Sus puntos caen en zonas libres de los mapas de la casa (del TurtleBot 4 y del
+Kobuki) y del almacén del TurtleBot 4. En otro mundo, comprueba en RViz
 que los puntos caen en zonas libres y, si no, cámbialos: en `depot`, por
 ejemplo, el de `simple_navigation_app` cae fuera de la zona conocida.
 
