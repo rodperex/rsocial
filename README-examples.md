@@ -818,16 +818,15 @@ tampoco copia el identificador de tracking.
 ### La máquina de estados
 
 En la arquitectura del tema 4 (misión, tarea y capacidad), este ejemplo es
-una **tarea**, no una misión: ir hacia la persona que llama es un único
-objetivo, y la máquina de estados decide **cómo** cumplirlo, ordenando y
-supervisando las capacidades (el detector, el VFF y el TTS). La misión
-decidiría **qué** objetivo toca, y aquí no hay nada que elegir. La frontera es
-difusa porque, con un solo objetivo, la tarea es todo lo que hace el robot.
-En un robot real habría una misión por encima: por ejemplo, una que decide
-cuándo atender llamadas y cuándo ir a cargar. `SEARCH`, `APPROACH` y `ARRIVED`
-no son tareas, sino las fases de esta tarea.
+una **misión**: atender a la persona que llama. La misión se desglosa en
+**tareas**, que son los estados de la máquina de estados: buscar a alguien
+que llame (`SEARCH`), acercarse a esa persona (`APPROACH`) y saludarla
+(`ARRIVED`). Cada tarea usa **capacidades**: el detector de la persona que
+llama, el VFF y el TTS. Decidir **qué** misión toca (por ejemplo, atender
+llamadas o ir a cargar) sería **deliberación**, y aquí no la hay: el robot
+solo tiene esta misión.
 
-La tarea está modelada con una máquina de estados, como bump and go (bloque
+La misión está modelada con una máquina de estados, como bump and go (bloque
 8). También podría haberse hecho con un árbol de comportamiento (bloque 13).
 
 La máquina de estados no sabe nada de YOLO: solo escucha al detector.
@@ -866,7 +865,7 @@ arranca activado.
 
 El topic `enable` se usa **por sencillez**. En la arquitectura del tema 4, una
 capacidad como el VFF se activa y se desactiva como *lifecycle node*: la tarea
-le pide las transiciones `activate` y `deactivate`, y el nodo sabe en todo
+que la usa le pide las transiciones `activate` y `deactivate`, y el nodo sabe en todo
 momento en qué estado está (`inactive` o `active`). Aquí basta con un `Bool`,
 que hace lo mismo con menos código; convertir `vff_controller_node` en
 *lifecycle node* sería la versión fiel a la teoría.
@@ -1039,13 +1038,13 @@ Los dos terminan solos al acabar.
   distancia que le queda. Otro objetivo, en metros y radianes en el frame
   `map`: `ros2 launch nav2_example simple_navigation_app.launch.py
   robot:=$ROBOT x:=4.0 y:=0.0 yaw:=1.57`.
-- `fsm_nav` es una **tarea**, modelada con una máquina de estados: espera a
-  Nav2 (`WAIT_NAV2`), va al primer punto (`NAV1`), después al segundo (`NAV2`)
-  y termina (`DONE`). Si un objetivo no se completa (`ERROR` o `TIMEOUT`), la
-  tarea se aborta. Es una tarea y no una misión, como `fsm_calling_person`
-  (bloque 9): tiene un solo objetivo, visitar los dos puntos, y decide cómo
-  cumplirlo con la capacidad de navegar. Podría haberse hecho también con un
-  árbol de comportamiento (bloque 13).
+- `fsm_nav` es una **misión**, visitar dos puntos, modelada con una máquina
+  de estados: espera a Nav2 (`WAIT_NAV2`), va al primer punto (`NAV1`),
+  después al segundo (`NAV2`) y termina (`DONE`). Si un objetivo no se
+  completa (`ERROR` o `TIMEOUT`), la misión se aborta. Como en
+  `fsm_calling_person` (bloque 9), cada estado es una **tarea** (ir a un
+  punto) que usa una **capacidad** (navegar). Podría haberse hecho también con
+  un árbol de comportamiento (bloque 13).
   Los puntos, (−1, 0) y (4, 0), y el tiempo máximo se configuran en
   `src/fsm_nav/config/waypoints.yaml`.
 

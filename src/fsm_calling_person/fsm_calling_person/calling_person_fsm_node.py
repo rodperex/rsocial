@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """
-Go to the person who is calling the robot, implemented as an explicit FSM.
+Go to the person who is calling the robot: a mission implemented as an explicit FSM.
+
+Each state is a task (searching, approaching, greeting) that uses capabilities.
 
 The FSM only coordinates the other nodes, like the VFF of vff_control:
   - calling_person_detector_node: tells when a person calls (calling_person) and
