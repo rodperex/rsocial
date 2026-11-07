@@ -71,8 +71,8 @@ déjalo abierto.
 
 | | TurtleBot 4 | Kobuki |
 | --- | --- | --- |
+| Simulador en el almacén y otros mundos | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) |
 | Simulador en la casa de AWS RoboMaker | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio | `ros2 launch kobuki simulation.launch.py` |
-| Simulador en otros mundos | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) |
 | Robot real | Ya ejecuta sus drivers: no se lanza nada | `ros2 launch kobuki kobuki.launch.py` |
 | Instalación y detalles | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) |
 
@@ -125,11 +125,16 @@ Los bloques 3 a 5, el 8 y el 13 funcionan en cualquiera de ellos: `empty` es el 
 cómodo para los de movimiento y `maze` o `warehouse` para los que usan el láser
 (bump and go, obstáculos).
 
-Para los bloques 6, 7 y 10 (cámara, VFF y Nav2) viene mejor una casa con muebles,
+Para el bloque 10 (Nav2), usa también el almacén: tiene mapa y el simulador va
+rápido.
+
+Para los bloques 6 y 7 (cámara y VFF) puede venir mejor una casa con muebles,
 como la del simulador del Kobuki. Este repositorio incluye el paquete
 `tb4_worlds`, que lanza el TurtleBot 4 en esa misma casa de AWS RoboMaker
 (necesita el workspace compilado; ver
-[Simular en una casa](README-pixi-install.md#simular-en-una-casa)):
+[Simular en una casa](README-pixi-install.md#simular-en-una-casa)). Es mucho
+más pesada que el almacén: en un portátil puede ir a la cuarta parte del tiempo
+real, incluso con la GPU NVIDIA.
 
 ```bash
 pixi run sim-house                              # o sim-house-nvidia, sim-house-generic
@@ -916,13 +921,13 @@ que es donde aparece el robot.
 
 ### TurtleBot 4 en el simulador
 
-Los ejemplos de navegación se prueban en la casa, que se parece más a los
-sitios donde trabajan los robots sociales que el almacén. Cada comando en su
-terminal (preparadas con `tb4sim` o `pixi run tb4-sim`):
+Los ejemplos de navegación se prueban en el almacén (`warehouse`), el mundo
+por defecto del simulador, que va mucho más rápido que la casa. Cada comando en
+su terminal (preparadas con `tb4sim` o `pixi run tb4-sim`):
 
 ```bash
-# 1. Simulador de la casa (sim-house-nvidia con la GPU NVIDIA, ver README-pixi-install.md)
-pixi run sim-house
+# 1. Simulador del almacén (sim-nvidia con la GPU NVIDIA, ver README-pixi-install.md)
+pixi run sim
 
 # 2. Sacar el robot de la base
 pixi run undock
@@ -930,9 +935,9 @@ pixi run undock
 # 3. RViz, para dar la posición inicial y objetivos
 ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
 
-# 4. Localización, con el mapa de la casa
+# 4. Localización, con el mapa del almacén
 ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
-  map:=$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml
+  map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/warehouse.yaml
 
 # 5. Dar la posición inicial en RViz (2D Pose Estimate; ver abajo)
 
@@ -948,10 +953,9 @@ láser, y la terminal de la localización repite `Please set the initial
 pose...`. Es lo esperado en este punto.
 
 Para darle la posición inicial, usa **2D Pose Estimate** en RViz: haz clic
-donde está el robot y arrastra hacia donde mira. En la casa, el robot aparece
-en la habitación central, en (0, 1,5), mirando hacia la derecha del mapa (+x),
-con la base de carga delante; al sacarlo de la base retrocede un poco. Al
-darla, aparecen el robot y el láser; comprueba que las lecturas del láser caen
+donde está el robot y arrastra hacia donde mira. El robot aparece en su base
+de carga, en el origen del mapa (0, 0); al sacarlo de la base retrocede y gira,
+así que mira en Gazebo dónde ha quedado y hacia dónde apunta. Al darla, aparecen el robot y el láser; comprueba que las lecturas del láser caen
 encima de las paredes del mapa y, si no, vuelve a darla.
 
 Lanza Nav2 solo después. Los costmaps (el mapa con los obstáculos inflados que
@@ -962,9 +966,11 @@ because transform from base_link to map did not become available`); el panel
 *Navigation 2* de RViz se queda en `inactive`. En ese caso, da la posición
 inicial, cierra Nav2 (Ctrl+C) y vuelve a lanzarlo.
 
-Con otro mundo, cambia el simulador y el mapa (ver la tabla de abajo y
-[README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3),
-que usa el almacén).
+Con otro mundo, cambia el simulador y el mapa (ver la tabla de abajo). La casa
+(`pixi run sim-house`, o `sim-house-nvidia`) se parece más a los sitios donde
+trabajan los robots sociales, pero el simulador va mucho más lento; en ella el
+robot aparece en la habitación central, en (0, 1,5), mirando hacia la derecha
+del mapa (+x).
 
 Los mapas de cada mundo:
 
