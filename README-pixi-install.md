@@ -277,6 +277,10 @@ datos del simulador y no funciona.
 
 ### 4. Posición inicial (RViz)
 
+Hasta que la des, la localización no sabe dónde está el robot y no publica la
+TF `map` → `odom`: RViz puede marcar errores como `Frame [map] does not exist`
+y no dibujar el robot. Es lo esperado; desaparecen al darla.
+
 1. Pulsa **2D Pose Estimate** (barra de arriba).
 2. Haz clic en el mapa donde está el robot (junto a la base de carga) y, sin
    soltar, arrastra hacia donde mira.

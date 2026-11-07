@@ -927,21 +927,40 @@ pixi run sim-house
 # 2. Sacar el robot de la base
 pixi run undock
 
-# 3. Localización, con el mapa de la casa
+# 3. RViz, para dar la posición inicial y objetivos
+ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
+
+# 4. Localización, con el mapa de la casa
 ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
   map:=$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml
 
-# 4. RViz, para dar la posición inicial y objetivos
-ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
+# 5. Dar la posición inicial en RViz (2D Pose Estimate; ver abajo)
 
-# 5. Nav2, después de dar la posición inicial
+# 6. Nav2, después de dar la posición inicial
 ros2 launch turtlebot4_navigation nav2.launch.py use_sim_time:=true
 ```
 
-En la casa, el robot aparece en la habitación central, en (0, 1,5), mirando
-hacia la derecha del mapa (+x), con la base de carga delante; al sacarlo de la
-base retrocede un poco. Da la posición inicial ahí, con **2D Pose Estimate**,
-antes de lanzar Nav2.
+Al lanzar la localización aparece el mapa en RViz, pero la localización
+todavía no sabe dónde está el robot. Hasta que se lo digas, no publica la TF
+`map` → `odom`, así que el frame `map` no está unido al robot: RViz marca en
+rojo *RobotModel* (`Frame [map] does not exist`), no dibuja el robot ni el
+láser, y la terminal de la localización repite `Please set the initial
+pose...`. Es lo esperado en este punto.
+
+Para darle la posición inicial, usa **2D Pose Estimate** en RViz: haz clic
+donde está el robot y arrastra hacia donde mira. En la casa, el robot aparece
+en la habitación central, en (0, 1,5), mirando hacia la derecha del mapa (+x),
+con la base de carga delante; al sacarlo de la base retrocede un poco. Al
+darla, aparecen el robot y el láser; comprueba que las lecturas del láser caen
+encima de las paredes del mapa y, si no, vuelve a darla.
+
+Lanza Nav2 solo después. Los costmaps (el mapa con los obstáculos inflados que
+se ve en RViz) son parte de Nav2: no aparecen hasta lanzarlo. Si lanzas Nav2
+sin haber dado la posición inicial, espera a que exista el frame `map` y, al
+cabo de un par de minutos, se rinde (`Failed to activate global_costmap
+because transform from base_link to map did not become available`); el panel
+*Navigation 2* de RViz se queda en `inactive`. En ese caso, da la posición
+inicial, cierra Nav2 (Ctrl+C) y vuelve a lanzarlo.
 
 Con otro mundo, cambia el simulador y el mapa (ver la tabla de abajo y
 [README-pixi-install.md](README-pixi-install.md#3-localización-terminal-3),
@@ -987,8 +1006,9 @@ sistema), en terminales preparadas con `tb4` o `pixi run tb4`. Antes:
 Después, cada comando en su terminal:
 
 ```bash
-ros2 launch turtlebot4_navigation localization.launch.py map:=$HOME/mapas/lab.yaml
 ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT fixed_frame:=map
+ros2 launch turtlebot4_navigation localization.launch.py map:=$HOME/mapas/lab.yaml
+# Da la posición inicial en RViz (2D Pose Estimate), como en el simulador
 ros2 launch turtlebot4_navigation nav2.launch.py    # después de dar la posición inicial
 ```
 
