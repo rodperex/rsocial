@@ -31,7 +31,7 @@ class MyNode(Node):
     def __init__(self):
         super().__init__('my_node')
         self.hri = HRIClient(self)
-        if not self.hri.wait_for_services(5.0):
+        if not self.hri.wait_until_ready(5.0):
             self.get_logger().error('Servicios HRI no disponibles')
 
         self.state = 'SAY'
@@ -43,10 +43,10 @@ class MyNode(Node):
             self.state = 'WAIT_SAY'
 
         elif self.state == 'WAIT_SAY' and self.hri.is_speaking_done():
-            self.hri.start_listen()  # graba por el micrófono y transcribe
+            self.hri.start_listening()  # graba por el micrófono y transcribe
             self.state = 'WAIT_LISTEN'
 
-        elif self.state == 'WAIT_LISTEN' and self.hri.is_listen_done():
+        elif self.state == 'WAIT_LISTEN' and self.hri.is_listening_done():
             self.hri.start_extract('nombre', self.hri.get_listened_text())
             self.state = 'WAIT_NAME'
 
@@ -62,13 +62,13 @@ def main():
 
 | Operación | Iniciar | ¿Terminada? | Resultado |
 |---|---|---|---|
-| STT | `start_listen()` | `is_listen_done()` | `get_listened_text()` |
-| TTS | `start_speaking(text)` | `is_speaking_done()` | `get_speaking_result()` |
+| STT | `start_listening()` | `is_listening_done()` | `get_listened_text()` |
+| TTS | `start_speaking(text)` | `is_speaking_done()` | — (solo el estado: `get_speaking_state()`) |
 | Extract | `start_extract(interest, text)` | `is_extract_done()` | `get_extracted_info()` |
 | YesNo | `start_yesno(text)` | `is_yesno_done()` | `get_yesno_result()` (`"yes"`/`"no"`) |
 
 Solo STT graba audio. Extract y YesNo trabajan sobre un texto, normalmente el
-obtenido con `start_listen()`. Si falla, `simple_hri` devuelve un resultado que
+obtenido con `start_listening()`. Si falla, `simple_hri` devuelve un resultado que
 empieza por `ERROR`, y la operación termina en error. Si Extract no encuentra
 nada, devuelve `NONE`.
 
@@ -79,11 +79,11 @@ extraer información y sí/no usan sus **servicios**.
 
 | Método | Comportamiento |
 |---|---|
-| `start_listen(timeout_sec)` | El servidor deja de grabar si nadie empieza a hablar en `timeout_sec` → `TIMEOUT`; si habla, espera a que termine |
-| `cancel_listen()` | El servidor deja de grabar |
+| `start_listening(timeout_sec)` | El servidor deja de grabar si nadie empieza a hablar en `timeout_sec` → `TIMEOUT`; si habla, espera a que termine |
+| `cancel_listening()` | El servidor deja de grabar |
 | `is_speaking_done()` | `True` cuando termina de verdad la reproducción |
 | `cancel_speaking()` | El servidor corta el audio |
-| `get_listen_feedback()` | `listening`, `speech_detected`, `transcribing` |
+| `get_listening_feedback()` | `listening`, `speech_detected`, `transcribing` |
 | `get_speaking_feedback()` | Segundos que faltan |
 
 - Todos los `start_*()` aceptan `timeout_sec` (por defecto, sin límite). Si vence,
@@ -94,10 +94,10 @@ extraer información y sí/no usan sus **servicios**.
   `CANCELED`...) para saber cómo terminó cada operación.
 
 ```python
-self.hri.start_listen(timeout_sec=8.0)
+self.hri.start_listening(timeout_sec=8.0)
 ...
-if self.hri.is_listen_done():
-    if self.hri.get_listen_state() == OperationState.TIMEOUT:
+if self.hri.is_listening_done():
+    if self.hri.get_listening_state() == OperationState.TIMEOUT:
         self.hri.start_speaking('No te he oído. ¿Quieres ir a comer?')  # reformular
 ```
 

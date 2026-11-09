@@ -14,7 +14,7 @@
 
 from enum import auto, Enum
 
-from hri_client.hri_client import HRIClient
+from hri_client.hri_client import HRIClient, OperationState
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -35,7 +35,7 @@ class HRIExampleClient(Node):
         super().__init__('hri_example_client_node')
         self.hri_client = HRIClient(self)
 
-        if not self.hri_client.wait_for_services(10.0):
+        if not self.hri_client.wait_until_ready(10.0):
             self.get_logger().error('Services not available.')
 
         self.get_logger().info('✅ STT and TTS clients ready.')
@@ -54,17 +54,17 @@ class HRIExampleClient(Node):
 
         elif self.state == State.WAITING_INTRO:
             if self.hri_client.is_speaking_done():
-                if self.hri_client.get_speaking_result():
+                if self.hri_client.get_speaking_state() == OperationState.COMPLETED:
                     self.get_logger().info('✅ TTS executed successfully')
                 else:
                     self.get_logger().error('❌ TTS error')
 
                 self.get_logger().info('🎤 Starting speech recognition (STT)...')
-                self.hri_client.start_listen()
+                self.hri_client.start_listening()
                 self.state = State.WAITING_LISTENING
 
         elif self.state == State.WAITING_LISTENING:
-            if self.hri_client.is_listen_done():
+            if self.hri_client.is_listening_done():
                 self.transcribed_text = self.hri_client.get_listened_text()
                 if not self.transcribed_text:
                     self.get_logger().error('❌ STT error')
@@ -83,7 +83,7 @@ class HRIExampleClient(Node):
 
         elif self.state == State.WAITING_ECHO:
             if self.hri_client.is_speaking_done():
-                if self.hri_client.get_speaking_result():
+                if self.hri_client.get_speaking_state() == OperationState.COMPLETED:
                     self.get_logger().info('✅ TTS executed successfully')
                 else:
                     self.get_logger().error('❌ TTS error')

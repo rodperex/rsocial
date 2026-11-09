@@ -1172,8 +1172,8 @@ para actividades largas, y escuchar y hablar lo son.
 
 La clase `HRIClient` (paquete `hri_client`) envuelve todo esto con el contrato
 de una capacidad del tema 4, el mismo que `NavigationClient` para navegar:
-`wait_for_services()` como precondición, `start_listen()` y
-`start_speaking(texto)` para empezar, `is_listen_done()` e
+`wait_until_ready()` como precondición, `start_listening()` y
+`start_speaking(texto)` para empezar, `is_listening_done()` e
 `is_speaking_done()` para saber si ha terminado sin bloquear el nodo, el estado
 final (`COMPLETED`, `ERROR`, `TIMEOUT` o `CANCELED`), el *feedback*, la
 cancelación y un tiempo máximo (`timeout_sec`). Para escuchar y hablar usa las

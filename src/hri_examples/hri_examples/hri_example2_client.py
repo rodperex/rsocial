@@ -14,7 +14,7 @@
 
 from enum import auto, Enum
 
-from hri_client.hri_client import HRIClient
+from hri_client.hri_client import HRIClient, OperationState
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -39,7 +39,7 @@ class HRIExample2Client(Node):
         super().__init__('hri_example2_client_node')
         self.hri_client = HRIClient(self)
 
-        if not self.hri_client.wait_for_services(10.0):
+        if not self.hri_client.wait_until_ready(10.0):
             self.get_logger().info('Services not available, waiting...')
 
         self.get_logger().info('✅ Extract, STT and TTS clients ready.')
@@ -84,17 +84,17 @@ class HRIExample2Client(Node):
 
         elif self.state == State.WAITING_INTRO:
             if self.hri_client.is_speaking_done():
-                if self.hri_client.get_speaking_result():
+                if self.hri_client.get_speaking_state() == OperationState.COMPLETED:
                     self.get_logger().info('✅ TTS executed successfully')
                 else:
                     self.get_logger().error('❌ TTS error')
 
                 self.get_logger().info('🎤 Starting speech recognition (STT)...')
-                self.hri_client.start_listen()
+                self.hri_client.start_listening()
                 self.state = State.WAITING_USER_RESPONSE
 
         elif self.state == State.WAITING_USER_RESPONSE:
-            if self.hri_client.is_listen_done():
+            if self.hri_client.is_listening_done():
                 self.user_response = self.hri_client.get_listened_text()
                 if not self.user_response:
                     self.get_logger().error('❌ STT error')

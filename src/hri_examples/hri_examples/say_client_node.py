@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from hri_client.hri_client import HRIClient
+from hri_client.hri_client import HRIClient, OperationState
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -28,7 +28,7 @@ class SayClientNode(Node):
         self.text = self.get_parameter('text').value
 
         self.hri_client = HRIClient(self)
-        if not self.hri_client.wait_for_services(10.0):
+        if not self.hri_client.wait_until_ready(10.0):
             self.get_logger().error(
                 'simple_hri services not available. Did you launch simple_hri?')
 
@@ -41,7 +41,7 @@ class SayClientNode(Node):
             self.speaking = True
 
         elif self.hri_client.is_speaking_done():
-            if not self.hri_client.get_speaking_result():
+            if self.hri_client.get_speaking_state() != OperationState.COMPLETED:
                 self.get_logger().error('TTS error')
             self.timer.cancel()
             raise SystemExit

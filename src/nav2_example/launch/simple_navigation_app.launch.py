@@ -29,7 +29,7 @@ def launch_setup(context):
         Node(
             package='nav2_example',
             executable='simple_navigation_app',
-            name='simple_navigation_app_py_node',
+            name='simple_navigation_app_node',
             output='screen',
             parameters=[{
                 # In the simulator the node uses its clock, so that the timeout counts

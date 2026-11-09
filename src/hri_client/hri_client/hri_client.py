@@ -104,7 +104,6 @@ class HRIClient:
         self._stt_feedback = ''
 
         self._tts_state = OperationState.IDLE
-        self._tts_result = False
         self._tts_deadline = None
         self._tts_call = None
         self._tts_remaining = -1.0
@@ -121,7 +120,7 @@ class HRIClient:
 
         self._node.get_logger().debug('HRI client initialized')
 
-    def wait_for_services(self, timeout_sec: float = 5.0) -> bool:
+    def wait_until_ready(self, timeout_sec: float = 5.0) -> bool:
         """Wait for the simple_hri actions (listen, speak) and services (extract, yes/no)."""
         all_ready = True
 
@@ -164,7 +163,7 @@ class HRIClient:
 
     # ============ ASYNCHRONOUS METHODS ============
 
-    def start_listen(self, timeout_sec: float = None):
+    def start_listening(self, timeout_sec: float = None):
         # timeout_sec: time for the person to START speaking (the server stops recording
         # if nobody speaks); once they speak, it waits until they finish
         if self._stt_state == OperationState.IN_PROGRESS:
@@ -181,7 +180,7 @@ class HRIClient:
         goal.max_wait = float(timeout_sec) if timeout_sec is not None else 0.0
         self._stt_call = _ActionCall(self._listen_action, goal, self._listen_feedback_callback)
 
-    def is_listen_done(self) -> bool:
+    def is_listening_done(self) -> bool:
         if self._stt_state != OperationState.IN_PROGRESS:
             return self._stt_state in FINISHED_STATES
 
@@ -217,7 +216,6 @@ class HRIClient:
         self._node.get_logger().info(f"Starting TTS: '{text}'")
 
         self._tts_state = OperationState.IN_PROGRESS
-        self._tts_result = False
         self._tts_remaining = -1.0
         self._tts_deadline = self._deadline(timeout_sec)
 
@@ -239,7 +237,6 @@ class HRIClient:
             return False
         status, result = finished
         if status == GoalStatus.STATUS_SUCCEEDED and result.success:
-            self._tts_result = True
             self._tts_state = OperationState.COMPLETED
             self._node.get_logger().info('TTS completed')
         elif status == GoalStatus.STATUS_CANCELED:
@@ -248,9 +245,6 @@ class HRIClient:
             self._tts_state = OperationState.ERROR
             self._node.get_logger().error('TTS failed')
         return True
-
-    def get_speaking_result(self) -> bool:
-        return self._tts_result
 
     def start_extract(self, interest: str, text: str = '', timeout_sec: float = None):
         if self._extract_state == OperationState.IN_PROGRESS:
@@ -263,7 +257,7 @@ class HRIClient:
 
         if not text:
             # simple_hri does not record audio in Extract: with an empty text it returns "NONE".
-            # Get the text first with start_listen()/get_listened_text().
+            # Get the text first with start_listening()/get_listened_text().
             self._node.get_logger().warning(f"Extraction of '{interest}' with empty text")
         else:
             self._node.get_logger().info(f"Starting extraction from text '{text}': {interest}")
@@ -359,7 +353,7 @@ class HRIClient:
 
     # ============ CANCELLATION AND STATE ============
 
-    def cancel_listen(self):
+    def cancel_listening(self):
         if self._stt_state == OperationState.IN_PROGRESS:
             self._stt_call.cancel()  # The server stops recording
             self._stt_state = OperationState.CANCELED
@@ -368,7 +362,6 @@ class HRIClient:
     def cancel_speaking(self):
         if self._tts_state == OperationState.IN_PROGRESS:
             self._tts_call.cancel()  # The server stops the audio
-            self._tts_result = False
             self._tts_state = OperationState.CANCELED
             self._node.get_logger().info('TTS canceled')
 
@@ -384,7 +377,7 @@ class HRIClient:
             self._yesno_state = OperationState.CANCELED
             self._node.get_logger().info('YesNo canceled')
 
-    def get_listen_state(self) -> OperationState:
+    def get_listening_state(self) -> OperationState:
         return self._stt_state
 
     def get_speaking_state(self) -> OperationState:
@@ -396,7 +389,7 @@ class HRIClient:
     def get_yesno_state(self) -> OperationState:
         return self._yesno_state
 
-    def get_listen_feedback(self) -> str:
+    def get_listening_feedback(self) -> str:
         """Stage of the current listening: 'listening', 'speech_detected', 'transcribing'."""
         return self._stt_feedback
 

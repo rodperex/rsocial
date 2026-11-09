@@ -24,8 +24,8 @@ States:
   - DONE: the mission is over (both waypoints reached, or a goal failed)
 
 The navigation goes through NavigationClient (navigation_client), like
-simple_navigation_app of nav2_example. send_goal() returns at once, and each cycle
-asks is_goal_done(): the FSM never blocks. When a goal finishes, its state is the
+simple_navigation_app of nav2_example. start_navigation() returns at once, and each cycle
+asks is_navigation_done(): the FSM never blocks. When a goal finishes, its state is the
 event of the transition: COMPLETED goes to the next waypoint, and ERROR (Nav2
 aborted it), TIMEOUT (it took longer than goal_timeout) or CANCELED end the mission.
 """
@@ -65,7 +65,7 @@ class FSMNavNode(Node):
         if self.state == 'WAIT_NAV2':
             # Waits at most 1 s per cycle, so the node keeps running while Nav2 starts
             if self.nav_ready_time is None:
-                if self.nav_client.wait_for_action_server(1.0):
+                if self.nav_client.wait_until_ready(1.0):
                     self.get_logger().info('Nav2 available')
                     self.nav_ready_time = time.time()
             # The first goal is sent a little later: right after this node connects, the
@@ -75,9 +75,9 @@ class FSMNavNode(Node):
                 self.go_to('GO_TO_WP1', 0)
 
         elif self.state in ('GO_TO_WP1', 'GO_TO_WP2'):
-            if not self.nav_client.is_goal_done():
+            if not self.nav_client.is_navigation_done():
                 return
-            result = self.nav_client.get_goal_state()
+            result = self.nav_client.get_navigation_state()
             if result != NavigationState.COMPLETED:
                 self.get_logger().error(f'{self.state} failed ({result.name}): mission aborted')
                 self.finish()
@@ -91,7 +91,7 @@ class FSMNavNode(Node):
         x, y = self.waypoints[index]
         self.get_logger().info(f'State: {self.state} -> {state}: going to ({x:.2f}, {y:.2f})')
         self.state = state
-        self.nav_client.send_goal(
+        self.nav_client.start_navigation(
             self.nav_client.create_pose_stamped(x, y, 0.0), timeout_sec=self.goal_timeout)
 
     def finish(self):

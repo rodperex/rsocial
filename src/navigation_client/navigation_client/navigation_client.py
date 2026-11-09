@@ -48,7 +48,6 @@ class NavigationClient:
         self.goal_handle_ = None
         self.goal_active_ = False
         self.goal_done_ = False
-        self.goal_success_ = False
         self.last_feedback_ = None
 
         self.state_ = NavigationState.IDLE
@@ -58,19 +57,19 @@ class NavigationClient:
         # after a timeout) must not change the state of the new one
         self.goal_seq_ = 0
 
-    def wait_for_action_server(self, timeout_sec=5.0):
+    def wait_until_ready(self, timeout_sec=5.0):
         if not self.nav_client_.wait_for_server(timeout_sec=timeout_sec):
-            self.node_.get_logger().error('Navigation server not available after waiting')
+            self.node_.get_logger().error('Navigation action (navigate_to_pose) not available')
             return False
-        self.node_.get_logger().debug('Navigation server available')
+        self.node_.get_logger().debug('Navigation action available')
         return True
 
-    def send_goal(self, target_pose: PoseStamped, timeout_sec=None):
-        # timeout_sec: if the goal is not done in that time, is_goal_done() cancels it and the
-        # state becomes TIMEOUT (checked when is_goal_done() is called, without blocking)
+    def start_navigation(self, target_pose: PoseStamped, timeout_sec=None):
+        # timeout_sec: if the goal is not done in that time, is_navigation_done() cancels it
+        # and the state becomes TIMEOUT (checked when is_navigation_done() is called, without
+        # blocking)
         self.goal_active_ = False
         self.goal_done_ = False
-        self.goal_success_ = False
         self.goal_handle_ = None
         self.last_feedback_ = None
 
@@ -102,7 +101,7 @@ class NavigationClient:
     def goal_response_callback(self, future, seq):
         goal_handle = future.result()
         if seq != self.goal_seq_:
-            # Goal of a previous send_goal(): cancel it if it was accepted and ignore it
+            # Goal of a previous start_navigation(): cancel it if it was accepted and ignore it
             if goal_handle.accepted:
                 goal_handle.cancel_goal_async()
             return
@@ -110,13 +109,12 @@ class NavigationClient:
         if not goal_handle.accepted:
             self.node_.get_logger().error('Goal rejected by the server')
             self.goal_done_ = True
-            self.goal_success_ = False
             self.state_ = NavigationState.ERROR
             return
 
         self.goal_handle_ = goal_handle
         if self.cancel_requested_:
-            # cancel_goal() or a timeout happened before the server accepted the goal
+            # cancel_navigation() or a timeout happened before the server accepted the goal
             goal_handle.cancel_goal_async()
             return
 
@@ -142,26 +140,22 @@ class NavigationClient:
         self.goal_active_ = False
 
         if self.state_ in (NavigationState.TIMEOUT, NavigationState.CANCELED):
-            # The client already finished the goal (timeout or cancel_goal())
+            # The client already finished the goal (timeout or cancel_navigation())
             return
 
         self.goal_done_ = True
         status = result.status
         if status == GoalStatus.STATUS_SUCCEEDED:
             self.node_.get_logger().debug('Navigation SUCCEEDED')
-            self.goal_success_ = True
             self.state_ = NavigationState.COMPLETED
         elif status == GoalStatus.STATUS_ABORTED:
             self.node_.get_logger().warn('Navigation ABORTED (obstacle or timeout)')
-            self.goal_success_ = False
             self.state_ = NavigationState.ERROR
         elif status == GoalStatus.STATUS_CANCELED:
             self.node_.get_logger().warn('Navigation CANCELED')
-            self.goal_success_ = False
             self.state_ = NavigationState.CANCELED
         else:
             self.node_.get_logger().error(f'Unknown status: {status}')
-            self.goal_success_ = False
             self.state_ = NavigationState.ERROR
 
     def _finish(self, state):
@@ -171,29 +165,25 @@ class NavigationClient:
             self.goal_handle_.cancel_goal_async()
         self.goal_active_ = False
         self.goal_done_ = True
-        self.goal_success_ = False
         self.state_ = state
 
-    def cancel_goal(self):
+    def cancel_navigation(self):
         if self.state_ == NavigationState.IN_PROGRESS:
-            self.node_.get_logger().debug('Canceling navigation goal')
+            self.node_.get_logger().info('Navigation canceled')
             self._finish(NavigationState.CANCELED)
 
-    def is_goal_done(self):
+    def is_navigation_done(self):
         if (self.state_ == NavigationState.IN_PROGRESS and self.deadline_ is not None
                 and self.node_.get_clock().now() > self.deadline_):
             self.node_.get_logger().warn('Navigation timed out: canceling the goal')
             self._finish(NavigationState.TIMEOUT)
         return self.goal_done_
 
-    def was_goal_successful(self):
-        return self.goal_success_
-
-    def get_goal_state(self):
+    def get_navigation_state(self):
         """Return how the goal finished: COMPLETED, ERROR, TIMEOUT or CANCELED."""
         return self.state_
 
-    def get_feedback(self):
+    def get_navigation_feedback(self):
         return self.last_feedback_
 
     def create_pose_stamped(self, x, y, yaw):

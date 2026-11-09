@@ -35,7 +35,7 @@ class RepeatNode(Node):
         super().__init__('repeat_node')
 
         self.hri_client = HRIClient(self)
-        if not self.hri_client.wait_for_services(10.0):
+        if not self.hri_client.wait_until_ready(10.0):
             self.get_logger().error(
                 'simple_hri services not available. Did you launch simple_hri?')
 
@@ -50,11 +50,11 @@ class RepeatNode(Node):
 
         elif self.state == State.WAITING_PROMPT:
             if self.hri_client.is_speaking_done():
-                self.hri_client.start_listen()
+                self.hri_client.start_listening()
                 self.state = State.WAITING_LISTEN
 
         elif self.state == State.WAITING_LISTEN:
-            if self.hri_client.is_listen_done():
+            if self.hri_client.is_listening_done():
                 self.transcribed_text = self.hri_client.get_listened_text()
                 if not self.transcribed_text.strip():
                     self.get_logger().warning('No sentence was recognized')

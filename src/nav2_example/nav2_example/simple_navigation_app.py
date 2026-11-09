@@ -17,7 +17,7 @@
 # Original code by Miguel Ángel de Miguel. Modified by Rodrigo Pérez-Rodríguez: goal as
 # parameters, goal timeout and exit when the navigation finishes.
 
-from navigation_client.navigation_client import NavigationClient
+from navigation_client.navigation_client import NavigationClient, NavigationState
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -25,7 +25,7 @@ from rclpy.node import Node
 
 class SimpleNavigationApp(Node):
     def __init__(self):
-        super().__init__('simple_navigation_app_py_node')
+        super().__init__('simple_navigation_app_node')
         self.nav_client_ = NavigationClient(self)
         # Goal in the map frame. The default one is free in the maps of the house (Kobuki and
         # TurtleBot 4) and of the TurtleBot 4 warehouse
@@ -40,7 +40,7 @@ class SimpleNavigationApp(Node):
             self.get_parameter('yaw').value)
         self.goal_timeout_ = self.get_parameter('goal_timeout').value
 
-        self.server_ready_ = False
+        self.navigation_ready_ = False
         self.goal_sent_ = False
 
         self.get_logger().info('Navigation application started (Python)')
@@ -48,20 +48,20 @@ class SimpleNavigationApp(Node):
         self.timer_ = self.create_timer(0.5, self.control_cycle)
 
     def control_cycle(self):
-        if not self.server_ready_:
-            if self.nav_client_.wait_for_action_server(1.0):
-                self.get_logger().info('Server available, ready to navigate')
-                self.server_ready_ = True
+        if not self.navigation_ready_:
+            if self.nav_client_.wait_until_ready(1.0):
+                self.get_logger().info('Navigation ready')
+                self.navigation_ready_ = True
             return
 
         if not self.goal_sent_:
             self.get_logger().info('Sending navigation goal...')
-            self.nav_client_.send_goal(self.target_pose_, timeout_sec=self.goal_timeout_)
+            self.nav_client_.start_navigation(self.target_pose_, timeout_sec=self.goal_timeout_)
             self.goal_sent_ = True
             return
 
-        if not self.nav_client_.is_goal_done():
-            feedback = self.nav_client_.get_feedback()
+        if not self.nav_client_.is_navigation_done():
+            feedback = self.nav_client_.get_navigation_feedback()
             if feedback:
                 t_sec = feedback.navigation_time.sec + feedback.navigation_time.nanosec / 1e9
                 self.get_logger().info(
@@ -70,11 +70,11 @@ class SimpleNavigationApp(Node):
                 )
             return
 
-        if self.nav_client_.was_goal_successful():
+        if self.nav_client_.get_navigation_state() == NavigationState.COMPLETED:
             self.get_logger().info('Navigation succeeded')
         else:
             self.get_logger().warn(
-                f'Navigation failed ({self.nav_client_.get_goal_state().name})')
+                f'Navigation failed ({self.nav_client_.get_navigation_state().name})')
 
         self.timer_.cancel()
         self.get_logger().info('Application finished')

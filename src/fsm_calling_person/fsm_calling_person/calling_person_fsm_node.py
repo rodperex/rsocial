@@ -218,7 +218,7 @@ class CallingPersonFSM(Node):
         self.vff_enable_pub = self.create_publisher(Bool, 'vff_enable', 10)
         self.detector_reset_pub = self.create_publisher(Empty, 'calling_person_reset', 10)
 
-        # Only the TTS of simple_hri is used. wait_for_services is not called: it also waits
+        # Only the TTS of simple_hri is used. wait_until_ready is not called: it also waits
         # for the STT, Extract and Yes/No, which this example does not launch
         self.hri = HRIClient(self)
 
