@@ -59,7 +59,7 @@ class NavigationClient:
 
     def wait_until_ready(self, timeout_sec=5.0):
         if not self.nav_client_.wait_for_server(timeout_sec=timeout_sec):
-            self.node_.get_logger().error('Navigation action (navigate_to_pose) not available')
+            self.node_.get_logger().warn('Navigation action (navigate_to_pose) not available')
             return False
         self.node_.get_logger().debug('Navigation action available')
         return True

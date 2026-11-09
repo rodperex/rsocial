@@ -125,19 +125,19 @@ class HRIClient:
         all_ready = True
 
         if not self._listen_action.wait_for_server(timeout_sec=timeout_sec):
-            self._node.get_logger().error('STT action (/stt_action) not available')
+            self._node.get_logger().warning('STT action (/stt_action) not available')
             all_ready = False
 
         if not self._say_action.wait_for_server(timeout_sec=timeout_sec):
-            self._node.get_logger().error('TTS action (/tts_action) not available')
+            self._node.get_logger().warning('TTS action (/tts_action) not available')
             all_ready = False
 
         if not self._extract_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error('Extract service not available')
+            self._node.get_logger().warning('Extract service not available')
             all_ready = False
 
         if not self._yesno_client.wait_for_service(timeout_sec):
-            self._node.get_logger().error('YesNo service not available')
+            self._node.get_logger().warning('YesNo service not available')
             all_ready = False
 
         if all_ready:

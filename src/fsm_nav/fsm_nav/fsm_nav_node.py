@@ -72,8 +72,8 @@ class FSMNavNode(Node):
             # discovery traffic can make Nav2 miss its internal timeouts (on a loaded
             # computer it then aborts the goal at once)
             elif time.time() - self.nav_ready_time > 2.0:
-                self.navigate_to(self.waypoint1)
                 self.go_to_state('GO_TO_WP1')
+                self.navigate_to(self.waypoint1)
 
         elif self.state == 'GO_TO_WP1':
             if not self.nav_client.is_navigation_done():
@@ -81,8 +81,8 @@ class FSMNavNode(Node):
             result = self.nav_client.get_navigation_state()
             if result == NavigationState.COMPLETED:
                 self.get_logger().info('First waypoint reached')
-                self.navigate_to(self.waypoint2)
                 self.go_to_state('GO_TO_WP2')
+                self.navigate_to(self.waypoint2)
             else:
                 self.get_logger().error(f'GO_TO_WP1 failed ({result.name}): mission aborted')
                 self.finish()
