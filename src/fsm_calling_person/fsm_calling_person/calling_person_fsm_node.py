@@ -208,8 +208,10 @@ class CallingPersonFSM(Node):
         self.stamped = self.get_parameter('enable_stamped_cmd_vel').value
 
         # From calling_person_detector_node
+        # Who is calling
         self.calling_sub = self.create_subscription(
             String, 'calling_person', self.calling_callback, 10)
+        # Attractive vector towards the person who called
         self.attractive_sub = self.create_subscription(
             Vector3, 'attractive_vector', self.attractive_callback, 10)
 
