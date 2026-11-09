@@ -115,9 +115,9 @@ class CallingPersonDetectorNode(Node):
         self.detections_sub = self.create_subscription(
             DetectionArray, 'input_detections', self.detections_callback,
             rclpy.qos.qos_profile_sensor_data)
+        # To forget the person and wait for a new call
         self.reset_sub = self.create_subscription(
             Empty, 'calling_person_reset', self.reset_callback, 10)
-
         self.attractive_pub = self.create_publisher(Vector3, 'attractive_vector', 10)
         self.calling_pub = self.create_publisher(String, 'calling_person', 10)
 
@@ -136,10 +136,14 @@ class CallingPersonDetectorNode(Node):
         self.release()
 
     def detections_callback(self, msg: DetectionArray):
+        # One message per image. The pose model only detects people; the filter is a
+        # safeguard in case the node is launched with a model of other classes
         people = [d for d in msg.detections if d.class_name == 'person']
 
+        # Nobody has called yet: look for someone with an arm raised
         if self.target_id is None:
             self.look_for_caller(people)
+        # Someone has called (maybe just now, in this image): follow them
         if self.target_id is not None:
             self.follow_target(people)
 

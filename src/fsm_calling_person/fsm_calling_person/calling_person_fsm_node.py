@@ -35,8 +35,8 @@ States:
 
 Follows the classic FSM anatomy (see fsm_bumpgo):
   - State: on_entry / on_do / on_exit lifecycle
-  - Event: a person calling, attractive vectors and timeouts
-  - Guard: boolean condition enabling a transition
+  - Event: a person calling (the only one, stored by its callback)
+  - Guard: boolean condition enabling a transition (distance, timeouts)
   - Action: side effect executed on entry/exit (velocity, enabling the VFF...)
 """
 
@@ -54,22 +54,29 @@ from std_msgs.msg import Bool, Empty, String
 
 
 class Event(Enum):
-    """Triggers that can wake up a transition check."""
+    """
+    Events stored by the callbacks (not states: the states are the State classes).
 
+    Only the call of a person is an event. The other transitions depend on guards
+    that check_transition evaluates every cycle (distance, time without vector...).
+    """
+
+    # auto() gives each member a different value (1, 2...) without writing it by hand:
+    # only the name matters, the events are compared as Event.PERSON_CALLING
     PERSON_CALLING = auto()
 
 
-# State is an abstract base class (ABC, from the standard abc module): a template that
-# says which methods a state has, not a state itself. Inheriting from ABC makes Python
-# enforce the methods marked with @abstractmethod: State cannot be instantiated, and
-# neither can a subclass that does not implement them (TypeError when it is created,
-# naming the missing method). Without ABC, @abstractmethod is ignored. The states are
-# plain Python classes, not ROS nodes: the only node is the FSM, reachable as self.fsm
+# State is a template for the states, not a state itself. As an abstract class (ABC),
+# it cannot be instantiated, and each state must implement the methods marked with
+# @abstractmethod (otherwise, TypeError when the state is created).
+# The states are plain Python classes, not ROS nodes: the node is the robot
 class State(ABC):
     """Base class for a FSM state, with the on_entry/on_do/on_exit lifecycle."""
 
-    def __init__(self, fsm: 'CallingPersonFSM'):
-        self.fsm = fsm
+    def __init__(self, robot: 'CallingPersonRobot'):
+        # Every state keeps the robot that created it, to read its information (events,
+        # times...) in the guards and to use its methods (publish, speak...)
+        self.robot = robot
 
     def on_entry(self):
         """Run once when entering the state (initialize resources)."""
@@ -84,99 +91,20 @@ class State(ABC):
         """Run once when leaving the state (safe stop / release)."""
 
     def check_transition(self):
-        """Evaluate guards for this state and return the next State, or None."""
+        """Evaluate guards and return the next State, created with self.robot, or None."""
         return None
 
 
-class SearchState(State):
-    """Robot turns in place until a person calls."""
+class CallingPersonRobot(Node):
+    """
+    The robot as the states see it: the state of the world and of the robot, and how to act.
 
-    def on_entry(self):
-        self.fsm.get_logger().info('Entering SEARCH')
-        self.fsm.say(self.fsm.search_text)
-        self.fsm.enable_vff(False)
-        # The detector forgets the previous person: otherwise it would stick to them
-        # while they are in view and the robot would not notice a new call
-        self.fsm.reset_detector()
-
-    def on_do(self):
-        self.fsm.publish_vel(linear=0.0, angular=self.fsm.search_angular_speed)
-
-    def on_exit(self):
-        self.fsm.publish_vel(linear=0.0, angular=0.0)
-
-    def check_transition(self):
-        # guard: the detector says that a person is calling. Only SEARCH checks this
-        # event: a call while approaching another person or while ARRIVED is ignored
-        if self.fsm.last_event == Event.PERSON_CALLING:
-            return ApproachState(self.fsm)
-        return None
-
-
-class ApproachState(State):
-    """VFF enabled, attracted by the person who called, until the robot is next to them."""
-
-    def on_entry(self):
-        self.fsm.get_logger().info(
-            f'Entering APPROACH: person {self.fsm.calling_id} is calling, going towards them')
-        self.fsm.say(self.fsm.approach_text)
-        self.fsm.enable_vff(True)
-        # Only the vectors received from now on count. The time is set to now so that
-        # the lost guard counts from here until the first vector arrives
-        self.fsm.attractive_vec = None
-        self.fsm.attractive_ts = self.fsm.get_clock().now()
-
-    def on_do(self):
-        # Nothing to do: the VFF moves the robot with the vectors of the detectors
-        pass
-
-    def on_exit(self):
-        # Both when it arrives and when it loses the person
-        self.fsm.enable_vff(False)
-
-    def check_transition(self):
-        # Distance to the person on the floor (x, y in base_frame). Until the first vector
-        # arrives it is infinite: the robot cannot have arrived yet
-        vector = self.fsm.attractive_vec
-        distance = math.inf
-        if vector is not None:
-            distance = math.hypot(vector.x, vector.y)
-
-        time_without_vector = self.fsm.get_clock().now() - self.fsm.attractive_ts
-
-        # guard: close enough to the person
-        if distance <= self.fsm.arrive_distance:
-            return ArrivedState(self.fsm)
-        # guard: no attractive vector for a while, the detector does not see the person
-        # (the VFF already turns towards the side where it was last seen)
-        if time_without_vector > self.fsm.lost_timeout:
-            self.fsm.get_logger().info(f'Person {self.fsm.calling_id} lost')
-            return SearchState(self.fsm)
-        return None
-
-
-class ArrivedState(State):
-    """Robot greets the person and stays still next to them before searching again."""
-
-    def on_entry(self):
-        self.fsm.get_logger().info('Entering ARRIVED: next to the person')
-        self.fsm.reset_state_timer()
-        self.speaking = self.fsm.say(self.fsm.greeting)
-
-    def on_do(self):
-        self.fsm.publish_vel(linear=0.0, angular=0.0)
-        if self.speaking and self.fsm.hri.is_speaking_done():
-            self.speaking = False
-
-    def check_transition(self):
-        # guard: it has finished speaking and enough time has elapsed next to the person,
-        # so that it does not start turning in the middle of the sentence
-        if not self.speaking and self.fsm.time_in_state() > self.fsm.arrived_wait:
-            return SearchState(self.fsm)
-        return None
-
-
-class CallingPersonFSM(Node):
+    The guards of the states consult it to decide (a person calling, the attractive
+    vector, time in the state...), and the states use its methods to act (move, speak,
+    enable the VFF). It is also the ROS node that runs the FSM: it keeps the current
+    state and runs it every cycle. The FSM is this node plus the states, which decide
+    what to do and which state comes next.
+    """
 
     def __init__(self):
         super().__init__('calling_person_fsm')
@@ -234,10 +162,11 @@ class CallingPersonFSM(Node):
         self.attractive_ts = None
         self.state_ts = self.get_clock().now()
 
-        # The first SEARCH does not speak: the launcher starts the TTS at the same time as
-        # this node, and Piper takes a few seconds to load the voice, so /tts_action does
-        # not exist yet and the sentence is lost (HRIClient gives up after its timeout).
-        # The following times the TTS is already running and it speaks
+        # Initial state (the states are defined below). The robot passes itself (self)
+        # to the state, which keeps it as self.robot; in check_transition each state
+        # passes it on to the next one.
+        # This first SEARCH does not speak: the TTS starts at the same time as this node
+        # and is not ready yet (Piper takes a few seconds to load the voice)
         self.current_state = SearchState(self)
         self.current_state.on_entry()
 
@@ -271,8 +200,11 @@ class CallingPersonFSM(Node):
         # Otherwise it would stay stored and a later SEARCH would take an old call as new
         self.last_event = None
 
-    def enable_vff(self, enabled: bool):
-        self.vff_enable_pub.publish(Bool(data=enabled))
+    def enable_vff(self):
+        self.vff_enable_pub.publish(Bool(data=True))
+
+    def disable_vff(self):
+        self.vff_enable_pub.publish(Bool(data=False))
 
     def reset_detector(self):
         self.detector_reset_pub.publish(Empty())
@@ -308,9 +240,100 @@ class CallingPersonFSM(Node):
         return self.get_clock().now() - self.state_ts
 
 
+class SearchState(State):
+    """Robot turns in place until a person calls."""
+
+    def on_entry(self):
+        self.robot.get_logger().info('Entering SEARCH')
+        # The detector forgets the previous person: otherwise it would stick to them
+        # while they are in view and the robot would not notice a new call
+        self.robot.reset_detector()
+        self.robot.disable_vff()
+        # The robot says what it is doing once everything is ready
+        self.robot.say(self.robot.search_text)
+
+    def on_do(self):
+        self.robot.publish_vel(linear=0.0, angular=self.robot.search_angular_speed)
+
+    def on_exit(self):
+        self.robot.publish_vel(linear=0.0, angular=0.0)
+
+    def check_transition(self):
+        # last_event is an attribute of the robot, set to None when it is created
+        if self.robot.last_event == Event.PERSON_CALLING:
+            # The next state is created with the same robot, the one this state keeps
+            # in self.robot (the same in all the transitions)
+            return ApproachState(self.robot)
+        return None
+
+
+class ApproachState(State):
+    """VFF enabled, attracted by the person who called, until the robot is next to them."""
+
+    def on_entry(self):
+        self.robot.get_logger().info(
+            f'Entering APPROACH: person {self.robot.calling_id} is calling, going towards them')
+        # Only the vectors received from now on count. The time is set to now so that
+        # the lost guard counts from here until the first vector arrives
+        self.robot.attractive_vec = None
+        self.robot.attractive_ts = self.robot.get_clock().now()
+        # The robot says what it is going to do before it starts moving
+        self.robot.say(self.robot.approach_text)
+        self.robot.enable_vff()
+
+    def on_do(self):
+        # Nothing to do: the VFF moves the robot with the vectors of the detectors
+        pass
+
+    def on_exit(self):
+        # Both when it arrives and when it loses the person
+        self.robot.disable_vff()
+
+    def check_transition(self):
+        # Distance to the person on the floor (x, y in base_frame). Until the first vector
+        # arrives it is infinite: the robot cannot have arrived yet
+        vector = self.robot.attractive_vec
+        distance = math.inf
+        if vector is not None:
+            distance = math.hypot(vector.x, vector.y)
+
+        time_without_vector = self.robot.get_clock().now() - self.robot.attractive_ts
+
+        # guard: close enough to the person
+        if distance <= self.robot.arrive_distance:
+            return ArrivedState(self.robot)
+        # guard: no attractive vector for a while, the detector does not see the person
+        # (the VFF already turns towards the side where it was last seen)
+        if time_without_vector > self.robot.lost_timeout:
+            self.robot.get_logger().info(f'Person {self.robot.calling_id} lost')
+            return SearchState(self.robot)
+        return None
+
+
+class ArrivedState(State):
+    """Robot greets the person and stays still next to them before searching again."""
+
+    def on_entry(self):
+        self.robot.get_logger().info('Entering ARRIVED: next to the person')
+        self.robot.reset_state_timer()
+        self.speaking = self.robot.say(self.robot.greeting)
+
+    def on_do(self):
+        self.robot.publish_vel(linear=0.0, angular=0.0)
+        if self.speaking and self.robot.hri.is_speaking_done():
+            self.speaking = False
+
+    def check_transition(self):
+        # guard: it has finished speaking and enough time has elapsed next to the person,
+        # so that it does not start turning in the middle of the sentence
+        if not self.speaking and self.robot.time_in_state() > self.robot.arrived_wait:
+            return SearchState(self.robot)
+        return None
+
+
 def main(args=None):
     rclpy.init(args=args)
-    node = CallingPersonFSM()
+    node = CallingPersonRobot()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

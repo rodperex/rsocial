@@ -49,17 +49,17 @@ class Event(Enum):
     TIMEOUT = auto()
 
 
-# State is an abstract base class (ABC, from the standard abc module): a template that
-# says which methods a state has, not a state itself. Inheriting from ABC makes Python
-# enforce the methods marked with @abstractmethod: State cannot be instantiated, and
-# neither can a subclass that does not implement them (TypeError when it is created,
-# naming the missing method). Without ABC, @abstractmethod is ignored. The states are
-# plain Python classes, not ROS nodes: the only node is the FSM, reachable as self.fsm
+# State is a template for the states, not a state itself. As an abstract class (ABC),
+# it cannot be instantiated, and each state must implement the methods marked with
+# @abstractmethod (otherwise, TypeError when the state is created).
+# The states are plain Python classes, not ROS nodes: the node is the robot
 class State(ABC):
     """Base class for a FSM state, with the on_entry/on_do/on_exit lifecycle."""
 
-    def __init__(self, fsm: 'BumpGoFSM'):
-        self.fsm = fsm
+    def __init__(self, robot: 'BumpGoRobot'):
+        # Every state keeps the robot that created it, to read its information (events,
+        # times...) in the guards and to use its methods (publish...)
+        self.robot = robot
 
     def on_entry(self):
         """Run once when entering the state (initialize resources)."""
@@ -74,61 +74,19 @@ class State(ABC):
         """Run once when leaving the state (safe stop / release)."""
 
     def check_transition(self):
-        """Evaluate guards for this state and return the next State, or None."""
+        """Evaluate guards and return the next State, created with self.robot, or None."""
         return None
 
 
-class ForwardState(State):
-    """Robot moves straight ahead until a bumper event fires."""
+class BumpGoRobot(Node):
+    """
+    The robot as the states see it: the state of the world and of the robot, and how to act.
 
-    def on_entry(self):
-        self.fsm.get_logger().info('Entering FORWARD')
-
-    def on_do(self):
-        self.fsm.publish_vel(linear=SPEED_LINEAR, angular=0.0)
-
-    def check_transition(self):
-        # guard: bumper pressed event received
-        if self.fsm.last_event == Event.BUMP_PRESSED:
-            return BackState(self.fsm)
-        return None
-
-
-class BackState(State):
-    """Robot backs away from the obstacle for a fixed duration."""
-
-    def on_entry(self):
-        self.fsm.get_logger().info('Entering BACK')
-        self.fsm.reset_state_timer()
-
-    def on_do(self):
-        self.fsm.publish_vel(linear=-SPEED_LINEAR, angular=0.0)
-
-    def check_transition(self):
-        # guard: enough time has elapsed backing up
-        if self.fsm.time_in_state() > BACKING_TIME:
-            return TurnState(self.fsm)
-        return None
-
-
-class TurnState(State):
-    """Robot turns in place for a fixed duration before resuming forward."""
-
-    def on_entry(self):
-        self.fsm.get_logger().info('Entering TURN')
-        self.fsm.reset_state_timer()
-
-    def on_do(self):
-        self.fsm.publish_vel(linear=0.0, angular=SPEED_ANGULAR)
-
-    def check_transition(self):
-        # guard: enough time has elapsed turning
-        if self.fsm.time_in_state() > TURNING_TIME:
-            return ForwardState(self.fsm)
-        return None
-
-
-class BumpGoFSM(Node):
+    The guards of the states consult it to decide (a bump, time in the state),
+    and the states use its methods to act (move). It is also the ROS node that
+    runs the FSM: it keeps the current state and runs it every cycle. The FSM is this
+    node plus the states, which decide what to do and which state comes next.
+    """
 
     def __init__(self):
         super().__init__('bump_go_fsm')
@@ -144,6 +102,9 @@ class BumpGoFSM(Node):
         self.vel_pub = self.create_publisher(
             TwistStamped if self.stamped else Twist, '/out_vel', 10)
 
+        # Initial state (the states are defined below). The robot passes itself (self)
+        # to the state, which keeps it as self.robot; in check_transition each state
+        # passes it on to the next one
         self.current_state = ForwardState(self)
         self.current_state.on_entry()
 
@@ -190,9 +151,59 @@ class BumpGoFSM(Node):
         return self.get_clock().now() - self.state_ts
 
 
+class ForwardState(State):
+    """Robot moves straight ahead until a bumper event fires."""
+
+    def on_entry(self):
+        self.robot.get_logger().info('Entering FORWARD')
+
+    def on_do(self):
+        self.robot.publish_vel(linear=SPEED_LINEAR, angular=0.0)
+
+    def check_transition(self):
+        # guard: bumper pressed event received
+        if self.robot.last_event == Event.BUMP_PRESSED:
+            return BackState(self.robot)
+        return None
+
+
+class BackState(State):
+    """Robot backs away from the obstacle for a fixed duration."""
+
+    def on_entry(self):
+        self.robot.get_logger().info('Entering BACK')
+        self.robot.reset_state_timer()
+
+    def on_do(self):
+        self.robot.publish_vel(linear=-SPEED_LINEAR, angular=0.0)
+
+    def check_transition(self):
+        # guard: enough time has elapsed backing up
+        if self.robot.time_in_state() > BACKING_TIME:
+            return TurnState(self.robot)
+        return None
+
+
+class TurnState(State):
+    """Robot turns in place for a fixed duration before resuming forward."""
+
+    def on_entry(self):
+        self.robot.get_logger().info('Entering TURN')
+        self.robot.reset_state_timer()
+
+    def on_do(self):
+        self.robot.publish_vel(linear=0.0, angular=SPEED_ANGULAR)
+
+    def check_transition(self):
+        # guard: enough time has elapsed turning
+        if self.robot.time_in_state() > TURNING_TIME:
+            return ForwardState(self.robot)
+        return None
+
+
 def main(args=None):
     rclpy.init(args=args)
-    node = BumpGoFSM()
+    node = BumpGoRobot()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
