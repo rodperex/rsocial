@@ -1,5 +1,8 @@
 # Waypoints in the map frame. These are free in the maps of the house (Kobuki and
-# TurtleBot 4) and of the TurtleBot 4 warehouse; with another map, check them in RViz
+# TurtleBot 4) and of the TurtleBot 4 warehouse; with another map, check them in RViz.
+# Both are on the -x side: in the warehouse the dock is at (0.16, 0), in front of
+# the robot, and it is not in the map nor seen by the lidar (too low), so Nav2
+# would drive the robot over it on the way to a waypoint on the +x side
 fsm_nav_node:
   ros__parameters:
     # Seconds of robot time to reach each waypoint; after that the goal is canceled (TIMEOUT)
@@ -8,5 +11,5 @@ fsm_nav_node:
       x: -1.0
       y: 0.0
     waypoint2:
-      x: 4.0
+      x: -5.0
       y: 0.0
