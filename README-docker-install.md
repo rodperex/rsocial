@@ -74,7 +74,7 @@ ros2 launch square_motion square_move.launch.py robot:=kobuki_sim
 ```
 
 Los ejemplos que mueven el robot necesitan el argumento `robot` (ver
-[Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos)).
+[README-examples-kobuki.md](README-examples-kobuki.md#elegir-el-robot-en-los-ejemplos), los ejemplos con el Kobuki).
 
 Dentro del contenedor Gazebo no tiene GPU y renderiza por software, así que la
 simulación va bastante más lenta que en tiempo real. Para trabajar con fluidez

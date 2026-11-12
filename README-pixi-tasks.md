@@ -58,11 +58,11 @@ preparada con `tb4-sim` y deja el simulador abierto.
 
 | Tarea | Mundo | Render |
 | --- | --- | --- |
-| `sim` | Los del simulador (`warehouse` por defecto) | GPU por defecto |
-| `sim-nvidia` | Los del simulador | GPU NVIDIA (portátiles con gráfica híbrida) |
-| `sim-generic` | Los del simulador | CPU: más lento, pero el láser siempre funciona |
-| `sim-house` | Casa de AWS RoboMaker (paquete `tb4_worlds`; necesita `build`) | GPU por defecto |
-| `sim-house-nvidia` | Casa de AWS RoboMaker | GPU NVIDIA |
+| `sim-nvidia` | Los del simulador (`warehouse` por defecto) | GPU NVIDIA (también portátiles con gráfica híbrida). La que usan las guías |
+| `sim` | Los del simulador | GPU por defecto: ordenadores sin NVIDIA |
+| `sim-generic` | Los del simulador | CPU: más lento, pero el láser siempre funciona. Si las otras fallan |
+| `sim-house-nvidia` | Casa de AWS RoboMaker (paquete `tb4_worlds`; necesita `build`) | GPU NVIDIA |
+| `sim-house` | Casa de AWS RoboMaker | GPU por defecto |
 | `sim-house-generic` | Casa de AWS RoboMaker | CPU |
 
 Las opciones se añaden detrás de la tarea:
@@ -75,7 +75,7 @@ Las opciones se añaden detrás de la tarea:
 | `x:=`, `y:=`, `yaw:=` | Posición inicial del robot (m y rad) | `0.0` (en la casa, `x:=0.0 y:=1.5`) |
 
 Por ejemplo: `pixi run sim-nvidia world:=maze rviz:=true`. Con
-`--show-args` (`pixi run sim --show-args`) se ven todas sin lanzar nada. Ver
+`--show-args` (`pixi run sim-nvidia --show-args`) se ven todas sin lanzar nada. Ver
 [Opciones del simulador](README-pixi-install.md#opciones-del-simulador),
 [Elegir el mundo](README-pixi-install.md#elegir-el-mundo) y
 [Simular en una casa](README-pixi-install.md#simular-en-una-casa).

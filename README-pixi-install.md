@@ -199,9 +199,13 @@ dibuja Gazebo la escena, que es también cómo calcula el láser:
 
 | Tarea | Cuándo usarla |
 | --- | --- |
-| `pixi run sim` | Primera opción en cualquier ordenador: usa la tarjeta gráfica que el sistema tenga por defecto |
-| `pixi run sim-nvidia` | Portátiles con dos tarjetas gráficas (integrada + NVIDIA): fuerza la NVIDIA. Es la más rápida |
-| `pixi run sim-generic` | Si las otras fallan: dibuja con la CPU. Funciona en cualquier ordenador, pero va varias veces más lento |
+| `pixi run sim-nvidia` | Ordenadores con tarjeta NVIDIA, también los portátiles con dos tarjetas gráficas (integrada + NVIDIA): fuerza la NVIDIA. Es la más rápida |
+| `pixi run sim` | Ordenadores sin NVIDIA: usa la tarjeta gráfica que el sistema tenga por defecto |
+| `pixi run sim-generic` | Si las otras fallan (el simulador no arranca o el láser no ve nada): dibuja con la CPU. Funciona en cualquier ordenador, pero va varias veces más lento |
+
+Los comandos de esta guía usan `sim-nvidia` (y `sim-house-nvidia` en la casa).
+Si tu ordenador no tiene NVIDIA, cámbialos por `sim` (o `sim-house`), y si
+fallan, por `sim-generic` (o `sim-house-generic`).
 
 A cualquiera de ellas se le pueden añadir opciones detrás: el mundo, RViz, el
 modelo o la posición del robot (ver
@@ -209,7 +213,8 @@ modelo o la posición del robot (ver
 `rviz:=true`, que abre RViz con el mapa. Por ejemplo:
 
 ```bash
-pixi run sim rviz:=true
+pixi run tb4-sim                    # si la terminal no está preparada todavía
+pixi run sim-nvidia rviz:=true      # sin NVIDIA, sim; si falla, sim-generic
 ```
 
 Las tareas solo lanzan `turtlebot4_gz.launch.py` con algunas variables de
@@ -246,8 +251,8 @@ obstáculos y no navegará. Cierra el simulador (Ctrl+C) y usa otra de las
 tareas de la tabla:
 
 ```bash
-pixi run sim-nvidia rviz:=true    # si el ordenador tiene NVIDIA
-pixi run sim-generic rviz:=true   # si no
+pixi run sim-nvidia rviz:=true    # si lanzaste sim y el ordenador tiene NVIDIA
+pixi run sim-generic rviz:=true   # en cualquier otro caso
 ```
 
 ### 2. Desacoplar el robot (terminal 2)
@@ -342,23 +347,25 @@ Con las tareas de Pixi, en una terminal preparada con `tb4sim` o
 `pixi run tb4-sim`:
 
 ```bash
-pixi run sim world:=maze rviz:=true
-pixi run sim-nvidia world:=depot model:=lite
-pixi run sim-generic world:=empty x:=1.0 y:=-0.5 yaw:=1.57
-pixi run sim-house rviz:=true
+pixi run sim-nvidia world:=maze rviz:=true
+pixi run sim world:=depot model:=lite                        # sin NVIDIA
+pixi run sim-generic world:=empty x:=1.0 y:=-0.5 yaw:=1.57   # si las otras fallan
+pixi run sim-house-nvidia rviz:=true
 ```
 
 Lo mismo con `ros2 launch`, en una terminal preparada igual (ver los comandos
 equivalentes a cada tarea en el [paso 1](#1-lanzar-el-simulador-terminal-1)):
 
 ```bash
-ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze rviz:=true
 __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
   __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
-  ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=depot model:=lite
+  ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze rviz:=true
+ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=depot model:=lite
 LIBGL_ALWAYS_SOFTWARE=1 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py \
   world:=empty x:=1.0 y:=-0.5 yaw:=1.57
-ros2 launch tb4_worlds small_house.launch.py rviz:=true
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+  __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+  ros2 launch tb4_worlds small_house.launch.py rviz:=true
 ```
 
 Ten en cuenta que:
@@ -369,7 +376,7 @@ Ten en cuenta que:
   terminal sin preparar es el 0, el del robot real, y el simulador se mezcla
   con él.
 - Para ver todas las opciones, añade `--show-args` (no lanza nada):
-  `pixi run sim --show-args` o
+  `pixi run sim-nvidia --show-args` o
   `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py --show-args`.
   Salen muchas más que las de la tabla, casi todas internas. Entre ellas,
   `localization:=true`, `slam:=true` y `nav2:=true` lanzan también la
@@ -381,7 +388,7 @@ Ten en cuenta que:
 
 ### Elegir el mundo
 
-Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim world:=maze`.
+Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim-nvidia world:=maze`.
 
 | Mundo | Descripción | Mapa para la localización |
 | --- | --- | --- |
@@ -393,7 +400,7 @@ Añade `world:=<mundo>` detrás de la tarea, por ejemplo `pixi run sim world:=ma
 Con otro mundo, en el paso 3 usa su mapa. Por ejemplo, con `maze`:
 
 ```bash
-pixi run sim world:=maze rviz:=true      # paso 1
+pixi run sim-nvidia world:=maze rviz:=true      # paso 1
 ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
   map:=$(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/maps/maze.yaml   # paso 3
 ```
@@ -411,8 +418,8 @@ tres variantes que el simulador normal:
 
 | Tarea | Cuándo usarla |
 | --- | --- |
-| `pixi run sim-house` | Como `sim` |
 | `pixi run sim-house-nvidia` | Como `sim-nvidia` |
+| `pixi run sim-house` | Como `sim` |
 | `pixi run sim-house-generic` | Como `sim-generic` |
 
 Admiten las mismas [opciones](#opciones-del-simulador) que el simulador
@@ -430,7 +437,7 @@ ros2 launch tb4_worlds small_house.launch.py rviz:=true
 Para navegar, sigue los pasos de arriba cambiando solo el mapa del paso 3:
 
 ```bash
-pixi run sim-house rviz:=true      # paso 1
+pixi run sim-house-nvidia rviz:=true      # paso 1
 ros2 launch turtlebot4_navigation localization.launch.py use_sim_time:=true \
   map:=$(ros2 pkg prefix aws_robomaker_small_house_world)/share/aws_robomaker_small_house_world/maps/turtlebot3_waffle_pi/map.yaml   # paso 3
 ```
@@ -521,9 +528,9 @@ timeout 3 ros2 topic pub -r 10 /cmd_vel_unstamped geometry_msgs/msg/Twist "{line
 Los ejemplos de [README-examples.md](README-examples.md) se lanzan con el
 simulador del TurtleBot 4 añadiendo `robot:=tb4_sim` (ver
 [Elegir el robot en los ejemplos](README-examples.md#elegir-el-robot-en-los-ejemplos)).
-Valen los mundos del simulador (`pixi run sim`, con `world:=` si quieres
+Valen los mundos del simulador (`pixi run sim-nvidia`, con `world:=` si quieres
 otro); para los de cámara, VFF y Nav2 viene mejor la casa (`pixi run
-sim-house`, ver
+sim-house-nvidia`, ver
 [Mundos del TurtleBot 4](README-examples.md#mundos-del-turtlebot-4)).
 
 ### Robot real

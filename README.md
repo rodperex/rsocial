@@ -3,7 +3,8 @@
 Workspace docente de ROS 2 Jazzy con ejemplos de nodos, comunicaciones, TF,
 sensores, máquinas de estados, árboles de comportamiento, navegación e
 interacción humano-robot. Los ejemplos y cómo lanzarlos están en
-[README-examples.md](README-examples.md).
+[README-examples.md](README-examples.md), con el TurtleBot 4; lo que cambia con
+el Kobuki, en [README-examples-kobuki.md](README-examples-kobuki.md).
 
 ## Instalación
 
@@ -177,7 +178,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 Después, en lugar del simulador: `ros2 launch kobuki kobuki.launch.py` (ver
 las opciones de láser y cámara en `src/kobuki/README.md`). Los ejemplos se
 lanzan entonces con `robot:=kobuki` en lugar de `robot:=kobuki_sim` (ver
-[README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)).
+[README-examples-kobuki.md](README-examples-kobuki.md#elegir-el-robot-en-los-ejemplos)).
 
 ### TurtleBot 4
 

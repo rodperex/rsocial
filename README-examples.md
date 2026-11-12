@@ -23,19 +23,19 @@ necesita varios procesos, cada comando va en una terminal distinta.
 
 ## Robots
 
-Los bloques 3 a 10 y el 13 necesitan un robot, real o simulado. Todos funcionan
-con los dos robots del curso: el **TurtleBot 4** y el **Kobuki**. En el curso
-se usa sobre todo el TurtleBot 4, en el simulador y en el robot real, así que en
-esta guía va siempre primero; con el Kobuki los ejemplos funcionan igual.
+Los bloques 3 a 10 y el 13 necesitan un robot, real o simulado. Esta guía es
+para el **TurtleBot 4**, el robot del curso, en el simulador y en el robot
+real.
+
+> **¿Usas el Kobuki?** Los ejemplos funcionan igual, pero cambia cómo se
+> preparan las terminales y se lanza el robot, sus mundos, la navegación y los
+> ejemplos que leen el bumper. Está todo en
+> [README-examples-kobuki.md](README-examples-kobuki.md).
 
 Con el TurtleBot 4 físico hay que hacer algunas cosas más (sacarlo de la base,
 desactivar la seguridad de la base para los bump and go, activar la
 profundidad de la cámara…). Están resumidas en
 [README-tb4-real.md](README-tb4-real.md).
-
-Además, el bloque 11 tiene un ejemplo para el robot **NAO**. Es el único: el
-NAO no es uno de los robots del curso y el resto de ejemplos no funciona con
-él.
 
 ### TurtleBot 4: preparar cada terminal con `tb4sim` o `tb4`
 
@@ -60,21 +60,19 @@ pixi run tb4       # robot real
 Usa la misma en todas las terminales de una sesión. Si aún no tienes estas
 funciones en tu `~/.bashrc`, añádelas como se explica en
 [Preparar cada terminal](README-pixi-install.md#preparar-cada-terminal-simulador-o-robot-real).
-Con el Kobuki no hacen falta (aunque también tiene sus tareas, `pixi run
-kobuki-sim` y `pixi run kobuki`, que ponen `ROBOT`; ver
-[Elegir el robot en los ejemplos](#elegir-el-robot-en-los-ejemplos)).
 
 ### Lanzar el robot
 
-Lanza el simulador (o los drivers del robot real) en una terminal aparte y
-déjalo abierto.
+Con el simulador, lánzalo en una terminal aparte y déjalo abierto. El robot
+real ya ejecuta sus drivers: no se lanza nada.
 
-| | TurtleBot 4 | Kobuki |
-| --- | --- | --- |
-| Simulador en el almacén y otros mundos | `pixi run sim` (o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) | Con `world:=` (ver [Mundos del Kobuki](#mundos-del-kobuki)) |
-| Simulador en la casa de AWS RoboMaker | `pixi run sim-house` (o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio | `ros2 launch kobuki simulation.launch.py` |
-| Robot real | Ya ejecuta sus drivers: no se lanza nada | `ros2 launch kobuki kobuki.launch.py` |
-| Instalación y detalles | [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación) | [README-kobuki-pixi.md](README-kobuki-pixi.md) (Pixi) o [README.md](README.md#kobuki-real) (nativa) |
+| Simulador | Comando |
+| --- | --- |
+| Almacén y otros mundos | `pixi run sim-nvidia` (sin NVIDIA, `sim`; si falla, `sim-generic`; o `ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py`) |
+| Casa de AWS RoboMaker | `pixi run sim-house-nvidia` (sin NVIDIA, `sim-house`; si falla, `sim-house-generic`; o `ros2 launch tb4_worlds small_house.launch.py`), con el paquete `tb4_worlds` de este repositorio |
+
+La instalación y los detalles del simulador están en
+[README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación).
 
 Recuerda `tb4sim` o `tb4` en cada terminal (ver
 [arriba](#turtlebot-4-preparar-cada-terminal-con-tb4sim-o-tb4)). El TurtleBot 4
@@ -84,7 +82,7 @@ empieza en su base de carga: desacóplalo antes de moverlo (ver
 #### Ver el robot en RViz
 
 Para ver el robot, sus TF y el láser en 3D, lanza RViz con la configuración de
-este repositorio (por ahora, solo para el TurtleBot 4):
+este repositorio:
 
 ```bash
 ros2 launch rsocial_robots rviz.launch.py robot:=$ROBOT
@@ -103,10 +101,13 @@ El simulador del TurtleBot 4 trae sus propios mundos, que se eligen añadiendo
 `world:=<mundo>` (por defecto, `warehouse`):
 
 ```bash
-pixi run sim                    # almacén con estanterías (warehouse)
-pixi run sim world:=maze        # recinto cerrado con paredes y obstáculos
-pixi run sim world:=empty       # suelo plano, sin obstáculos
-pixi run sim world:=depot       # nave industrial (se descarga la primera vez)
+pixi run tb4-sim                       # antes, preparar la terminal para el simulador
+
+# Sin NVIDIA, sim en lugar de sim-nvidia; si falla, sim-generic
+pixi run sim-nvidia                    # almacén con estanterías (warehouse)
+pixi run sim-nvidia world:=maze        # recinto cerrado con paredes y obstáculos
+pixi run sim-nvidia world:=empty       # suelo plano, sin obstáculos
+pixi run sim-nvidia world:=depot       # nave industrial (se descarga la primera vez)
 
 # Sin Pixi, el mismo lanzamiento:
 ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py world:=maze
@@ -117,8 +118,10 @@ o su posición inicial (`x:=`, `y:=`, `yaw:=`). Se añaden igual detrás de la
 tarea de Pixi que detrás de `ros2 launch`: ver
 [Opciones del simulador](README-pixi-install.md#opciones-del-simulador).
 
-Si el láser no funciona bien con tu gráfica, usa `sim-nvidia` o `sim-generic`
-en lugar de `sim` (ver
+Los comandos usan `sim-nvidia`, que dibuja con la tarjeta NVIDIA. Si tu
+ordenador no tiene NVIDIA, usa `sim`; si el simulador no arranca o el láser no
+ve nada, `sim-generic`, que funciona en cualquier ordenador pero va más lento
+(ver
 [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación)).
 
 Los bloques 3 a 5, el 8 y el 13 funcionan en cualquiera de ellos: `empty` es el más
@@ -128,73 +131,33 @@ cómodo para los de movimiento y `maze` o `warehouse` para los que usan el láse
 Para el bloque 10 (Nav2), usa también el almacén: tiene mapa y el simulador va
 rápido.
 
-Para los bloques 6 y 7 (cámara y VFF) puede venir mejor una casa con muebles,
-como la del simulador del Kobuki. Este repositorio incluye el paquete
-`tb4_worlds`, que lanza el TurtleBot 4 en esa misma casa de AWS RoboMaker
+Para los bloques 6 y 7 (cámara y VFF) puede venir mejor una casa con muebles.
+Este repositorio incluye el paquete `tb4_worlds`, que lanza el TurtleBot 4 en
+la casa de AWS RoboMaker
 (necesita el workspace compilado; ver
 [Simular en una casa](README-pixi-install.md#simular-en-una-casa)). Es mucho
 más pesada que el almacén: en un portátil puede ir a la cuarta parte del tiempo
 real, incluso con la GPU NVIDIA.
 
 ```bash
-pixi run sim-house                              # o sim-house-nvidia, sim-house-generic
+pixi run tb4-sim                                # antes, preparar la terminal para el simulador
+pixi run sim-house-nvidia                       # sin NVIDIA, sim-house; si falla, sim-house-generic
 ros2 launch tb4_worlds small_house.launch.py    # sin Pixi
 ```
 
 Para los ejemplos de cámara conviene además preparar la escena (ver el
 [bloque 7](#7-navegación-reactiva-con-vff)).
 
-#### Mundos del Kobuki
-
-El simulador del Kobuki no tiene tareas de Pixi: se lanza siempre con
-`ros2 launch`, en una terminal del entorno `kobuki` (`pixi run kobuki-sim`, o
-`pixi shell -e kobuki` y `source install/setup.bash`). Por defecto carga la
-casa de AWS RoboMaker. Para cambiar de mundo, `world:=` recibe la **ruta
-completa** del fichero `.world`, no un nombre como en el TurtleBot 4:
-
-```bash
-# Casa (por defecto)
-ros2 launch kobuki simulation.launch.py
-
-# Almacén pequeño
-ros2 launch kobuki simulation.launch.py \
-  world:=$(ros2 pkg prefix aws_robomaker_small_warehouse_world)/share/aws_robomaker_small_warehouse_world/worlds/small_warehouse/small_warehouse.world
-
-# Librería
-ros2 launch kobuki simulation.launch.py \
-  world:=$(ros2 pkg prefix aws_robomaker_bookstore_world)/share/aws_robomaker_bookstore_world/worlds/bookstore.world
-
-# Suelo plano, sin obstáculos
-ros2 launch kobuki simulation.launch.py \
-  world:=$(ros2 pkg prefix kobuki)/share/kobuki/worlds/empty.world
-```
-
-`$(ros2 pkg prefix <paquete>)` escribe la ruta donde está instalado el
-paquete, así que estos comandos valen en cualquier ordenador. Con
-`gui:=false` se lanza sin la ventana de Gazebo (el robot se simula igual).
-`ros2 launch kobuki simulation.launch.py --show-args` muestra todas las
-opciones.
-
-Los mapas de estos mundos, para la navegación, están en el paquete `kobuki`
-(ver el [bloque 10](#10-navegación-con-nav2)):
-
-| Mundo | Mapa (`map:=`) |
-| --- | --- |
-| Casa | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_house.yaml` (el de por defecto) |
-| Almacén pequeño | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_warehouse.yaml` |
-| Librería | `$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml` |
-| Suelo plano | No tiene: sirve para mover el robot, no para navegar con Nav2 |
-
 ### Elegir el robot en los ejemplos
 
-Casi todos los ejemplos usan el mismo código con dos robots. Sus
-launchers tienen un argumento obligatorio, `robot`, que indica el robot y si
-es el simulado o el real:
+Casi todos los ejemplos usan el mismo código con el TurtleBot 4 y con el
+Kobuki. Sus launchers tienen un argumento obligatorio, `robot`, que indica el
+robot y si es el simulado o el real:
 
-| | TurtleBot 4 | Kobuki |
-| --- | --- | --- |
-| Simulador | `robot:=tb4_sim` | `robot:=kobuki_sim` |
-| Robot real | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 6](#turtlebot-4-real-activar-la-profundidad)) | `robot:=kobuki` |
+| | TurtleBot 4 |
+| --- | --- |
+| Simulador | `robot:=tb4_sim` |
+| Robot real | `robot:=tb4`, o `robot:=tb4_rgbd` con la profundidad de la cámara activada (`robot:=tb4_rgbd_c` si las imágenes viajan comprimidas; ver [bloque 6](#turtlebot-4-real-activar-la-profundidad)) |
 
 Con él, el launcher elige los topics del robot, el tipo de mensaje de
 velocidad y si los nodos usan el reloj del simulador (`use_sim_time`), que es
@@ -210,18 +173,13 @@ preparación de la terminal:
 | `pixi run tb4`, o `pixi shell` y `tb4` | `tb4` |
 | `pixi run tb4-rgbd` | `tb4_rgbd` |
 | `pixi run tb4-rgbd-c` | `tb4_rgbd_c` |
-| `pixi run kobuki-sim`, o `pixi shell -e kobuki` | `kobuki_sim` |
-| `pixi run kobuki` | `kobuki` |
-
-Las tareas `kobuki` y `kobuki-sim` abren una shell del entorno `kobuki` con el
-workspace cargado, igual que `tb4` y `tb4-sim`.
 
 Para el resto de casos (por ejemplo, la instalación nativa sin Pixi), defínela
 a mano en cada terminal en la que lances ejemplos, después de preparar la
 terminal:
 
 ```bash
-export ROBOT=tb4     # o tb4_sim, tb4_rgbd, tb4_rgbd_c, kobuki_sim, kobuki
+export ROBOT=tb4     # o tb4_sim, tb4_rgbd, tb4_rgbd_c
 ```
 
 Compruébala con `echo $ROBOT` antes de lanzar un ejemplo.
@@ -237,41 +195,35 @@ del TurtleBot 4 terminan en `_tb4`.
 
 Los topics y frames de cada caso están en un único fichero,
 [`src/rsocial_robots/config/robots.yaml`](src/rsocial_robots/config/robots.yaml)
-(paquete `rsocial_robots`), con una entrada para cada valor de `robot`. Un
-mismo robot no publica siempre en los mismos topics en el simulador y en el
-robot real, por eso tienen entradas distintas:
+(paquete `rsocial_robots`), con una entrada para cada valor de `robot`. El
+robot no publica siempre en los mismos topics en el simulador y en el robot
+real, por eso tienen entradas distintas:
 
-| | `tb4_sim` | `tb4` | `tb4_rgbd` | `tb4_rgbd_c` | `kobuki_sim` | `kobuki` |
-| --- | --- | --- | --- | --- | --- | --- |
-| Láser | `/scan` | `/scan` | `/scan` | `/scan` | `/scan_raw` | `/scan_filtered` |
-| Imagen | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` | `/oakd/rgb/image_local` (descomprimida en el portátil) | `/rgbd_camera/image` | `/camera/color/image_raw` |
-| Profundidad | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) | `/oakd/stereo/image_local` (mm, descomprimida en el portátil) | `/rgbd_camera/depth_image` (m) | `/camera/depth/image_raw` (mm) |
-| Frame óptico | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `camera_rgb_optical_frame` | `camera_color_optical_frame` |
-| Velocidad (`/cmd_vel`) | `TwistStamped` | `TwistStamped` | `TwistStamped` | `TwistStamped` | `Twist` | `Twist` |
-| `use_sim_time` | `true` | `false` | `false` | `false` | `true` | `false` |
+| | `tb4_sim` | `tb4` | `tb4_rgbd` | `tb4_rgbd_c` |
+| --- | --- | --- | --- | --- |
+| Láser | `/scan` | `/scan` | `/scan` | `/scan` |
+| Imagen | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/preview/image_raw` | `/oakd/rgb/image_raw` | `/oakd/rgb/image_local` (descomprimida en el portátil) |
+| Profundidad | `/oakd/rgb/preview/depth` (m) | No hay | `/oakd/stereo/image_raw` (mm) | `/oakd/stereo/image_local` (mm, descomprimida en el portátil) |
+| Frame óptico | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` | `oakd_rgb_camera_optical_frame` |
+| Velocidad (`/cmd_vel`) | `TwistStamped` | `TwistStamped` | `TwistStamped` | `TwistStamped` |
+| `use_sim_time` | `true` | `false` | `false` | `false` |
 
-Las entradas de los simuladores están comprobadas. Las de los robots reales
-dependen de los sensores montados y de cómo se lanzan sus drivers. Las del
-TurtleBot 4 dependen de cómo esté configurada su cámara: `tb4` es la
-configuración de fábrica, que no publica profundidad, `tb4_rgbd` la
-configuración con profundidad y `tb4_rgbd_c` la misma con las imágenes
-comprimidas en la wifi (ver
+La entrada del simulador está comprobada. Las del robot real dependen de cómo
+esté configurada su cámara: `tb4` es la configuración de fábrica, que no
+publica profundidad, `tb4_rgbd` la configuración con profundidad y
+`tb4_rgbd_c` la misma con las imágenes comprimidas en la wifi (ver
 [TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
-La del Kobuki supone el láser RPLIDAR con el filtro de `kobuki.launch.py` y la
-cámara Astra (`astra:=true`).
-Antes de usar un robot real,
-comprueba sus topics con `ros2 topic list` y, si no coinciden, cámbialos en el
-YAML. Con `--symlink-install` no hace falta recompilar: el cambio se aplica al
-volver a lanzar.
+Antes de usar el robot real, comprueba sus topics con `ros2 topic list` y, si
+no coinciden, cámbialos en el YAML. Con `--symlink-install` no hace falta
+recompilar: el cambio se aplica al volver a lanzar.
 
-Otras diferencias, que los launchers ya resuelven y solo hay que conocer al
-lanzar los nodos con `ros2 run` o escribir nodos nuevos:
+Otras particularidades del TurtleBot 4, que los launchers ya resuelven y solo
+hay que conocer al lanzar los nodos con `ros2 run` o escribir nodos nuevos:
 
-| | TurtleBot 4 | Kobuki |
-| --- | --- | --- |
-| Velocidad | `geometry_msgs/TwistStamped` (parámetro `enable_stamped_cmd_vel:=true` de los nodos) | `geometry_msgs/Twist` |
-| Bumper | `/hazard_detection` (`irobot_create_msgs/HazardDetectionVector`) | `/events/bumper` (`kobuki_ros_interfaces/BumperEvent`) |
-| TF de la base | `odom` → `base_footprint` → `base_link` | `odom` → `base_footprint` → `base_link` |
+- **Velocidad**: `geometry_msgs/TwistStamped` (parámetro
+  `enable_stamped_cmd_vel:=true` de los nodos).
+- **Bumper**: `/hazard_detection` (`irobot_create_msgs/HazardDetectionVector`).
+- **TF de la base**: `odom` → `base_footprint` → `base_link`.
 
 ## 1. Nodos, topics y ciclo de vida
 
@@ -382,8 +334,7 @@ Con el robot en marcha. Detectan el obstáculo más cercano del `LaserScan`
 Versión sin TF: corrige el ángulo a mano con la posición del láser en el
 robot (`laser_yaw` y `laser_flipped` en `src/rsocial_robots/config/robots.yaml`,
 que el launcher pasa según `robot:=`): 0° es el frente y los positivos la
-izquierda. El láser del TurtleBot 4 está girado 90° y el del Kobuki real
-está al revés y hacia atrás.
+izquierda. El láser del TurtleBot 4 está girado 90°.
 
 ```bash
 ros2 launch laser laser_no_tf.launch.py robot:=$ROBOT
@@ -426,9 +377,7 @@ lanza el propio robot) se usa el apartado
 
 Aquí nadie lanza la cámara, así que hacen falta tres launchers, cada uno en su
 terminal: el driver de la cámara, YOLO con los topics de la OAK-D y la
-conversión a `vision_msgs`. Si la OAK-D está montada en el Kobuki y ya has
-lanzado su driver (ver [README-kobuki-pixi.md](README-kobuki-pixi.md)),
-sáltate la terminal 1:
+conversión a `vision_msgs`:
 
 ```bash
 # Terminal 1: driver de la cámara
@@ -711,28 +660,23 @@ vuelve a avanzar.
 FSM con `if/elif` sobre el estado actual:
 
 ```bash
-ros2 launch fsm_bumpgo bumpgo_tb4.launch.py  # TurtleBot 4
-ros2 launch fsm_bumpgo bumpgo.launch.py      # Kobuki
+ros2 launch fsm_bumpgo bumpgo_tb4.launch.py
 ```
 
 La misma FSM con una clase por estado (`on_entry`, `on_do`, `on_exit`) y
 transiciones explícitas:
 
 ```bash
-ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py  # TurtleBot 4
-ros2 launch fsm_bumpgo bumpgo_fsm.launch.py      # Kobuki
+ros2 launch fsm_bumpgo bumpgo_fsm_tb4.launch.py
 ```
 
-Cada robot tiene su propio nodo y su propio launcher (los del TurtleBot 4
-terminan en `_tb4`). La FSM es la misma; solo cambia la entrada del bumper:
-
-- **TurtleBot 4**: la base iRobot Create 3 no tiene un topic de bumper. Los
-  golpes llegan en `/hazard_detection`, un vector con todos los peligros
-  activos (golpe, precipicio, límite de marcha atrás…). Un golpe es una
-  detección de tipo `BUMP`. Sus launchers publican además `TwistStamped`, que
-  es lo que espera el TurtleBot 4.
-- **Kobuki**: `/events/bumper` publica un mensaje cada vez que un bumper se
-  pulsa o se suelta. En el simulador lo genera un nodo a partir del láser.
+Estos launchers no llevan `robot:=`: leen el bumper, que es distinto en cada
+robot, así que cada uno tiene su propio nodo y su propio launcher (los del
+TurtleBot 4 terminan en `_tb4`). La base iRobot Create 3 del TurtleBot 4 no
+tiene un topic de bumper. Los golpes llegan en `/hazard_detection`, un vector
+con todos los peligros activos (golpe, precipicio, límite de marcha atrás…). Un
+golpe es una detección de tipo `BUMP`. Sus launchers publican además
+`TwistStamped`, que es lo que espera el TurtleBot 4.
 
 ### TurtleBot 4 real
 
@@ -902,32 +846,30 @@ completa** de su fichero `.yaml` (el `.pgm` tiene que estar al lado). Escribe
 la ruta con `$HOME` o `$(ros2 pkg prefix ...)`: en `map:=~/...` la terminal no
 cambia `~` por tu directorio personal.
 
-La navegación no se lanza con el simulador ni con los drivers: va **aparte**,
-en otras terminales y con el robot ya en marcha. Lo que cambia entre robots es
-cuántos lanzamientos son:
-
-| | TurtleBot 4 | Kobuki |
-| --- | --- | --- |
-| Lanzamientos | Dos: localización y, después de dar la posición inicial, Nav2 | Uno: localización, Nav2 y RViz juntos |
-| Simulador | `localization.launch.py` y `nav2.launch.py` (paquete `turtlebot4_navigation`), con `use_sim_time:=true` | `ros2 launch kobuki navigation_sim.launch.py` |
-| Robot real | Los mismos, sin `use_sim_time` | `ros2 launch kobuki navigation.launch.py map:=...` |
-| Mapa por defecto | `warehouse` | Simulador: la casa. Robot real: ninguno, `map:=` es obligatorio |
+La navegación no se lanza con el simulador: va **aparte**, en otras
+terminales y con el robot ya en marcha. Son dos lanzamientos, los dos del
+paquete `turtlebot4_navigation`: la localización (`localization.launch.py`)
+y, después de dar la posición inicial, Nav2 (`nav2.launch.py`). En el
+simulador, los dos con `use_sim_time:=true`. Sin `map:=`, la localización usa
+el mapa del almacén (`warehouse`).
 
 Al arrancar hay que dar en RViz la posición inicial del robot con **2D Pose
 Estimate**: clic donde está el robot y arrastrar hacia donde mira. Las
-lecturas del láser tienen que quedar encima de las paredes del mapa. La
-excepción es el Kobuki en el simulador: su localización ya arranca en (0, 0),
-que es donde aparece el robot.
+lecturas del láser tienen que quedar encima de las paredes del mapa.
 
 ### TurtleBot 4 en el simulador
 
 Los ejemplos de navegación se prueban en el almacén (`warehouse`), el mundo
 por defecto del simulador, que va mucho más rápido que la casa. Cada comando en
-su terminal (preparadas con `tb4sim` o `pixi run tb4-sim`):
+su terminal:
 
 ```bash
-# 1. Simulador del almacén (sim-nvidia con la GPU NVIDIA, ver README-pixi-install.md)
-pixi run sim
+# 0. En CADA terminal, antes de su comando: prepararla para el simulador
+#    (dominio 1, Fast DDS, ROBOT=tb4_sim). Con el robot real, pixi run tb4
+pixi run tb4-sim
+
+# 1. Simulador del almacén (sin NVIDIA, sim; si falla, sim-generic)
+pixi run sim-nvidia
 
 # 2. Sacar el robot de la base
 pixi run undock
@@ -967,7 +909,7 @@ because transform from base_link to map did not become available`); el panel
 inicial, cierra Nav2 (Ctrl+C) y vuelve a lanzarlo.
 
 Con otro mundo, cambia el simulador y el mapa (ver la tabla de abajo). La casa
-(`pixi run sim-house`, o `sim-house-nvidia`) se parece más a los sitios donde
+(`pixi run sim-house-nvidia`, o `sim-house` sin NVIDIA) se parece más a los sitios donde
 trabajan los robots sociales, pero el simulador va mucho más lento; en ella el
 robot aparece en la habitación central, en (0, 1,5), mirando hacia la derecha
 del mapa (+x).
@@ -1018,37 +960,6 @@ ros2 launch turtlebot4_navigation localization.launch.py map:=$HOME/mapas/lab.ya
 ros2 launch turtlebot4_navigation nav2.launch.py    # después de dar la posición inicial
 ```
 
-### Kobuki en el simulador
-
-Con el simulador ya lanzado (ver [Mundos del Kobuki](#mundos-del-kobuki)), en
-otra terminal:
-
-```bash
-# Casa: usa su mapa por defecto
-ros2 launch kobuki navigation_sim.launch.py
-
-# Otro mundo: su mapa, por ejemplo el de la librería
-ros2 launch kobuki navigation_sim.launch.py \
-  map:=$(ros2 pkg prefix kobuki)/share/kobuki/maps/aws_bookstore.yaml
-```
-
-Abre su propio RViz (`rviz:=False` para no abrirlo). Da la posición inicial y
-espera a que Nav2 termine de arrancar.
-
-### Kobuki real
-
-En una terminal, los drivers con el láser (ver
-[Lanzar el robot](#lanzar-el-robot)); en otra, la navegación con el mapa del
-sitio donde esté el robot:
-
-```bash
-ros2 launch kobuki kobuki.launch.py lidar_s2:=true                  # terminal 1
-ros2 launch kobuki navigation.launch.py map:=$HOME/mapas/lab.yaml   # terminal 2
-```
-
-`$HOME/mapas/lab.yaml` es un ejemplo: pon la ruta de tu mapa. Los mapas del
-paquete `kobuki` son de los mundos simulados y no valen para un sitio real.
-
 ### Ejemplos
 
 Con Nav2 en marcha, en otra terminal:
@@ -1074,7 +985,7 @@ Los dos terminan solos al acabar.
   `fsm_calling_person` (bloque 9), cada estado es una **tarea** (ir a un
   punto) que usa una **capacidad** (navegar). Podría haberse hecho también con
   un árbol de comportamiento (bloque 13).
-  Los puntos, (−1, 0) y (4, 0), y el tiempo máximo se configuran en
+  Los puntos, (−1, 0) y (−5, 0), y el tiempo máximo se configuran en
   `src/fsm_nav/config/waypoints.yaml`.
 
 El tiempo máximo de cada objetivo es de 2 minutos (`goal_timeout`, 120 s) y
@@ -1084,8 +995,8 @@ dos se lanzan con `robot:=$ROBOT`, que les dice si están en el simulador
 portátil, la casa puede ir a la cuarta parte), y con el reloj de la pared un
 objetivo se cancelaría antes de que el robot pudiera llegar.
 
-Sus puntos caen en zonas libres de los mapas de la casa (del TurtleBot 4 y del
-Kobuki) y del almacén del TurtleBot 4. En otro mundo, comprueba en RViz
+Sus puntos caen en zonas libres de los mapas del almacén y de la casa. En
+otro mundo, comprueba en RViz
 que los puntos caen en zonas libres y, si no, cámbialos: en `depot`, por
 ejemplo, el de `simple_navigation_app` cae fuera de la zona conocida.
 
@@ -1100,9 +1011,9 @@ argumento `backend` elige qué hay por debajo:
   la primera vez y necesita Internet para ello. Extract y YesNo son sencillos
   y fallan con frases complicadas.
 - `ollama`: STT y TTS locales, y Extract y YesNo con un LLM servido por
-  [Ollama](https://ollama.com), en tu GPU o en un servidor. Gratuito y mucho
-  mejor que el local; requiere tener Ollama instalado con el modelo
-  descargado.
+  [Ollama](https://ollama.com), en tu ordenador (con o sin tarjeta gráfica) o
+  en un servidor. Gratuito y mucho mejor que el local; requiere tener Ollama
+  instalado con el modelo descargado.
 - `hf`: STT y TTS locales, y Extract y YesNo con la API de Hugging Face;
   requiere `HF_TOKEN` y créditos de pago en Hugging Face.
 - `cloud`: servicios en la nube; requiere `OPENAI_API_KEY` con créditos y
@@ -1118,8 +1029,15 @@ montar Ollama y cómo probar los servicios.
 ros2 launch simple_hri simple_hri.launch.py
 ```
 
-o, con Ollama en tu ordenador (`ollama pull qwen2.5:3b` la primera vez) o en
-un servidor (`ollama_host:=servidor`):
+Al arrancar, muestra qué nodo y qué modelo usa cada servicio, y si va en la
+CPU o en la tarjeta gráfica. Por defecto el reconocedor de voz va en la CPU y
+el resto en la tarjeta gráfica, si la hay; se cambia con `stt_device`,
+`tts_device` y `llm_device` (`cpu` o `gpu`; ver el README de `simple_hri`).
+
+o, con Ollama en tu ordenador (con `ollama serve` en marcha en otra terminal y
+`ollama pull qwen2.5:7b` la primera vez; ver
+[Extraer información](#extraer-información)) o en un servidor
+(`ollama_host:=servidor`):
 
 ```bash
 ros2 launch simple_hri simple_hri.launch.py backend:=ollama
@@ -1133,20 +1051,24 @@ export GOOGLE_APPLICATION_CREDENTIALS="/ruta/a/las-credenciales.json"
 ros2 launch simple_hri simple_hri.launch.py backend:=cloud
 ```
 
-Con cualquier `backend`, el STT y el TTS locales (Whisper y MMS-TTS) se pueden
-cambiar por faster-whisper y Piper, más rápidos y con voces más naturales:
+Con cualquier `backend`, la voz del robot es Piper, que funciona en la CPU. El
+STT local es Whisper; se puede cambiar por faster-whisper, más rápido, y la voz
+por MMS-TTS, la que se usaba antes:
 
 ```bash
-ros2 launch simple_hri simple_hri.launch.py stt:=faster_whisper tts:=piper
-ros2 launch simple_hri simple_hri.launch.py backend:=ollama stt:=faster_whisper tts:=piper whisper_model:=small
+ros2 launch simple_hri simple_hri.launch.py stt:=faster_whisper
+ros2 launch simple_hri simple_hri.launch.py tts:=mms
 ```
 
-La primera vez descargan el modelo de faster-whisper y la voz de Piper al
-directorio `models/` y Silero VAD a `~/.cache/torch/hub`. Piper funciona en la
-CPU. En Pixi, faster-whisper usa la GPU solo si el sistema tiene CUDA 12
-(`/usr/local/cuda`); si no, avisa (`GPU unavailable ... using the CPU`) y
-funciona en la CPU, donde va bien con `tiny`, `base` o `small`. Si el nodo
-falla al cargar Silero VAD con `No module named 'torchaudio'`, tienes una
+La primera vez se descargan el modelo de Whisper o faster-whisper y la voz de
+Piper al directorio `models/`, y Silero VAD (para faster-whisper) a
+`~/.cache/torch/hub`. Whisper y faster-whisper usan el modelo `small`
+(`whisper_model:=`; `tiny` y `base` van más rápido, pero entienden mal el
+español con el micrófono del portátil) y funcionan en la CPU. Con
+`stt_device:=gpu` van en la tarjeta gráfica, si cabe junto al LLM; en Pixi,
+faster-whisper solo puede usarla si el sistema tiene CUDA 12
+(`/usr/local/cuda`), y si no, avisa (`GPU unavailable ... using the CPU`). Si el
+nodo falla al cargar Silero VAD con `No module named 'torchaudio'`, tienes una
 copia antigua en la caché; bórrala y se descarga la actual:
 
 ```bash
@@ -1186,34 +1108,70 @@ ni cancelación. Los `*_client` hacen lo mismo con `HRIClient`: el ciclo de
 control solo pregunta si ha terminado y qué ha pasado. `say`, `repeat` y
 `generate_response` usan también `HRIClient`.
 
-Con `simple_hri` en marcha, en otra terminal:
+Todos necesitan `simple_hri` en marcha. Cada comando, en otra terminal.
+
+### Hablar y escuchar
+
+Funcionan bien con el `backend` local:
 
 ```bash
 ros2 run hri_examples say                  # dice una frase (TTS)
 ros2 run hri_examples repeat               # escucha (STT) y repite lo que has dicho
 ros2 run hri_examples hri_example          # STT + TTS llamando a los servicios
 ros2 run hri_examples hri_example_client
-ros2 run hri_examples hri_example2         # pedido en un restaurante (Extract)
+```
+
+`say` admite `--ros-args -p text:="..."`.
+
+### Extraer información
+
+```bash
+ros2 run hri_examples hri_example2         # pedido en un restaurante: bebida, comida y postre
 ros2 run hri_examples hri_example2_client
-ros2 run hri_examples hri_example3         # respuesta sí/no (YesNo)
-ros2 run hri_examples hri_example3_client
 ros2 launch hri_examples generate_response.launch.py  # pregunta y responde con lo extraído
 ```
 
-`say` admite `--ros-args -p text:="..."`. La pregunta y la información que
-extrae `generate_response` se configuran en `src/hri_examples/config/hri.yaml`.
+La pregunta y la información que extrae `generate_response` se configuran en
+`src/hri_examples/config/hri.yaml`.
 
-### Con el robot NAO
+En el pedido del restaurante (`hri_example2`) el robot pregunta qué quieres de
+beber, de comer y de postre, y tú lo dices todo en la misma frase. Después
+llama a Extract tres veces sobre esa frase, una por categoría (`bebida`,
+`comida` y `postre`). Para eso el LLM tiene que separar las categorías: no
+basta con encontrar comida y bebida, tiene que saber cuál es cuál.
 
-Es el único ejemplo para el NAO (ver [Robots](#robots)).
-
-`nao_hri_example` combina voz, una postura de saludo y los LED del pecho.
-Además de `simple_hri`, necesita en marcha los servidores del NAO:
-`nao_lola_client` (paquete `nao_lola_client`), `nao_pos_action_server`
-(paquete `nao_pos_server`) y `led_action_server` (paquete `nao_led_server`).
+El LLM del `backend` local (Qwen2.5-1.5B) a veces se equivoca en esto, sobre
+todo si el reconocedor de voz entiende mal alguna palabra ("de poste un
+flaco"). Para que el ejemplo funcione bien, usa **Ollama** con el modelo
+`qwen2.5:7b`. Es gratuito y va en tu ordenador: en la CPU tarda unos 2 s por
+consulta, así que no necesitas tarjeta gráfica. Necesita unos 5 GB de disco y
+de memoria. La primera vez, instala Ollama como explica el
+[README de `simple_hri`](src/thirdparty/simple_hri/README.md#1-install-ollama)
+y descarga el modelo:
 
 ```bash
-ros2 run hri_examples nao_hri_example
+ollama pull qwen2.5:7b
+```
+
+Después, cada vez, en terminales distintas:
+
+```bash
+ollama serve                                       # el servidor de Ollama; déjalo abierto
+ros2 launch simple_hri simple_hri.launch.py backend:=ollama
+ros2 run hri_examples hri_example2                 # o hri_example2_client
+```
+
+Si Ollama se instaló como servicio del sistema, ya está en marcha y
+`ollama serve` dice que el puerto está ocupado: no hace falta lanzarlo.
+
+Para `generate_response`, que busca una sola cosa en la respuesta, basta con el
+`backend` local.
+
+### Sí o no
+
+```bash
+ros2 run hri_examples hri_example3         # respuesta sí/no (YesNo)
+ros2 run hri_examples hri_example3_client
 ```
 
 ## 12. Árboles de comportamiento sin robot
@@ -1235,15 +1193,15 @@ ros2 run bt_examples decorator          # decoradores FailureIsSuccess y Retry
 Con el robot en marcha. El mismo comportamiento que el bloque 8, con un
 árbol de `py_trees`:
 
-| Árbol | TurtleBot 4 | Kobuki |
-| --- | --- | --- |
-| Construido en Python | `ros2 launch bt_bumpgo bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo bumpgo.launch.py` |
-| Gira hacia el lado contrario al choque (usa la blackboard y `py_trees_ros`) | `ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo side_bumpgo.launch.py` |
-| Cargado desde un XML de Groot | `ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py` | `ros2 launch bt_bumpgo groot_bumpgo.launch.py` |
+| Árbol | Comando |
+| --- | --- |
+| Construido en Python | `ros2 launch bt_bumpgo bumpgo_tb4.launch.py` |
+| Gira hacia el lado contrario al choque (usa la blackboard y `py_trees_ros`) | `ros2 launch bt_bumpgo side_bumpgo_tb4.launch.py` |
+| Cargado desde un XML de Groot | `ros2 launch bt_bumpgo groot_bumpgo_tb4.launch.py` |
 
-Como en el bloque 8, cada robot tiene su propio nodo y launcher. Entre las dos
-versiones solo cambia `CheckBump` (y `Turn` en la versión side); el resto de
-comportamientos se reutilizan.
+Como en el bloque 8, cada robot tiene su propio nodo y launcher. Entre las
+versiones del TurtleBot 4 y del Kobuki solo cambia `CheckBump` (y `Turn` en la
+versión side); el resto de comportamientos se reutilizan.
 
 En el TurtleBot 4 real, desactiva antes los reflejos y el límite de marcha
 atrás de la base, o se moverá a saltos tras cada choque. Ver
@@ -1256,10 +1214,6 @@ atrás de la base, o se moverá a saltos tras cada choque. Ver
 `ForceSuccess`, `ForceFailure`, `Action` y `Condition`. Para cargar otro XML:
 
 ```bash
-# TurtleBot 4
 ros2 run bt_bumpgo bumpgo_groot_tb4 --ros-args -p xml_file:=/ruta/a/arbol.xml \
   -r /out_vel:=/cmd_vel -p enable_stamped_cmd_vel:=true
-# Kobuki
-ros2 run bt_bumpgo bumpgo_groot --ros-args -p xml_file:=/ruta/a/arbol.xml \
-  -r /out_vel:=/cmd_vel -r /bumper:=/events/bumper
 ```

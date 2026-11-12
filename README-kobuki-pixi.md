@@ -3,7 +3,8 @@
 El robot por defecto de `rsocial` es el TurtleBot 4 (ver
 [README-pixi-install.md](README-pixi-install.md#turtlebot-4-simulador-y-navegación)).
 Esta guía es la alternativa si prefieres trabajar con el Kobuki: su simulador
-y el robot real.
+y el robot real. Cómo se lanzan los ejemplos con el Kobuki está en
+[README-examples-kobuki.md](README-examples-kobuki.md).
 
 Parte de la [instalación normal con Pixi](README-pixi-install.md#instalación-normal)
 ya hecha. El Kobuki usa un entorno Pixi aparte, `kobuki`, definido en el mismo
@@ -97,7 +98,7 @@ ros2 launch oak_d_camera camera.launch.py \
 ```
 
 Los ejemplos se lanzan con `robot:=kobuki` (ver
-[README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)). Esa
+[README-examples-kobuki.md](README-examples-kobuki.md#elegir-el-robot-en-los-ejemplos)). Esa
 entrada supone la cámara Astra: con la OAK-D, cambia sus topics de cámara en
 `src/rsocial_robots/config/robots.yaml` por los de la OAK-D (`/color/image`,
 `/stereo/depth`, `/stereo/camera_info`).
