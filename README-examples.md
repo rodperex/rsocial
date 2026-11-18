@@ -1034,7 +1034,7 @@ CPU o en la tarjeta gráfica. Por defecto el reconocedor de voz va en la CPU y
 el resto en la tarjeta gráfica, si la hay; se cambia con `stt_device`,
 `tts_device` y `llm_device` (`cpu` o `gpu`; ver el README de `simple_hri`).
 
-o, con Ollama en tu ordenador (con `ollama serve` en marcha en otra terminal y
+o, con Ollama en tu ordenador (con el servicio de Ollama en marcha y
 `ollama pull qwen2.5:7b` la primera vez; ver
 [Extraer información](#extraer-información)) o en un servidor
 (`ollama_host:=servidor`):
@@ -1136,8 +1136,9 @@ El LLM del `backend` local (Qwen2.5-1.5B) a veces se equivoca en esto, sobre
 todo si el reconocedor de voz entiende mal alguna palabra ("de poste un
 flaco"). Para que el ejemplo funcione bien, usa **Ollama** con el modelo
 `qwen2.5:7b`. Es gratuito y va en tu ordenador: en la CPU tarda unos 2 s por
-consulta, así que no necesitas tarjeta gráfica. Necesita unos 5 GB de disco y
-de memoria. La primera vez, instala Ollama como explica el
+consulta, así que no necesitas tarjeta gráfica (con una de 4 GB, menos de 1 s).
+Necesita unos 5 GB de disco y de memoria. La primera vez, instala Ollama como
+explica el
 [README de `simple_hri`](src/thirdparty/simple_hri/README.md#1-install-ollama)
 y descarga el modelo:
 
@@ -1145,16 +1146,24 @@ y descarga el modelo:
 ollama pull qwen2.5:7b
 ```
 
+El instalador deja Ollama como un servicio del sistema, que arranca solo al
+encender el ordenador: no hace falta lanzarlo. Para comprobar que está en
+marcha:
+
+```bash
+systemctl status ollama          # debe decir active (running)
+sudo systemctl start ollama      # si no lo está
+```
+
 Después, cada vez, en terminales distintas:
 
 ```bash
-ollama serve                                       # el servidor de Ollama; déjalo abierto
 ros2 launch simple_hri simple_hri.launch.py backend:=ollama
 ros2 run hri_examples restaurant_order
 ```
 
-Si Ollama se instaló como servicio del sistema, ya está en marcha y
-`ollama serve` dice que el puerto está ocupado: no hace falta lanzarlo.
+Si instalaste Ollama sin servicio (por ejemplo, la aplicación de macOS o
+Windows), lánzalo en otra terminal con `ollama serve` y déjala abierta.
 
 Para `generate_response`, que busca una sola cosa en la respuesta, basta con el
 `backend` local.
