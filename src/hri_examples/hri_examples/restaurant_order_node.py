@@ -16,7 +16,7 @@
 Restaurant order: speak, listen and extract information with HRIClient.
 
 The robot is a waiter: it asks for the whole order, listens to the answer and, with
-Extract, takes out of it the drink, the food and the dessert, saying each one back.
+Extract, takes out of it the drink, the main dishes and the dessert, saying each one back.
 
 Speaking and listening are actions of simple_hri (they last seconds and finish when the
 audio ends); Extract is a service (a query on the text already heard).
@@ -35,13 +35,18 @@ QUESTION = ('Hola. Vamos a probar la extracción de información. Imagina que so
 
 # ...and then calls Extract once per course on the same answer. For each course: the
 # category (interest) that Extract looks for, and the start of the sentence that repeats it.
-# Separating the courses of one sentence needs a good LLM (see README-examples.md):
-# with a small one, the drink also comes out as food
+# The categories must not overlap: "comida" would also include the dessert (natillas are
+# food too), so the main dishes are asked for as "plato". Separating the courses of one
+# sentence needs a good LLM (see README-examples.md)
 COURSES = [
     ('bebida', 'De beber, has pedido: '),
-    ('comida', 'De comer, has pedido: '),
+    ('plato', 'De comer, has pedido: '),
     ('postre', 'De postre, has pedido: '),
 ]
+
+# Even so, a dessert said alone ("una cerveza y una tarta de queso") can come out both as
+# a dish and as a dessert: what Extract finds as a dessert is removed from the other courses
+DESSERT = 'postre'
 
 
 class State(Enum):
@@ -65,19 +70,35 @@ class RestaurantOrder(Node):
 
         self.state = State.INIT
         self.answer = ''  # What the customer said
-        self.course = 0   # Index in COURSES of the course being extracted
+        self.course = 0   # Index in COURSES of the course being extracted or said
+        self.order = {}   # Items of each course, e.g. {'bebida': ['agua', 'vino'], ...}
 
         # Run control_loop() every 0.1 seconds (10 Hz)
         self.timer = self.create_timer(0.1, self.control_loop)
 
-    def order_to_string(self, order_list, prefix):
+    def order_to_string(self, items, prefix):
         """Sentence that repeats the order, e.g. 'De beber, has pedido: agua y cerveza.'."""
-        # Extract answers NONE when it finds nothing
-        if not order_list or order_list[0] == 'NONE':
+        if not items:
             return prefix + 'nada.'
-        if len(order_list) == 1:
-            return prefix + order_list[0] + '.'
-        return prefix + ', '.join(order_list[:-1]) + ' y ' + order_list[-1] + '.'
+        if len(items) == 1:
+            return prefix + items[0] + '.'
+        return prefix + ', '.join(items[:-1]) + ' y ' + items[-1] + '.'
+
+    def remove_dessert_from_other_courses(self):
+        """Check the LLM answer: a dessert is not also a drink or a dish."""
+        desserts = {item.lower() for item in self.order[DESSERT]}
+        for interest, _ in COURSES:
+            if interest != DESSERT:
+                kept = [item for item in self.order[interest] if item.lower() not in desserts]
+                if len(kept) != len(self.order[interest]):
+                    self.get_logger().info(f'Removed desserts from {interest}: {kept}')
+                self.order[interest] = kept
+
+    def speak_course(self):
+        """Say the course self.course of the order."""
+        interest, prefix = COURSES[self.course]
+        self.hri_client.start_speaking(self.order_to_string(self.order[interest], prefix))
+        self.state = State.SPEAKING_ORDER
 
     def check_speaking(self):
         """Log an error if the robot could not say the last sentence."""
@@ -119,16 +140,25 @@ class RestaurantOrder(Node):
         elif self.state == State.EXTRACTING:
             if self.hri_client.is_extract_done():
                 result = self.hri_client.get_extracted_info()
-                self.get_logger().info(f'📝 Extracted: {result}')
+                interest, _ = COURSES[self.course]
+                self.get_logger().info(f'📝 Extracted ({interest}): {result}')
                 if not result or result.startswith('ERROR'):
                     self.get_logger().error(f"❌ Extract error: '{result}'")
                     result = 'NONE'
 
-                # Extract separates the values with ';', e.g. 'agua;cerveza'
-                items = result.strip().split(';')
-                _, prefix = COURSES[self.course]
-                self.hri_client.start_speaking(self.order_to_string(items, prefix))
-                self.state = State.SPEAKING_ORDER
+                # Extract separates the values with ';', e.g. 'agua;cerveza', and answers
+                # NONE when it finds nothing
+                items = [item.strip() for item in result.split(';') if item.strip()]
+                self.order[interest] = [] if items == ['NONE'] else items
+
+                # Next course, or say the whole order once every course is extracted
+                self.course += 1
+                if self.course < len(COURSES):
+                    self.state = State.EXTRACT
+                else:
+                    self.remove_dessert_from_other_courses()
+                    self.course = 0
+                    self.speak_course()
 
         elif self.state == State.SPEAKING_ORDER:
             if self.hri_client.is_speaking_done():
@@ -136,7 +166,7 @@ class RestaurantOrder(Node):
                 # Next course, or the end of the order
                 self.course += 1
                 if self.course < len(COURSES):
-                    self.state = State.EXTRACT
+                    self.speak_course()
                 else:
                     self.state = State.DONE
 

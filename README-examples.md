@@ -1112,7 +1112,7 @@ ros2 run hri_examples repeat               # escucha (STT) y repite lo que has d
 ### Extraer información
 
 ```bash
-ros2 run hri_examples restaurant_order     # pedido en un restaurante: bebida, comida y postre
+ros2 run hri_examples restaurant_order     # pedido en un restaurante: bebida, plato y postre
 ros2 launch hri_examples generate_response.launch.py  # pregunta y responde con lo extraído
 ```
 
@@ -1122,8 +1122,15 @@ La pregunta y la información que extrae `generate_response` se configuran en
 En el pedido del restaurante (`restaurant_order`) el robot pregunta qué quieres de
 beber, de comer y de postre, y tú lo dices todo en la misma frase. Después
 llama a Extract tres veces sobre esa frase, una por categoría (`bebida`,
-`comida` y `postre`). Para eso el LLM tiene que separar las categorías: no
-basta con encontrar comida y bebida, tiene que saber cuál es cuál.
+`plato` y `postre`), y repite el pedido. Para eso el LLM tiene que separar las
+categorías: no basta con encontrar comida y bebida, tiene que saber cuál es cuál.
+
+Las categorías no deben solaparse. Con `comida` en lugar de `plato`, en "agua y
+vino, macarrones y natillas" las natillas salen como comida y como postre, y no
+es un error del LLM: las natillas también son comida. Aun así, un postre dicho
+solo ("una cerveza y una tarta de queso") puede salir también como plato, así
+que el nodo comprueba la respuesta: lo que sale como postre lo quita de la bebida
+y del plato. Lo que devuelve un LLM conviene comprobarlo siempre.
 
 El LLM del `backend` local (Qwen2.5-1.5B) a veces se equivoca en esto, sobre
 todo si el reconocedor de voz entiende mal alguna palabra ("de poste un
