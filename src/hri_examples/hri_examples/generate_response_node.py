@@ -55,7 +55,7 @@ class GenerateResponseNode(Node):
         self.hri_client = HRIClient(self)
         if not self.hri_client.wait_until_ready(10.0):
             self.get_logger().error(
-                'simple_hri services not available. Did you launch simple_hri?')
+                'simple_hri not available. Did you launch simple_hri?')
 
         self.state = State.ASK
         self.timer = self.create_timer(0.1, self.control_loop)

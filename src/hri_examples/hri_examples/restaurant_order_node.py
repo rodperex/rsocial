@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """
-Restaurant order with HRIClient: the same as hri_example2, without calling the services.
+Restaurant order: speak, listen and extract information with HRIClient.
 
 The robot is a waiter: it asks for the whole order, listens to the answer and, with
 Extract, takes out of it the drink, the food and the dessert, saying each one back.
 
-HRIClient speaks and listens with the actions of simple_hri, which finish when the audio
-ends, so here there is no need to estimate how long the robot takes to say each sentence.
+Speaking and listening are actions of simple_hri (they last seconds and finish when the
+audio ends); Extract is a service (a query on the text already heard).
 """
 
 from enum import auto, Enum
@@ -54,16 +54,14 @@ class State(Enum):
     DONE = auto()
 
 
-class HRIExample2Client(Node):
+class RestaurantOrder(Node):
 
     def __init__(self):
-        super().__init__('hri_example2_client_node')
+        super().__init__('restaurant_order_node')
         self.hri_client = HRIClient(self)
 
         if not self.hri_client.wait_until_ready(10.0):
-            self.get_logger().info('Services not available, waiting...')
-
-        self.get_logger().info('✅ Extract, STT and TTS clients ready.')
+            self.get_logger().error('simple_hri not available. Did you launch simple_hri?')
 
         self.state = State.INIT
         self.answer = ''  # What the customer said
@@ -150,7 +148,7 @@ class HRIExample2Client(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = HRIExample2Client()
+    node = RestaurantOrder()
 
     try:
         rclpy.spin(node)  # This blocks main while processing callbacks

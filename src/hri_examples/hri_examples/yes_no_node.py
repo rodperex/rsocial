@@ -23,33 +23,31 @@ from rclpy.node import Node
 class State(Enum):
     INIT = auto()
     WAITING_INTRO = auto()
-    WAITING_LISTENING = auto()
-    WAITING_ECHO_INTRO = auto()
+    WAITING_USER_RESPONSE = auto()
+    WAITING_YESNO = auto()
     WAITING_ECHO = auto()
     DONE = auto()
 
 
-class HRIExampleClient(Node):
+class YesNoNode(Node):
+    """Ask a yes/no question, listen to the answer and interpret it with YesNo."""
 
     def __init__(self):
-        super().__init__('hri_example_client_node')
+        super().__init__('yes_no_node')
         self.hri_client = HRIClient(self)
 
         if not self.hri_client.wait_until_ready(10.0):
-            self.get_logger().error('Services not available.')
-
-        self.get_logger().info('✅ STT and TTS clients ready.')
+            self.get_logger().error('simple_hri not available. Did you launch simple_hri?')
 
         self.state = State.INIT
-        self.transcribed_text = ''
+        self.user_response = ''
 
         self.timer = self.create_timer(0.1, self.control_loop)
 
     def control_loop(self):
         if self.state == State.INIT:
-            self.get_logger().info('🤖 Starting HRI demo...')
-            self.hri_client.start_speaking(
-                'Hola. Vamos a probar el reconocimiento de voz y la síntesis de voz. Habla ahora.')
+            self.get_logger().info('🤖 Starting HRI demo with YesNo...')
+            self.hri_client.start_speaking('¿Estás bien?')
             self.state = State.WAITING_INTRO
 
         elif self.state == State.WAITING_INTRO:
@@ -61,25 +59,39 @@ class HRIExampleClient(Node):
 
                 self.get_logger().info('🎤 Starting speech recognition (STT)...')
                 self.hri_client.start_listening()
-                self.state = State.WAITING_LISTENING
+                self.state = State.WAITING_USER_RESPONSE
 
-        elif self.state == State.WAITING_LISTENING:
+        elif self.state == State.WAITING_USER_RESPONSE:
             if self.hri_client.is_listening_done():
-                self.transcribed_text = self.hri_client.get_listened_text()
-                if not self.transcribed_text:
+                self.user_response = self.hri_client.get_listened_text()
+                if not self.user_response:
                     self.get_logger().error('❌ STT error')
+                    self.user_response = ''
+                else:
+                    self.get_logger().info(f'📝 Transcription: {self.user_response}')
+
+                self.get_logger().info('🔍 Sending text to the YesNo service...')
+                self.hri_client.start_yesno(self.user_response)
+                self.state = State.WAITING_YESNO
+
+        elif self.state == State.WAITING_YESNO:
+            if self.hri_client.is_yesno_done():
+                extracted_response = self.hri_client.get_yesno_result()
+                self.get_logger().info(f'📝 Answer: {extracted_response}')
+
+                if extracted_response and not extracted_response.startswith('ERROR'):
+                    self.get_logger().info(f'✅ YesNo service answer: {extracted_response}')
+                    if extracted_response.lower() == 'yes':
+                        self.hri_client.start_speaking('He entendido: sí')
+                        self.state = State.WAITING_ECHO
+                    elif extracted_response.lower() == 'no':
+                        self.hri_client.start_speaking('He entendido: no')
+                        self.state = State.WAITING_ECHO
+                    else:
+                        self.state = State.DONE
+                else:
+                    self.get_logger().error('❌ YesNo error')
                     self.state = State.DONE
-                    return
-
-                self.get_logger().info(f'📝 Transcription: {self.transcribed_text}')
-                self.hri_client.start_speaking('Ahora voy a repetir lo que has dicho')
-                self.state = State.WAITING_ECHO_INTRO
-
-        elif self.state == State.WAITING_ECHO_INTRO:
-            if self.hri_client.is_speaking_done():
-                self.get_logger().info('🔊 Sending text to TTS...')
-                self.hri_client.start_speaking(self.transcribed_text)
-                self.state = State.WAITING_ECHO
 
         elif self.state == State.WAITING_ECHO:
             if self.hri_client.is_speaking_done():
@@ -91,14 +103,13 @@ class HRIExampleClient(Node):
 
         elif self.state == State.DONE:
             self.get_logger().info('🎉 Demo finished.')
-            self.timer.cancel()  # Stop the control loop
-
+            self.timer.cancel()
             raise SystemExit
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = HRIExampleClient()
+    node = YesNoNode()
 
     try:
         rclpy.spin(node)  # This blocks main while processing callbacks

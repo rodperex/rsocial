@@ -1,6 +1,7 @@
 # hri_client
 
-Cliente reutilizable para servicios de simple_hri (STT, TTS, Extract, YesNo).
+Cliente reutilizable de simple_hri: escuchar (STT) y hablar (TTS) con sus acciones;
+extraer información (Extract) y sí/no (YesNo) con sus servicios.
 
 ## Descripción
 
@@ -19,7 +20,7 @@ Este paquete proporciona una clase `HRIClient` que encapsula la funcionalidad de
 
 La API es asíncrona y **no bloqueante**: se lanza una operación con `start_*()` y en
 cada ciclo de control se consulta `is_*_done()`. Así el nodo sigue procesando
-callbacks mientras el robot habla o escucha. Ver `hri_examples/hri_example_client.py`.
+callbacks mientras el robot habla o escucha. Ver `hri_examples/repeat_node.py`.
 
 ```python
 import rclpy

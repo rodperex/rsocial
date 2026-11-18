@@ -12,18 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Listen and repeat with Nao: greeting gesture, chest LED and HRIClient.
+
+The chest LED tells the person when to speak: red while the robot talks, blue while
+it listens, green while it repeats what it heard.
+"""
+
+from enum import auto, Enum
+
+from hri_client.hri_client import HRIClient, OperationState
 from nao_led_interfaces.action import LedsPlay
 from nao_led_interfaces.msg import LedIndexes, LedModes
 from nao_lola_command_msgs.msg import ChestLed
 from nao_pos_interfaces.action import PosPlay
 import rclpy
 from rclpy.action import ActionClient
-from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from simple_hri_interfaces.srv import Speech
 from std_msgs.msg import ColorRGBA
-from std_srvs.srv import SetBool
+
+RED = (1.0, 0.0, 0.0)
+GREEN = (0.0, 1.0, 0.0)
+BLUE = (0.0, 0.0, 1.0)
+OFF = (0.0, 0.0, 0.0)
+
+
+class State(Enum):
+    INIT = auto()                 # Greeting gesture and introduction
+    SPEAKING_INTRO = auto()       # Wait until the robot finishes the introduction
+    LISTENING = auto()            # Wait for the transcription
+    SPEAKING_ECHO_INTRO = auto()  # Wait for 'Ahora voy a repetir...'
+    SPEAKING_ECHO = auto()        # Wait until the robot repeats what it heard
+    DONE = auto()
 
 
 class NaoHRIExample(Node):
@@ -31,24 +52,14 @@ class NaoHRIExample(Node):
     def __init__(self):
         super().__init__('nao_hri_example_node')
 
-        # STT client
-        self.stt_client = self.create_client(SetBool, '/stt_service')
-        while not self.stt_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('/stt_service unavailable...')
-
-        # TTS client
-        self.tts_client = self.create_client(Speech, '/tts_service')
-        while not self.tts_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('/tts_service unavailable...')
-
-        self.get_logger().info('✅ STT and TTS clients ready.')
+        self.hri_client = HRIClient(self)
+        if not self.hri_client.wait_until_ready(10.0):
+            self.get_logger().error('simple_hri not available. Did you launch simple_hri?')
 
         # Position action client
         self.pos_client = ActionClient(self, PosPlay, '/nao_pos_action')
         while not self.pos_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().info('/nao_pos_action unavailable...')
-
-        self.get_logger().info('✅ Position action client ready to use.')
 
         # Publisher to change chest led color
         self.chest_led_pub = self.create_publisher(ChestLed, '/effectors/chest_led', 10)
@@ -58,100 +69,78 @@ class NaoHRIExample(Node):
             self.get_logger().info('/leds_play unavailable...')
         self.switch_off_all_leds()
 
-    def wait(self, seconds):
-        # Wait while still processing callbacks (time.sleep would block the whole node)
-        end_time = self.get_clock().now() + Duration(seconds=seconds)
-        while rclpy.ok() and self.get_clock().now() < end_time:
-            rclpy.spin_once(self, timeout_sec=0.1)
+        self.state = State.INIT
+        self.transcribed_text = ''
 
-    def run(self):
+        # Run control_loop() every 0.1 seconds (10 Hz)
+        self.timer = self.create_timer(0.1, self.control_loop)
 
-        self.get_logger().info('🤖 Starting HRI demo with Nao...')
-
-        pos_goal = PosPlay.Goal()
-        pos_goal.action_name = 'hello'
-
-        self.get_logger().info('⏳ Sending position goal...')
-        send_goal_future = self.pos_client.send_goal_async(pos_goal)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        goal_handle = send_goal_future.result()
-
-        if not goal_handle.accepted:
-            self.get_logger().error('❌ Goal rejected')
-            return
-
+    def set_chest(self, color):
         chest_led_msg = ChestLed()
-        chest_led_msg.color.r = 1.0
-        chest_led_msg.color.g = 0.0
-        chest_led_msg.color.b = 0.0
+        chest_led_msg.color.r, chest_led_msg.color.g, chest_led_msg.color.b = color
         self.chest_led_pub.publish(chest_led_msg)
 
-        tts_req = Speech.Request()
-        tts_req.text = ('Hola, soy Nao. Vamos a probar el reconocimiento de voz y la síntesis de '
-                        'voz. Habla cuando la luz de mi pecho esté azul.')
-        tts_future = self.tts_client.call_async(tts_req)
-        rclpy.spin_until_future_complete(self, tts_future)
-        tts_response = tts_future.result()
+    def check_speaking(self):
+        """Log an error if the robot could not say the last sentence."""
+        if self.hri_client.get_speaking_state() != OperationState.COMPLETED:
+            self.get_logger().error('❌ TTS error')
 
-        self.wait(8.0)
+    def control_loop(self):
+        if self.state == State.INIT:
+            self.get_logger().info('🤖 Starting HRI demo with Nao...')
+            pos_goal = PosPlay.Goal()
+            pos_goal.action_name = 'hello'
+            self.pos_client.send_goal_async(pos_goal).add_done_callback(
+                self.goal_response_callback)
 
-        if tts_response.success:
-            self.get_logger().info('✅ TTS executed successfully')
-        else:
-            self.get_logger().error(f'❌ TTS error: {tts_response.debug}')
+            self.set_chest(RED)
+            self.hri_client.start_speaking(
+                'Hola, soy Nao. Vamos a probar el reconocimiento de voz y la síntesis de '
+                'voz. Habla cuando la luz de mi pecho esté azul.')
+            self.state = State.SPEAKING_INTRO
 
-        chest_led_msg.color.r = 0.0
-        chest_led_msg.color.g = 0.0
-        chest_led_msg.color.b = 1.0
-        self.chest_led_pub.publish(chest_led_msg)
+        elif self.state == State.SPEAKING_INTRO:
+            # Listen only when the robot has finished, or the microphone would record
+            # the robot's own voice
+            if self.hri_client.is_speaking_done():
+                self.check_speaking()
+                self.set_chest(BLUE)
+                self.get_logger().info('🎤 Starting speech recognition (STT)...')
+                self.hri_client.start_listening()
+                self.state = State.LISTENING
 
-        self.get_logger().info('🎤 Starting speech recognition (STT)...')
-        stt_req = SetBool.Request()
-        stt_req.data = True  # Tell the service to start recording
+        elif self.state == State.LISTENING:
+            if self.hri_client.is_listening_done():
+                self.transcribed_text = self.hri_client.get_listened_text()
+                if not self.transcribed_text:
+                    self.get_logger().error('❌ STT error')
+                    self.set_chest(OFF)
+                    self.state = State.DONE
+                    return
 
-        stt_future = self.stt_client.call_async(stt_req)
-        rclpy.spin_until_future_complete(self, stt_future)
-        stt_response = stt_future.result()
+                self.get_logger().info(f'📝 Transcription: {self.transcribed_text}')
+                self.set_chest(RED)
+                self.hri_client.start_speaking('Ahora voy a repetir lo que has dicho')
+                self.state = State.SPEAKING_ECHO_INTRO
 
-        if not stt_response.success:
-            self.get_logger().error(f'❌ STT error: {stt_response.message}')
-            return
+        elif self.state == State.SPEAKING_ECHO_INTRO:
+            if self.hri_client.is_speaking_done():
+                self.check_speaking()
+                self.set_chest(GREEN)
+                self.get_logger().info('🔊 Sending text to TTS...')
+                self.hri_client.start_speaking(self.transcribed_text)
+                self.state = State.SPEAKING_ECHO
 
-        transcribed_text = stt_response.message
-        self.get_logger().info(f'📝 Transcription: {transcribed_text}')
+        elif self.state == State.SPEAKING_ECHO:
+            if self.hri_client.is_speaking_done():
+                self.check_speaking()
+                self.set_chest(OFF)  # One cycle before exiting, so the message goes out
+                self.state = State.DONE
 
-        chest_led_msg.color.r = 1.0
-        chest_led_msg.color.g = 0.0
-        chest_led_msg.color.b = 0.0
-        self.chest_led_pub.publish(chest_led_msg)
-        tts_req.text = 'Ahora voy a repetir lo que has dicho'
-        tts_future = self.tts_client.call_async(tts_req)
-        rclpy.spin_until_future_complete(self, tts_future)
-        tts_response = tts_future.result()
-        self.wait(4.0)
-
-        chest_led_msg.color.r = 0.0
-        chest_led_msg.color.g = 1.0
-        chest_led_msg.color.b = 0.0
-        self.chest_led_pub.publish(chest_led_msg)
-
-        self.get_logger().info('🔊 Sending text to TTS...')
-        tts_req.text = transcribed_text
-
-        tts_future = self.tts_client.call_async(tts_req)
-        rclpy.spin_until_future_complete(self, tts_future)
-        tts_response = tts_future.result()
-        self.wait(5.0)
-
-        if tts_response.success:
-            self.get_logger().info('✅ TTS executed successfully')
-        else:
-            self.get_logger().error(f'❌ TTS error: {tts_response.debug}')
-
-        chest_led_msg.color.r = 0.0
-        chest_led_msg.color.g = 0.0
-        chest_led_msg.color.b = 0.0
-        self.chest_led_pub.publish(chest_led_msg)
+        elif self.state == State.DONE:
+            self.get_logger().info('🎉 Demo finished.')
+            self.timer.cancel()
+            raise SystemExit
 
     def get_result_callback(self, future):
         result = future.result().result
@@ -160,7 +149,7 @@ class NaoHRIExample(Node):
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.get_logger().warn('LED goal rejected')
+            self.get_logger().warn('Goal rejected')
             return
 
         self.get_logger().info('Goal accepted :)')
@@ -190,8 +179,11 @@ class NaoHRIExample(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = NaoHRIExample()
+
     try:
-        node.run()
+        rclpy.spin(node)
+    except SystemExit:
+        pass  # Clean exit when State == DONE
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:

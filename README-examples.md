@@ -1075,38 +1075,26 @@ copia antigua en la caché; bórrala y se descarga la actual:
 rm -rf ~/.cache/torch/hub/snakers4_silero-vad_master
 ```
 
-`simple_hri` ofrece escuchar (STT) y hablar (TTS) de dos formas, que hacen lo
-mismo por dentro, y extraer información y detectar sí/no solo como servicio:
+`simple_hri` ofrece cuatro capacidades. Es la regla del tema 4: acciones para
+actividades largas, servicios para consultas puntuales.
 
-| Capacidad | Servicio | Acción |
+| Capacidad | Interfaz | Por qué |
 | --- | --- | --- |
-| Escuchar | `/stt_service` (`std_srvs/SetBool`) | `/stt_action` (`Listen`) |
-| Hablar | `/tts_service` (`Speech`) | `/tts_action` (`Say`) |
-| Extraer información | `/extract_service` (`Extract`) | No hay |
-| Sí o no | `/yesno_service` (`YesNo`) | No hay |
+| Escuchar | acción `/stt_action` (`Listen`) | Dura segundos y la persona puede tardar en hablar: *feedback* (escuchando, voz detectada, transcribiendo), tiempo máximo y cancelación |
+| Hablar | acción `/tts_action` (`Say`) | Dura segundos: termina cuando el audio acaba de sonar, da los segundos que faltan y se puede cortar |
+| Extraer información | servicio `/extract_service` (`Extract`) | Consulta sobre un texto: se pregunta y llega la respuesta |
+| Sí o no | servicio `/yesno_service` (`YesNo`) | Consulta sobre un texto: se pregunta y llega la respuesta |
 
-El servicio es lo más sencillo: se pide y la respuesta llega al final, sin
-saber nada mientras tanto. La acción añade lo que un servicio no puede dar:
-*feedback* (en qué fase está la escucha, cuánto audio queda), cancelación
-(cortar la grabación o el audio) y, al hablar, que no termina hasta que acaba
-de sonar. Es la regla del tema 4: servicios para consultas puntuales, acciones
-para actividades largas, y escuchar y hablar lo son.
+Extract y YesNo no graban audio: trabajan sobre el texto que ha devuelto
+escuchar.
 
-La clase `HRIClient` (paquete `hri_client`) envuelve todo esto con el contrato
+La clase `HRIClient` (paquete `hri_client`) envuelve las cuatro con el contrato
 de una capacidad del tema 4, el mismo que `NavigationClient` para navegar:
-`wait_until_ready()` como precondición, `start_listening()` y
-`start_speaking(texto)` para empezar, `is_listening_done()` e
-`is_speaking_done()` para saber si ha terminado sin bloquear el nodo, el estado
-final (`COMPLETED`, `ERROR`, `TIMEOUT` o `CANCELED`), el *feedback*, la
-cancelación y un tiempo máximo (`timeout_sec`). Para escuchar y hablar usa las
-acciones, y para extraer y para sí/no, los servicios.
-
-`hri_example`, `hri_example2` y `hri_example3` vienen por parejas para comparar
-las dos formas. Sin sufijo, llaman a los servicios directamente (`call_async`)
-y gestionan ellos mismos cada respuesta pendiente (el *future*), sin *feedback*
-ni cancelación. Los `*_client` hacen lo mismo con `HRIClient`: el ciclo de
-control solo pregunta si ha terminado y qué ha pasado. `say`, `repeat` y
-`generate_response` usan también `HRIClient`.
+`wait_until_ready()` como precondición, `start_*()` para empezar, `is_*_done()`
+para saber si ha terminado sin bloquear el nodo, el estado final (`COMPLETED`,
+`ERROR`, `TIMEOUT` o `CANCELED`), el *feedback*, la cancelación y un tiempo
+máximo (`timeout_sec`). Todos los ejemplos la usan: el ciclo de control solo
+pregunta si ha terminado y qué ha pasado.
 
 Todos necesitan `simple_hri` en marcha. Cada comando, en otra terminal.
 
@@ -1117,8 +1105,6 @@ Funcionan bien con el `backend` local:
 ```bash
 ros2 run hri_examples say                  # dice una frase (TTS)
 ros2 run hri_examples repeat               # escucha (STT) y repite lo que has dicho
-ros2 run hri_examples hri_example          # STT + TTS llamando a los servicios
-ros2 run hri_examples hri_example_client
 ```
 
 `say` admite `--ros-args -p text:="..."`.
@@ -1126,15 +1112,14 @@ ros2 run hri_examples hri_example_client
 ### Extraer información
 
 ```bash
-ros2 run hri_examples hri_example2         # pedido en un restaurante: bebida, comida y postre
-ros2 run hri_examples hri_example2_client
+ros2 run hri_examples restaurant_order     # pedido en un restaurante: bebida, comida y postre
 ros2 launch hri_examples generate_response.launch.py  # pregunta y responde con lo extraído
 ```
 
 La pregunta y la información que extrae `generate_response` se configuran en
 `src/hri_examples/config/hri.yaml`.
 
-En el pedido del restaurante (`hri_example2`) el robot pregunta qué quieres de
+En el pedido del restaurante (`restaurant_order`) el robot pregunta qué quieres de
 beber, de comer y de postre, y tú lo dices todo en la misma frase. Después
 llama a Extract tres veces sobre esa frase, una por categoría (`bebida`,
 `comida` y `postre`). Para eso el LLM tiene que separar las categorías: no
@@ -1158,7 +1143,7 @@ Después, cada vez, en terminales distintas:
 ```bash
 ollama serve                                       # el servidor de Ollama; déjalo abierto
 ros2 launch simple_hri simple_hri.launch.py backend:=ollama
-ros2 run hri_examples hri_example2                 # o hri_example2_client
+ros2 run hri_examples restaurant_order
 ```
 
 Si Ollama se instaló como servicio del sistema, ya está en marcha y
@@ -1170,8 +1155,7 @@ Para `generate_response`, que busca una sola cosa en la respuesta, basta con el
 ### Sí o no
 
 ```bash
-ros2 run hri_examples hri_example3         # respuesta sí/no (YesNo)
-ros2 run hri_examples hri_example3_client
+ros2 run hri_examples yes_no               # respuesta sí/no (YesNo)
 ```
 
 ## 12. Árboles de comportamiento sin robot
