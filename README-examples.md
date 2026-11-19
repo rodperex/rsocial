@@ -1084,6 +1084,19 @@ copia antigua en la caché; bórrala y se descarga la actual:
 rm -rf ~/.cache/torch/hub/snakers4_silero-vad_master
 ```
 
+**Ruido en el aula.** Para que el murmullo de los grupos no cuente como voz, el
+STT solo da por voz lo que suena más fuerte que el ruido de fondo, que mide
+mientras espera; por eso hay que hablar cerca del micrófono. Si empieza a
+grabar sin que nadie hable, o no termina de escuchar, lanza con
+`background_noise:=high`; si no te oye aunque hables, acércate al micrófono o
+usa `background_noise:=low` (por defecto, `medium`). El log del STT muestra el
+ruido medido (`background -24 dBFS`); el README de `simple_hri` explica cómo
+calibrarlo (*How listening works in a noisy room*).
+
+```bash
+ros2 launch simple_hri simple_hri.launch.py background_noise:=high
+```
+
 `simple_hri` ofrece cuatro capacidades. Es la regla del tema 4: acciones para
 actividades largas, servicios para consultas puntuales.
 
