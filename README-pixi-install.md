@@ -129,7 +129,7 @@ El TurtleBot 4, real o simulado, necesita dos variables:
 | | Robot real | Simulador |
 | --- | --- | --- |
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` | `rmw_fastrtps_cpp` |
-| `ROS_DOMAIN_ID` | `0` | cualquiera del 1 al 100 (no el 0) |
+| `ROS_DOMAIN_ID` | `0` | cualquiera del 1 al 101 (no el 0) |
 
 Para no escribirlas cada vez, añade estas dos funciones al final de tu
 `~/.bashrc` (solo una vez):
@@ -182,6 +182,32 @@ pixi run tb4       # con el robot real (equivale a pixi shell + source + tb4)
 
 `tb4-sim` usa el dominio 1. Si estáis varios en la misma red, elige otro con
 `TB4_SIM_DOMAIN_ID=<número> pixi run tb4-sim`.
+
+Con el robot real hay dos tareas más, para los ejemplos 3D (YOLO 3D, VFF 3D,
+ir hacia la persona que llama). Necesitan antes activar la profundidad de la
+cámara en el robot (ver
+[Cámara: imagen completa y profundidad](README-tb4-real.md#cámara-imagen-completa-y-profundidad)):
+
+```bash
+pixi run tb4-rgbd     # robot real con profundidad (ROBOT=tb4_rgbd)
+pixi run tb4-rgbd-c   # lo mismo, con las imágenes comprimidas en la wifi (ROBOT=tb4_rgbd_c)
+```
+
+Preparan la terminal igual que `tb4` (dominio 0, Fast DDS y el perfil de
+búferes de la cámara); solo cambia `ROBOT`, que indica a los ejemplos qué
+topics de la cámara usar:
+
+| Tarea | `ROBOT` | Imágenes de la cámara |
+| --- | --- | --- |
+| `tb4` | `tb4` | Solo la imagen en color pequeña (250x250), sin profundidad: valen los ejemplos 2D. Es la configuración de fábrica |
+| `tb4-rgbd` | `tb4_rgbd` | Imagen en color (640x360) y profundidad del mismo tamaño, sin comprimir |
+| `tb4-rgbd-c` | `tb4_rgbd_c` | Las mismas, comprimidas en el robot y descomprimidas en el portátil: gastan mucho menos wifi. YOLO arranca él mismo los descompresores ([ver](README-tb4-real.md#imágenes-comprimidas)) |
+
+Las funciones del `~/.bashrc` no tienen versión RGBD: con `pixi shell`,
+prepara la terminal con `tb4` y cambia después la variable a mano
+(`export ROBOT=tb4_rgbd` o `export ROBOT=tb4_rgbd_c`). Para el perfil de
+búferes, ver
+[Búfer de recepción del portátil](README-tb4-real.md#búfer-de-recepción-del-portátil).
 
 ### 1. Lanzar el simulador (terminal 1)
 
@@ -549,7 +575,9 @@ deja en `ROBOT` (ver
 [README-examples.md](README-examples.md#elegir-el-robot-en-los-ejemplos)). Su
 cámara no publica profundidad de fábrica: para los ejemplos 3D hay que
 activarla (ver
-[README-examples.md](README-examples.md#turtlebot-4-real-activar-la-profundidad)). Los
+[README-examples.md](README-examples.md#turtlebot-4-real-activar-la-profundidad))
+y preparar las terminales con `pixi run tb4-rgbd` o `pixi run tb4-rgbd-c` (ver
+[arriba](#preparar-cada-terminal-simulador-o-robot-real)). Los
 ajustes que necesitan los bump and go (topic del bumper, límites de la base
 Create 3) están en [README-examples.md](README-examples.md#turtlebot-4-real).
 Todo lo particular del robot físico está resumido en

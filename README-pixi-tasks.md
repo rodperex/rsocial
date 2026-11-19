@@ -37,7 +37,9 @@ anterior. Usa la misma en todas las terminales de una sesión.
 | Tarea | Entorno | Variables | Cuándo |
 | --- | --- | --- | --- |
 | `tb4-sim` | `default` | `ROS_DOMAIN_ID=1`, `RMW_IMPLEMENTATION=rmw_fastrtps_cpp`, `ROBOT=tb4_sim` | Simulador del TurtleBot 4. Otro dominio: `TB4_SIM_DOMAIN_ID=7 pixi run tb4-sim` |
-| `tb4` | `default` | `ROS_DOMAIN_ID=0`, `RMW_IMPLEMENTATION=rmw_fastrtps_cpp`, `ROBOT=tb4`, `FASTRTPS_DEFAULT_PROFILES_FILE=pixi/fastdds-tb4.xml` | TurtleBot 4 real. El perfil de Fast DDS amplía los búferes para recibir la cámara por la wifi ([ver](README-tb4-real.md#búfer-de-recepción-del-portátil)) |
+| `tb4` | `default` | `ROS_DOMAIN_ID=0`, `RMW_IMPLEMENTATION=rmw_fastrtps_cpp`, `ROBOT=tb4`, `FASTRTPS_DEFAULT_PROFILES_FILE=pixi/fastdds-tb4.xml` | TurtleBot 4 real con la cámara de fábrica (sin profundidad). El perfil de Fast DDS amplía los búferes para recibir la cámara por la wifi ([ver](README-tb4-real.md#búfer-de-recepción-del-portátil)) |
+| `tb4-rgbd` | `default` | Las de `tb4`, con `ROBOT=tb4_rgbd` | TurtleBot 4 real con la profundidad activada: ejemplos 3D ([ver](README-tb4-real.md#cámara-imagen-completa-y-profundidad)) |
+| `tb4-rgbd-c` | `default` | Las de `tb4`, con `ROBOT=tb4_rgbd_c` | Como `tb4-rgbd`, con las imágenes comprimidas en la wifi ([ver](README-tb4-real.md#imágenes-comprimidas)) |
 | `kobuki-sim` | `kobuki` | `ROBOT=kobuki_sim` | Simulador del Kobuki |
 | `kobuki` | `kobuki` | `ROBOT=kobuki` | Kobuki real |
 | `source-local` | `default` | Ninguna | Solo carga el workspace, sin elegir robot |
@@ -45,6 +47,9 @@ anterior. Usa la misma en todas las terminales de una sesión.
 `tb4-sim` y `tb4` equivalen a `pixi shell` + `source install/setup.bash` + las
 funciones `tb4sim` y `tb4` (ver
 [Preparar cada terminal](README-pixi-install.md#preparar-cada-terminal-simulador-o-robot-real)).
+`tb4-rgbd` y `tb4-rgbd-c` son la tarea `tb4` con otro `ROBOT`, y no tienen
+función equivalente: con `pixi shell`, usa `tb4` y después
+`export ROBOT=tb4_rgbd` o `export ROBOT=tb4_rgbd_c`.
 
 Estas variables se fijan después de cargar tu `~/.bashrc`. Así mandan las de la
 tarea, aunque tu `~/.bashrc` defina otro `ROS_DOMAIN_ID` u otro
@@ -100,8 +105,8 @@ publica el simulador: en él no tocan el láser. No usan `ROBOT`, porque
 `pixi run` vuelve a activar el entorno y lo deja en `tb4_sim`, sea cual sea
 el de la terminal.
 
-Lánzalas en una terminal preparada con `tb4` (robot real) o `tb4-sim`
-(simulador). Las tareas no fijan el dominio ni el middleware: usan los de la
+Lánzalas en una terminal preparada con `tb4`, `tb4-rgbd` o `tb4-rgbd-c`
+(robot real) o con `tb4-sim` (simulador). Las tareas no fijan el dominio ni el middleware: usan los de la
 terminal, para valer con los dos. En una terminal sin preparar se quedan
 esperando con `Waiting for an action server to become available...`, porque
 buscan al robot en otro dominio. En ese caso, corta con `Ctrl+C` y prepara la

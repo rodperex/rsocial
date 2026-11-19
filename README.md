@@ -71,7 +71,7 @@ Con `thirdparty-native.repos` basta para el TurtleBot 4. Si algún
 | --- | --- | --- |
 | `thirdparty-native.repos` | Paquetes que usan los ejemplos: `simple_hri`, `yolo_ros`, cámaras, NAO..., y la casa para el simulador del TurtleBot 4 | Nativa |
 | `kobuki-native.repos` | Kobuki (robot y simulador) y sus drivers de láser y cámara. Opcional | Nativa |
-| `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi, más la casa para el simulador del TurtleBot 4 | Pixi |
+| `thirdparty-pixi.repos` | Lo mismo que `thirdparty-native.repos`, adaptado a Pixi (añade `depthai-ros` y `nao_lola`) | Pixi |
 | `kobuki-pixi.repos` | Kobuki (simulador y robot real con láser RPLIDAR), adaptado a Pixi. Opcional | Pixi |
 
 Todos descargan en `src/kobuki` y `src/thirdparty`, que Git ignora. No mezcles
@@ -189,7 +189,9 @@ Solo cambian dos cosas:
 
 - Para preparar cada terminal, en lugar de `pixi shell` y
   `source install/setup.bash`, carga el workspace como en el paso 6. Después
-  ejecuta `tb4sim` o `tb4` igual que con Pixi.
+  ejecuta `tb4sim` o `tb4` igual que con Pixi. Las tareas `pixi run tb4-rgbd`
+  y `tb4-rgbd-c` tampoco existen: usa `tb4` y después
+  `export ROBOT=tb4_rgbd` o `export ROBOT=tb4_rgbd_c`.
 - Las tareas `pixi run sim`, `sim-nvidia`, `sim-generic` y `sim-house*` no
   existen. Usa los comandos `ros2 launch` equivalentes que aparecen en esa
   guía. Por ejemplo:
@@ -198,6 +200,11 @@ Solo cambian dos cosas:
   ros2 launch turtlebot4_gz_bringup turtlebot4_gz.launch.py rviz:=true   # pixi run sim rviz:=true
   ros2 launch tb4_worlds small_house.launch.py rviz:=true                # pixi run sim-house rviz:=true
   ```
+
+  En lugar de `pixi run undock` y `pixi run dock`, lanza el mismo script
+  desde `~/rsocial`: `bash pixi/tb4-dock.sh undock` y
+  `bash pixi/tb4-dock.sh dock` (ver
+  [Base de carga del TurtleBot 4](README-pixi-tasks.md#base-de-carga-del-turtlebot-4)).
 
 ## Varios equipos en la misma red
 

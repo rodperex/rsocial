@@ -12,7 +12,10 @@ cuando la hay. La instalación y el simulador están en
    [Red y acceso al robot](#red-y-acceso-al-robot)).
 2. Conecta el portátil a la misma wifi que el robot.
 3. Prepara **cada** terminal con `pixi run tb4` (o con `tb4`, si usas
-   `pixi shell` o la instalación nativa), y comprueba que ves el robot:
+   `pixi shell` o la instalación nativa), y comprueba que ves el robot. Para
+   los ejemplos 3D, con la profundidad ya activada, usa `pixi run tb4-rgbd` o
+   `pixi run tb4-rgbd-c` (ver
+   [Cámara: imagen completa y profundidad](#cámara-imagen-completa-y-profundidad)):
 
    ```bash
    ros2 topic list     # deben salir /scan, /odom, /hazard_detection...
@@ -74,6 +77,9 @@ el daemon de `ros2`, que si no podría seguir usando una configuración
 anterior. `pixi run tb4` carga además un perfil de Fast DDS con búferes más
 grandes, para que las imágenes de la cámara lleguen por la wifi (ver
 [Búfer de recepción del portátil](#búfer-de-recepción-del-portátil)).
+`pixi run tb4-rgbd` y `pixi run tb4-rgbd-c` hacen lo mismo y solo cambian
+`ROBOT` (`tb4_rgbd` o `tb4_rgbd_c`), para los ejemplos que usan la
+profundidad.
 
 `pixi run tb4` vuelve a fijar las variables después de cargar tu `~/.bashrc`,
 así que valen aunque tu `~/.bashrc` ponga otro dominio u otro middleware. El
@@ -402,7 +408,7 @@ En el robot, por SSH:
    # /oakd/rgb/preview/image_raw la pequeña sigue publicándose
    ```
 
-5. Abre la terminal con `pixi run tb4-rgbd` (deja `ROBOT=tb4_rgbd`) y lanza los
+5. Abre las terminales con `pixi run tb4-rgbd` (deja `ROBOT=tb4_rgbd`) y lanza los
    ejemplos con `robot:=$ROBOT`, en lugar de `robot:=tb4`. Esa
    entrada usa `/oakd/rgb/image_raw` en lugar de la imagen pequeña, porque
    YOLO 3D necesita que la imagen en color y la de profundidad tengan el
@@ -421,7 +427,7 @@ baja a 3 fps, como se explica debajo de la tabla):
 | 640x360 a 5 fps (la de arriba), búfer de recepción por defecto | Color y profundidad a 5 Hz: unos 46 Mbit/s entre las dos. La cámara gasta un 30 % de un núcleo | Color a 4,1–4,6 Hz y profundidad a 1,5 Hz |
 | 640x360 a 5 fps, con el [búfer de recepción ampliado](#búfer-de-recepción-del-portátil) | Igual | **Color y profundidad a 5 Hz: llega todo** |
 
-**Usa 3 fps si vas a usar YOLO 3D.** `detect_3d_node` empareja la profundidad,
+**Sin comprimir, usa 3 fps si vas a usar YOLO 3D.** `detect_3d_node` empareja la profundidad,
 el `camera_info` y las detecciones, y solo acepta 0,5 s de diferencia entre sus
 sellos. A 5 fps, el color y el `camera_info` llegaban por wifi a unos 3 Hz
 mientras la profundidad seguía a 5 Hz, así que el retraso del color crecía
@@ -577,18 +583,29 @@ del Raspberry Pi, que tiene que comprimirlas, sobre todo la profundidad.
 
 Los fps se cambian en el mismo `oakd_pro.yaml` del robot, en `i_fps` de
 `rgb`, `left` y `right` (los tres con el mismo valor), y después se reinicia
-el servicio con `turtlebot4-service-restart`. Empieza por 5:
+el servicio con `turtlebot4-service-restart`. Con las imágenes comprimidas,
+este robot funciona a 10 fps:
 
 ```yaml
 rgb:
-  i_fps: 5.0
+  i_fps: 10.0
 left:
-  i_fps: 5.0
+  i_fps: 10.0
 right:
-  i_fps: 5.0
+  i_fps: 10.0
 ```
 
-Todavía no está medido con este robot. Antes de pasar a 6, mide con 5:
+Medido con este robot a 10 fps: unos 12,8 Mbit/s de wifi entre las dos
+imágenes, la cámara gasta en torno al 57 % de un núcleo del Raspberry Pi (le
+queda en torno a un 30 % de CPU libre) y la descompresión en el portátil
+mantiene los 10 fps.
+
+**A 10 fps, usa solo `tb4_rgbd_c`.** Con `tb4_rgbd` las imágenes viajan sin
+comprimir y no caben en la wifi (ver
+[Por qué 640x360 y pocas imágenes por segundo](#por-qué-640x360-y-pocas-imágenes-por-segundo)).
+Para volver a `tb4_rgbd`, baja otra vez `i_fps` a 3.
+
+Si cambias los fps, la resolución o la calidad de la compresión, comprueba:
 
 - El ancho de banda de los topics comprimidos, con
   `ros2 topic bw /oakd/rgb/image_raw/compressed` y

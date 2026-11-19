@@ -53,9 +53,15 @@ O, desde `~/rsocial` y sin `pixi shell` previo, con las tareas de Pixi que
 abren una shell ya preparada (entorno, workspace y variables):
 
 ```bash
-pixi run tb4-sim   # simulador
-pixi run tb4       # robot real
+pixi run tb4-sim      # simulador
+pixi run tb4          # robot real
+pixi run tb4-rgbd     # robot real con la profundidad activada (ejemplos 3D)
+pixi run tb4-rgbd-c   # lo mismo, con las imágenes comprimidas en la wifi
 ```
+
+Las dos últimas preparan la terminal igual que `tb4`; solo cambia la variable
+`ROBOT` (ver [Elegir el robot en los ejemplos](#elegir-el-robot-en-los-ejemplos)
+y [TurtleBot 4 real: activar la profundidad](#turtlebot-4-real-activar-la-profundidad)).
 
 Usa la misma en todas las terminales de una sesión. Si aún no tienes estas
 funciones en tu `~/.bashrc`, añádelas como se explica en
@@ -503,11 +509,13 @@ porque no hay imagen de profundidad. Por qué viene así está en
 
 Para los ejemplos 3D hay que cambiar la configuración de la cámara en el
 robot: activar la profundidad y publicar la imagen en color, ambas a 640x360 y
-5 imágenes por segundo. A 1280x720 casi no llegan por la WiFi. Los pasos, el
+3 imágenes por segundo (comprimidas, con `tb4_rgbd_c`, hasta 10). A 1280x720
+casi no llegan por la WiFi. Los pasos, el
 fichero completo y lo que se ha medido están en
 [README-tb4-real.md](README-tb4-real.md#cámara-imagen-completa-y-profundidad).
 
-Después lanza los ejemplos con `robot:=tb4_rgbd`. Esta entrada usa
+Después prepara las terminales con `pixi run tb4-rgbd` y lanza los ejemplos con
+`robot:=$ROBOT` (`robot:=tb4_rgbd`). Esta entrada usa
 `/oakd/rgb/image_raw` en lugar de la imagen pequeña, porque YOLO 3D necesita
 que la imagen en color y la de profundidad tengan el mismo tamaño, y el robot
 alinea la profundidad con esa imagen. La imagen pequeña se sigue publicando,
@@ -834,7 +842,8 @@ ros2 topic echo /attractive_vector                       # posición de la perso
 ```
 
 El robot gira despacio para que YOLO llegue a ver a la persona: en el
-TurtleBot 4 real, YOLO 3D da unas 3 imágenes por segundo. Si no reacciona,
+TurtleBot 4 real, YOLO 3D recibe 3 imágenes por segundo con `tb4_rgbd` (con
+`tb4_rgbd_c`, hasta 10). Si no reacciona,
 comprueba en `/yolo/dbg_image` que YOLO ve los hombros y las muñecas, y no te
 pongas demasiado cerca: la persona tiene que salir entera en la imagen.
 
@@ -1207,7 +1216,7 @@ En el TurtleBot 4 real, desactiva antes los reflejos y el límite de marcha
 atrás de la base, o se moverá a saltos tras cada choque. Ver
 [Mecanismos de seguridad de la Create 3](README-tb4-real.md#mecanismos-de-seguridad-de-la-create-3).
 
-`groot_bumpgo.launch.py` carga el árbol desde `src/bt_bumpgo/bt_xml/bumpgo.xml`
+`groot_bumpgo_tb4.launch.py` carga el árbol desde `src/bt_bumpgo/bt_xml/bumpgo.xml`
 (formato BehaviorTree.CPP v4, editable con Groot). El parser está en
 `bt_bumpgo/groot_loader.py` y no requiere dependencias externas. Soporta
 `Sequence`, `ReactiveSequence`, `Fallback`, `ReactiveFallback`, `Inverter`,
